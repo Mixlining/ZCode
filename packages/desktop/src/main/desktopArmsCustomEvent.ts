@@ -1,3 +1,4 @@
+import { ZCODE_TELEMETRY_ENABLED } from "@zcode/shared";
 import type {
   ArmsCustomEventPayload,
   ArmsRumEnv,
@@ -171,7 +172,9 @@ export function dispatchFinalArmsCustomEvent(params: {
   const payload = buildFinalArmsCustomEventPayload(params);
   params.e2eController?.record(payload);
   const suppressed = params.e2eController?.shouldSuppress(payload.name) ?? false;
-  if (!suppressed) {
+  // 总开关关闭（本仓库在 packages/shared/src/env.ts 硬置 false）：事件照旧构建（E2E 采集与
+  // 调用方的 suppressed 判定不受影响），但不再调用 SDK 上报——SDK 在硬禁用下从不 init。
+  if (ZCODE_TELEMETRY_ENABLED && !suppressed) {
     params.sendCustom(payload);
   }
   return { payload, suppressed };

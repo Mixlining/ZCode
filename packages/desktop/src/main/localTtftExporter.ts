@@ -13,6 +13,7 @@ import type { ReadableSpan, SpanExporter } from "@opentelemetry/sdk-trace-base";
 import { LOCAL_TTFT_BUCKETS_MS, localTtftBatchSchema, type LocalTtftBatch } from "@zcode/shared";
 import {
   createRendererActionTraceExporter,
+  OTLP_DIAGNOSTIC_EXPORT_DISABLED,
   parseRendererActionTraceHeaders,
   validHttpUrl,
 } from "./rendererActionTraceExporter.js";
@@ -28,13 +29,16 @@ export function createLocalTtftExporter(options: {
   logger: { warn(...args: unknown[]): void };
 }) {
   const exporter = createRendererActionTraceExporter(options.env);
-  const endpoint =
-    validHttpUrl(options.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT) ??
-    validHttpUrl(
-      options.env.OTEL_EXPORTER_OTLP_ENDPOINT
-        ? `${options.env.OTEL_EXPORTER_OTLP_ENDPOINT.replace(/\/$/, "")}/v1/metrics`
-        : undefined,
-    );
+  // OTLP 诊断导出硬禁用（开关见 rendererActionTraceExporter）：不解析 OTEL_EXPORTER_OTLP_*，
+  // MeterProvider 不挂 PeriodicExportingMetricReader，因此不会创建 5 秒导出定时器。
+  const endpoint = OTLP_DIAGNOSTIC_EXPORT_DISABLED
+    ? undefined
+    : (validHttpUrl(options.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT) ??
+      validHttpUrl(
+        options.env.OTEL_EXPORTER_OTLP_ENDPOINT
+          ? `${options.env.OTEL_EXPORTER_OTLP_ENDPOINT.replace(/\/$/, "")}/v1/metrics`
+          : undefined,
+      ));
   const resource = resourceFromAttributes({
     "service.name": "zcode-local-ttft",
     "service.version": options.version,

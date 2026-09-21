@@ -6,13 +6,10 @@ import type { ContextSection } from "../types.js";
 import type { OutputStylePromptConfig } from "../types.js";
 import { estimateTokens } from "../utils.js";
 
-const SECURITY_NOTICE =
-  "IMPORTANT: Assist with authorized security testing, defensive security, CTF challenges, and educational contexts. Refuse requests for destructive techniques, DoS attacks, mass targeting, supply chain compromise, or detection evasion for malicious purposes. Dual-use security tools (C2 frameworks, credential testing, exploit development) require clear authorization context: pentesting engagements, CTF competitions, security research, or defensive use cases.";
-
-/** 安全 IMPORTANT 行：交互式身份与工作流子代理身份共用，逐字同一份。 */
-export function buildSecurityNotice(): string {
-  return SECURITY_NOTICE;
-}
+// 此处原有「授权安全测试 / 拒绝破坏性技术」的安全 IMPORTANT 段，由主 Agent 身份段与工作流
+// 子代理身份段（sections/workflow-actor.ts）逐字共用。按配置决定整体移除：两处都不再注入，
+// 也不再提供 buildSecurityNotice 导出。安全边界若需恢复，应作为独立 section 重新引入并让它
+// 自带所有者，而不是在多个身份段里各自复制同一段文本。
 
 /**
  * `# Harness` 块：稳定运行时约束，不属于 output style 可替换的 coding instructions，
@@ -32,9 +29,9 @@ export function buildHarnessBlock(): string {
 function buildIdentityPrompt(outputStyle?: OutputStylePromptConfig): string {
   const intro = outputStyle
     ? "You respond to the user according to the active Output Style below while using ZCode's tools and instructions."
-    : "You are an interactive ZCode agent that helps users with software engineering tasks.";
+    : "You are a helpful software engineer assistant that helps users with software engineering tasks.";
 
-  const identityLines = ["", intro, "", SECURITY_NOTICE].join("\n");
+  const identityLines = ["", intro].join("\n");
 
   return [identityLines, "", buildHarnessBlock()].join("\n");
 }

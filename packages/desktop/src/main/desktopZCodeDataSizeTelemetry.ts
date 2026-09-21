@@ -1,4 +1,6 @@
+/* eslint-disable max-lines -- 数据目录体积采样/调度/ARMS 上报同属一条链路 */
 import armsRum from "@arms/rum-electron";
+import { ZCODE_TELEMETRY_ENABLED } from "@zcode/shared";
 import type { ArmsRumEnv, FinalArmsCustomEventPayload } from "@zcode/shared";
 
 import type { ZCodeDataSizeScanResult } from "./zcodeDataSizeScanner.js";
@@ -402,6 +404,11 @@ export function registerDesktopZCodeDataSizeTelemetry(options: {
   stateFile: string;
 }): void {
   stopDesktopZCodeDataSizeTelemetry();
+  // 总开关关闭（本仓库硬置 false）：不启动 24 小时扫描与上报调度——否则会为已停用的 ARMS
+  // 通道持续做本地磁盘扫描。恢复总开关后此处照常注册。
+  if (!ZCODE_TELEMETRY_ENABLED) {
+    return;
+  }
   desktopScheduler = createZCodeDataSizeTelemetryScheduler({
     deviceMid: options.context.deviceMid,
     getSystemIdleTimeSeconds: options.getSystemIdleTimeSeconds,

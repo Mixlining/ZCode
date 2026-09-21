@@ -1,3 +1,4 @@
+import { ZCODE_TELEMETRY_ENABLED } from "@zcode/shared";
 import type { TelemetryRendererContext } from "@zcode/shared";
 
 interface StartupCoordinatorLike {
@@ -37,6 +38,10 @@ export function createAppTelemetryRuntime({
   let interactive = false;
 
   function reportDailyActive(context: TelemetryRendererContext): void {
+    // 总开关关闭（本仓库硬置 false）：app_daily_active 不发起，也不注册心跳定时器。
+    if (!ZCODE_TELEMETRY_ENABLED) {
+      return;
+    }
     void telemetryCore.reportAppDailyActive(context).catch((error) => {
       onError?.(error);
     });
@@ -50,11 +55,10 @@ export function createAppTelemetryRuntime({
     reportDailyActive(latestRendererContext);
   }
 
-  const dailyActiveHeartbeat = setIntervalFn(
-    maybeReportDailyActive,
-    dailyActiveHeartbeatIntervalMs,
-  );
-  if (typeof dailyActiveHeartbeat === "object") {
+  const dailyActiveHeartbeat: DailyActiveInterval | null = ZCODE_TELEMETRY_ENABLED
+    ? setIntervalFn(maybeReportDailyActive, dailyActiveHeartbeatIntervalMs)
+    : null;
+  if (dailyActiveHeartbeat !== null && typeof dailyActiveHeartbeat === "object") {
     dailyActiveHeartbeat.unref?.();
   }
 
@@ -69,6 +73,9 @@ export function createAppTelemetryRuntime({
     }
 
     pendingStartupTelemetryRendererId = null;
+    if (!ZCODE_TELEMETRY_ENABLED) {
+      return;
+    }
     void telemetryCore.reportAppLaunch(context).catch((error) => {
       onError?.(error);
     });
@@ -116,7 +123,9 @@ export function createAppTelemetryRuntime({
     },
 
     dispose(): void {
-      clearIntervalFn(dailyActiveHeartbeat);
+      if (dailyActiveHeartbeat !== null) {
+        clearIntervalFn(dailyActiveHeartbeat);
+      }
     },
   };
 }

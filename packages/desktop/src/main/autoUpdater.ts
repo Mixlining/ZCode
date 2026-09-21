@@ -1459,14 +1459,26 @@ export async function acknowledgePostUpdateReleaseNotes(
   await clearPendingPostUpdateReleaseNotes(settingService, "renderer-acknowledged");
 }
 
+/**
+ * 桌面自动更新硬禁用开关：本仓库按配置关闭更新链路——不配置 feed、不发起检查、不下载安装，
+ * 也不注册 60 分钟轮询定时器；菜单项保留，手动检查会走 dev-skipped 分支且不发请求。
+ * 完全忽略启用条件与环境变量（含 ZCODE_UPDATE_FEED_URL 与 --zcode-update-feed-url）。
+ * 原实现保留在下方，恢复时把这里改回 false。
+ */
+export const AUTO_UPDATE_HARD_DISABLED = true;
+
 export async function initAutoUpdater(options: InitAutoUpdaterOptions = {}): Promise<void> {
-  if (options.enabled === false) {
+  if (AUTO_UPDATE_HARD_DISABLED || options.enabled === false) {
     autoUpdaterDisabledForProductFlavor = true;
     if (autoUpdatePollTimer) {
       clearInterval(autoUpdatePollTimer);
       autoUpdatePollTimer = null;
     }
-    logger.info("[auto-update] disabled for this desktop product flavor");
+    logger.info(
+      AUTO_UPDATE_HARD_DISABLED
+        ? "[auto-update] disabled by build policy"
+        : "[auto-update] disabled for this desktop product flavor",
+    );
     return;
   }
   autoUpdaterDisabledForProductFlavor = false;

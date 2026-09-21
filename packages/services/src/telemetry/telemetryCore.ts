@@ -504,6 +504,12 @@ export function createTelemetryCore(dependencies: TelemetryCoreDependencies = {}
       talkId?: string;
       messageId?: string;
     }): Promise<void> {
+      // 总开关关闭（本仓库在 packages/shared/src/env.ts 硬置 false）：上报入口直接返回——
+      // 不做 deviceMid 读写、不取 telemetry state 锁、不发网络请求，也不进 pending 队列，
+      // 因此 flushPendingReports 与桌面退出屏障立即返回。也完全忽略运行时注入的上报端点。
+      if (!ZCODE_TELEMETRY_ENABLED) {
+        return Promise.resolve();
+      }
       return trackReport(
         (async () => {
           const userId = input.userId ?? (await loadUserId());
@@ -536,6 +542,9 @@ export function createTelemetryCore(dependencies: TelemetryCoreDependencies = {}
     },
 
     reportAppLaunch(context: TelemetryRendererContext): Promise<void> {
+      if (!ZCODE_TELEMETRY_ENABLED) {
+        return Promise.resolve();
+      }
       return trackReport(
         (async () => {
           const eventId = randomUUID();
@@ -560,6 +569,9 @@ export function createTelemetryCore(dependencies: TelemetryCoreDependencies = {}
     },
 
     reportAppDailyActive(context: TelemetryRendererContext): Promise<void> {
+      if (!ZCODE_TELEMETRY_ENABLED) {
+        return Promise.resolve();
+      }
       return trackReport(
         (async () => {
           const timestamp = now();

@@ -28,7 +28,17 @@ export function parseRendererActionTraceHeaders(
   return Object.keys(headers).length > 0 ? headers : undefined;
 }
 
+/**
+ * OTLP 诊断导出硬禁用开关：不解析 OTEL_EXPORTER_OTLP_*（完全忽略环境变量），Trace/Metric
+ * 导出器永不创建；调用方拿到 undefined 即"未启用"，其 flush/shutdown 立即返回，退出不被拖住。
+ * 恢复时把这里改回 false（localTtftExporter 复用同一开关）。
+ */
+export const OTLP_DIAGNOSTIC_EXPORT_DISABLED = true;
+
 export function createRendererActionTraceExporter(env: EnvRecord): SpanExporter | undefined {
+  if (OTLP_DIAGNOSTIC_EXPORT_DISABLED) {
+    return undefined;
+  }
   const endpoint = resolveRendererActionTraceEndpoint(env);
   if (!endpoint) return undefined;
   return new OTLPTraceExporter({

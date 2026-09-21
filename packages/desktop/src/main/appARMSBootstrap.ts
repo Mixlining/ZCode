@@ -263,6 +263,10 @@ function startArmsRum(): Promise<void> {
     });
 }
 
-// 总开关关闭或端点未配置时不初始化 SDK。
-export const armsInitPromise: Promise<void> =
-  ZCODE_TELEMETRY_ENABLED && ZCODE_ARMS_RUM_ENDPOINT ? startArmsRum() : Promise.resolve();
+// 总开关关闭或端点未配置时不初始化 SDK。总开关（packages/shared/src/env.ts 的
+// ZCODE_TELEMETRY_ENABLED）本仓库硬置为 false：不 init SDK，因此不建上报队列、不起采样
+// 定时器，首窗口也不必等待 SDK init；同时完全忽略运行时注入的端点，遥测无法被环境变量打开。
+const armsRumConfigured = ZCODE_TELEMETRY_ENABLED && Boolean(ZCODE_ARMS_RUM_ENDPOINT);
+export const armsInitPromise: Promise<void> = armsRumConfigured
+  ? startArmsRum()
+  : Promise.resolve();

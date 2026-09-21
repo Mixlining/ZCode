@@ -1,15 +1,13 @@
-import { ensureCliDeviceMid } from "../device/cli-device-mid.js";
 import type { EnvRecord } from "./model-execution.js";
 import { normalizeModelSessionIdForAttribution, type ModelStatusContext } from "./runner-status.js";
 
 const REDACTED_METADATA_USER_ID = "[REDACTED]";
 
 function createAnthropicRequestMetadataUserId(input: {
-  deviceMid: string;
   sessionId?: ModelStatusContext["sessionId"];
 }): string {
   return JSON.stringify({
-    device_id: input.deviceMid,
+    // device_id 已按配置移除：模型请求不再携带设备标识（原值来自 ensureCliDeviceMid）。
     account_uuid: "",
     session_id: normalizeModelSessionIdForAttribution(input.sessionId) ?? "",
   });
@@ -24,11 +22,8 @@ export async function resolveAnthropicRequestMetadataUserId(input: {
     return undefined;
   }
 
-  const deviceMid = await ensureCliDeviceMid({ env: input.env });
-  return createAnthropicRequestMetadataUserId({
-    deviceMid,
-    sessionId: input.sessionId,
-  });
+  // 不再读取本地 deviceMid：身份文件仍由 device 模块维护，但不再进入模型请求。
+  return createAnthropicRequestMetadataUserId({ sessionId: input.sessionId });
 }
 
 export function redactAnthropicRequestMetadata(value: unknown): unknown {

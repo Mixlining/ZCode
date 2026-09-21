@@ -7,7 +7,11 @@ import {
   type ForceUpdateRequirement,
   type Locale,
 } from "@zcode/shared";
-import { requestForceAutoUpdate, type ForceAutoUpdateState } from "./autoUpdater.js";
+import {
+  AUTO_UPDATE_HARD_DISABLED,
+  requestForceAutoUpdate,
+  type ForceAutoUpdateState,
+} from "./autoUpdater.js";
 import { showForceUpdatePrompt } from "./forceUpdatePrompt.js";
 
 const ZCODE_CLIENT_CONFIG_API_PATH = "/api/v1/client/configs";
@@ -217,6 +221,11 @@ function formatForceUpdateDialogText(
 export async function maybeBlockStartupForForceUpdate(
   options: ForceUpdateGuardOptions,
 ): Promise<ForceUpdateGuardResult> {
+  // 更新链路硬禁用（开关见 autoUpdater 的 AUTO_UPDATE_HARD_DISABLED）：不再请求
+  // {origin}/api/v1/client/configs 询问最低可用版本，也不再拦截启动——启动期因此没有网络等待。
+  if (AUTO_UPDATE_HARD_DISABLED) {
+    return { blocked: false };
+  }
   const requirement = await resolveDesktopForceUpdateRequirement({
     ...options,
     endpointOrigin: options.endpointOrigin,

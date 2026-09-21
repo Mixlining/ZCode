@@ -38,6 +38,7 @@ function resolveClientTimezone(): string {
   );
 }
 
+// eslint-disable-next-line no-unused-vars -- 保留读取实现：恢复向提供商请求头注入 deviceMid 时重新调用
 function readExistingDeviceMid(): string | undefined {
   const stateFile = join(getAppConfigDir(), "telemetry-state.json");
   if (cachedDeviceMid?.stateFile === stateFile) {
@@ -74,7 +75,9 @@ export function buildZCodeSourceHeaders(
   const clientTimezone =
     normalizePrintableHeaderValue(options.clientTimezone) ?? resolveClientTimezone();
   const osVersion = normalizePrintableHeaderValue(options.osVersion ?? readOsVersion());
-  const deviceMid = readExistingDeviceMid();
+  // deviceMid 已按配置移除：不再向模型提供商请求头注入设备标识。
+  // 读取逻辑仍保留在 readExistingDeviceMid()，恢复时改回调用它即可。
+  const deviceMid: string | undefined = undefined;
 
   return buildZCodeSourceHeadersFromContext({
     appVersion,

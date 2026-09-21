@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 资源指标采集/聚合/ARMS 上报，与 desktopNetworkTelemetry 同类 */
 import armsRum from "@arms/rum-electron";
 import {
   bytesToKb,
@@ -10,6 +11,7 @@ import {
   type ProcessResourceRole,
   type ProcessResourceRuntimeSurface,
   PROCESS_RESOURCE_EVENT_NAMES,
+  ZCODE_TELEMETRY_ENABLED,
   zcodeToolExecResourceSchema,
 } from "@zcode/shared";
 import { BrowserWindow } from "electron";
@@ -438,6 +440,11 @@ export function registerDesktopResourceTelemetry(
   options?: { reportIntervalMs?: number; readSelfClockMs?: () => number },
 ): void {
   stopDesktopResourceTelemetry();
+  // 总开关关闭（本仓库硬置 false）：不启动采样/上报定时器，避免为已停用的 ARMS 通道
+  // 持续做本地采样与聚合。恢复总开关后此处照常注册。
+  if (!ZCODE_TELEMETRY_ENABLED) {
+    return;
+  }
   agentMetricProbeDisabledAuditLogged = false;
   memoryLogTick = 0;
   memorySampleWriteGate = createMemorySampleWriteGate();

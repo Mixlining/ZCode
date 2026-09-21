@@ -114,6 +114,14 @@ export function parseOtlpHeaders(value: string | undefined): Record<string, stri
 }
 
 /**
+ * 遥测硬禁用开关：本仓库按配置关闭全部出网上报，且完全忽略环境变量——即使部署环境注入了
+ * OTEL_EXPORTER_OTLP_* 或 ZCODE_MODEL_TELEMETRY_ENABLED，也不会准备 Owner、不会动态加载
+ * OTel SDK。因此不建 Span/Metric 队列、不起定时导出、退出时也没有需要 flush 的等待
+ * （原实现保留在下方，恢复时把这里改回 false）。
+ */
+const MODEL_TELEMETRY_HARD_DISABLED = true;
+
+/**
  * 在 CLI 的异步启动边界准备身份并动态加载 OTel SDK。同步 App 工厂只借用已准备好的
  * 进程级 Owner；disabled 路径不会 import SDK/Exporter。
  */
@@ -121,6 +129,9 @@ export async function prepareModelTelemetryEnv(
   env: EnvRecord,
   options: PrepareModelTelemetryOptions = {},
 ): Promise<EnvRecord> {
+  if (MODEL_TELEMETRY_HARD_DISABLED) {
+    return env;
+  }
   if (!resolveOtlpTraceEndpoint(env) || isExplicitlyDisabled(env.ZCODE_MODEL_TELEMETRY_ENABLED)) {
     return env;
   }
@@ -137,6 +148,10 @@ export async function prepareModelTelemetryEnv(
 }
 
 export async function shutdownPreparedModelTelemetry(): Promise<void> {
+  // 硬禁用下没有 Owner 可关：立即返回，退出路径不会被 flush 超时拖住。
+  if (MODEL_TELEMETRY_HARD_DISABLED) {
+    return;
+  }
   const owner = preparedOwner ?? (await preparingOwner);
   preparedOwner = undefined;
   preparingOwner = undefined;

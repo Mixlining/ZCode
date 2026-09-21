@@ -1,6 +1,6 @@
 /* eslint-disable max-lines -- 网络指标采集/聚合/ARMS 上报 */
 import armsRum from "@arms/rum-electron";
-import { mapZCodeEnvToArmsRumEnv } from "@zcode/shared";
+import { mapZCodeEnvToArmsRumEnv, ZCODE_TELEMETRY_ENABLED } from "@zcode/shared";
 import type { NetworkObservation } from "@zcode/rpc";
 import {
   flushInterfaceNetworkStats,
@@ -152,6 +152,10 @@ export function configureDesktopNetworkTelemetry(context: NetworkGlobalContext):
 export function registerDesktopNetworkTelemetry(logger: NetworkLogger): void {
   stopDesktopNetworkTelemetry();
   resetNetworkTelemetryAggregator();
+  // 总开关关闭（本仓库硬置 false）：不启动网络指标上报定时器。恢复总开关后此处照常注册。
+  if (!ZCODE_TELEMETRY_ENABLED) {
+    return;
+  }
 
   reportTimer = setInterval(() => {
     try {
