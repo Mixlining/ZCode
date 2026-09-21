@@ -1,4 +1,5 @@
 import { resolveSelectionSideInheritedModel } from "@/lib/selectionSideInheritedModel.js";
+import { CODING_PLAN_UI_DISABLED } from "@zcode/shared";
 import { useStartPlanRecommendation } from "@/hooks/useStartPlanRecommendation.js";
 import type { SessionCreateSource } from "@zcode/shared";
 import { reportSessionCreate } from "@/lib/sessionCreateTelemetry.js";
@@ -4492,7 +4493,9 @@ export function SessionPane({
     )
   ) : (
     <>
-      {quotaBanner.state.visible &&
+      {/* 套餐硬关闭：额度/升级横幅不再渲染。 */}
+      {!CODING_PLAN_UI_DISABLED &&
+      quotaBanner.state.visible &&
       !quotaBanner.dismissed &&
       (!projectedComposerError || quotaBanner.takesOverError || quotaBanner.state.blocksSubmit) ? (
         <ConversationQuotaBanner

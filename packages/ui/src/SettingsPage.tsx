@@ -31,6 +31,7 @@ import { DesktopWindowFrame } from "@/DesktopWindowFrame.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { getPathLeaf } from "@/lib/path.js";
+import { CODING_PLAN_UI_DISABLED } from "@zcode/shared";
 import { useProviderSettingsView } from "@/hooks/useProviderSettingsView.js";
 import { useUsageEntitlement } from "@/hooks/useUsageEntitlement.js";
 import {
@@ -149,21 +150,25 @@ function SettingsUsageProviderTabs({
       id: "app" as const,
       label: intl.formatMessage({ id: "settings.usage.tab.appUsage" }),
     },
-    ...codingPlanSources.map((source, index) => ({
-      id: createSettingsUsageCodingPlanTabId(source.id),
-      label: resolveSettingsUsageCodingPlanTabLabel({
-        defaultLabel: intl.formatMessage({
-          id: "settings.usage.tab.codingPlan",
-        }),
-        hasMultiplePersonalSources:
-          codingPlanSources.filter((item) => !isTeamCodingPlanUsageSource(item)).length > 1,
-        index,
-        source,
-      }),
-    })),
+    // 套餐硬关闭：不再生成套餐 tab。
+    ...(CODING_PLAN_UI_DISABLED
+      ? []
+      : codingPlanSources.map((source, index) => ({
+          id: createSettingsUsageCodingPlanTabId(source.id),
+          label: resolveSettingsUsageCodingPlanTabLabel({
+            defaultLabel: intl.formatMessage({
+              id: "settings.usage.tab.codingPlan",
+            }),
+            hasMultiplePersonalSources:
+              codingPlanSources.filter((item) => !isTeamCodingPlanUsageSource(item)).length > 1,
+            index,
+            source,
+          }),
+        }))),
   ];
-  const visibleActiveTab =
-    activeTab === "codingPlan" && codingPlanSources[0]
+  const visibleActiveTab = CODING_PLAN_UI_DISABLED
+    ? "app"
+    : activeTab === "codingPlan" && codingPlanSources[0]
       ? createSettingsUsageCodingPlanTabId(codingPlanSources[0].id)
       : activeTab;
 

@@ -16,6 +16,7 @@ import {
   ZAI_PROVIDER_ID,
   testId,
 } from "@zcode/shared";
+import { CODING_PLAN_UI_DISABLED } from "@zcode/shared";
 import { Alert, AlertDescription } from "./components/ui/alert.js";
 import { Button } from "./components/ui/button.js";
 import { ZCodeAboutLogo } from "@/components/ui/ZCodeAboutLogo.js";
@@ -315,29 +316,32 @@ function LoginPanel({ active, onComplete }: LoginPanelProps) {
 
             {!loadingProviders ? (
               <div className="space-y-2">
-                {visibleProviders.map((provider) => (
-                  <Button
-                    key={provider.id}
-                    variant="default"
-                    className="h-10 w-full text-ui-base"
-                    size="lg"
-                    data-testid={
-                      provider.id === BIGMODEL_PROVIDER_ID
-                        ? TID_OAUTH_LOGIN_BUTTON
-                        : testId(TID_OAUTH_LOGIN_BUTTON, provider.id)
-                    }
-                    onClick={() => void startTrackedLogin(provider.id)}
-                  >
-                    {renderOAuthProviderIcon(provider.id, "size-4")}
-                    <span className="min-w-0 truncate">
-                      {intl.formatMessage(
-                        { id: getLoginOAuthButtonMessageId(provider.id) },
-                        { provider: provider.displayName },
-                      )}
-                    </span>
-                    <LoginOAuthRegionTag providerId={provider.id} />
-                  </Button>
-                ))}
+                {/* 套餐硬关闭：Z.ai / BigModel 账号登录入口一并隐藏，只留「使用 API key」。 */}
+                {!CODING_PLAN_UI_DISABLED
+                  ? visibleProviders.map((provider) => (
+                      <Button
+                        key={provider.id}
+                        variant="default"
+                        className="h-10 w-full text-ui-base"
+                        size="lg"
+                        data-testid={
+                          provider.id === BIGMODEL_PROVIDER_ID
+                            ? TID_OAUTH_LOGIN_BUTTON
+                            : testId(TID_OAUTH_LOGIN_BUTTON, provider.id)
+                        }
+                        onClick={() => void startTrackedLogin(provider.id)}
+                      >
+                        {renderOAuthProviderIcon(provider.id, "size-4")}
+                        <span className="min-w-0 truncate">
+                          {intl.formatMessage(
+                            { id: getLoginOAuthButtonMessageId(provider.id) },
+                            { provider: provider.displayName },
+                          )}
+                        </span>
+                        <LoginOAuthRegionTag providerId={provider.id} />
+                      </Button>
+                    ))
+                  : null}
                 <Button
                   variant="outline"
                   className="h-10 w-full text-ui-base"

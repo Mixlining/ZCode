@@ -29,6 +29,7 @@ import {
   type ConversationSharePreparationRequest,
   type ConversationSharePreview,
   type ConversationShareRecord,
+  ZCODE_VENDOR_ACTIONS_DISABLED,
 } from "@zcode/shared";
 import type { z } from "zod";
 import { createServiceLogger } from "../logger/serviceLogger.js";
@@ -408,6 +409,13 @@ export class ConversationShareHttpClient {
     auth: "required" | "optional",
     timeoutMsOverride?: number,
   ): Promise<T> {
+    // 厂商动作硬关闭：分享链路（能力查询/发布/导入/附件下载）不再发出请求，直接以网络错误返回。
+    if (ZCODE_VENDOR_ACTIONS_DISABLED) {
+      throw new ConversationShareClientError({
+        kind: "network",
+        message: "会话分享在当前构建中已停用",
+      });
+    }
     const token = (await this.tokenProvider())?.trim() || null;
     if (auth === "required" && !token) {
       throw new ConversationShareClientError({

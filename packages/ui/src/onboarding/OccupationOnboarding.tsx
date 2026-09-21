@@ -20,6 +20,12 @@ import { logger } from "@/logger.js";
 import { DesktopWindowControls } from "@/DesktopWindowControls.js";
 import type { OnboardingRecordEntry } from "@zcode/shared";
 
+/**
+ * 硬关闭：首次启动不再自动弹出引导页（设置页里的手动引导入口 `requested` 仍然生效）。
+ * 组件与记录逻辑全部保留，恢复时把这个常量改回 false。
+ */
+const AUTO_ONBOARDING_DISABLED = true;
+
 /** 追加本地引导记录（userId 由 host 补全）；channel 缺失挂起时 5 秒超时按写失败处理。 */
 async function appendOnboardingRecord(
   service: NonNullable<ReturnType<typeof useOnboardingRecordService>>,
@@ -79,7 +85,8 @@ export function OccupationOnboarding({
     hasStoredOccupation: Boolean(settings?.onboardingOccupation),
     update,
   });
-  const onboardingVisible = requested || (needsOnboarding === true && !dismissed);
+  const onboardingVisible =
+    requested || (!AUTO_ONBOARDING_DISABLED && needsOnboarding === true && !dismissed);
   const captureEnd = useOnboardingTelemetry({
     platform,
     visible:

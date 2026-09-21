@@ -22,6 +22,7 @@ import {
   type PresetProviderSpec,
 } from "@/settings/model-provider-section/constants.js";
 import { pickCodingPlanEntitlementProvider } from "@/lib/codingPlanProvider.js";
+import { CODING_PLAN_UI_DISABLED } from "@zcode/shared";
 import {
   createCodingPlanProviderNodeKey,
   createCustomProviderNodeKey,
@@ -223,7 +224,9 @@ export function useModelProviderNavigation({
       },
     ];
 
-    return groups;
+    // 套餐硬关闭：智谱分组（Start Plan 预设 + 套餐/团队套餐连接项）整体不再出现，
+    // 只保留自定义供应商分组。
+    return CODING_PLAN_UI_DISABLED ? groups.filter((group) => group.id !== "preset") : groups;
   }, [
     customProviders,
     codingPlanItems,

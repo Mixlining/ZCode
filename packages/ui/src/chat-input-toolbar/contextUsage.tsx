@@ -46,6 +46,7 @@ import {
   type CodingPlanQuotaResetAutoConfettiArms,
 } from "@/chat-input-toolbar/CodingPlanContextUsage.js";
 import { resolveChatCodingPlanResetOpportunityBadge } from "@/chat-input-toolbar/codingPlanResetOpportunityBadge.js";
+import { CODING_PLAN_UI_DISABLED } from "@zcode/shared";
 import {
   ChatStartPlanBalancePanel,
   hasChatStartPlanBalance,
@@ -984,7 +985,10 @@ export function ChatContextUsage({
               ) : null}
             </>
           ) : null}
-          {codingPlanUsageRemainingWithClose && hasCodingPlanUsageRemaining ? (
+          {/* 套餐硬关闭：上下文浮层里的套餐额度与体验套餐余额面板不再渲染。 */}
+          {!CODING_PLAN_UI_DISABLED &&
+          codingPlanUsageRemainingWithClose &&
+          hasCodingPlanUsageRemaining ? (
             <ChatCodingPlanUsageRemainingPanel
               autoCelebrateArm={armedAutoConfetti}
               config={codingPlanUsageRemainingWithClose}
@@ -996,7 +1000,7 @@ export function ChatContextUsage({
               onQuotaResetDialogOpenChange={handleQuotaResetDialogOpenChange}
             />
           ) : null}
-          {startPlanBalanceWithClose && hasStartPlanBalance ? (
+          {!CODING_PLAN_UI_DISABLED && startPlanBalanceWithClose && hasStartPlanBalance ? (
             <ChatStartPlanBalancePanel
               config={startPlanBalanceWithClose}
               intl={intl}

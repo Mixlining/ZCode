@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button.js";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
 import { useModelProviders } from "@/hooks/useModelProviders.js";
 import { resolveEntitledAccountProviderAccess } from "@/lib/accountProviderAccess.js";
+import { CODING_PLAN_UI_DISABLED } from "@zcode/shared";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { useServices } from "@/hooks/useServices.js";
 import { useZCodeStore } from "@/store/StoreProvider.js";
@@ -190,6 +191,8 @@ function clearPendingProviderFamilyConnectionSelection(
 }
 
 function resolveProviderFamilySideNodeKey(providerId: BuiltinModelProviderId): string | null {
+  // 套餐硬关闭：不再把套餐供应商 id 解析成套餐导航节点，深链与内部登录请求都选不中套餐页。
+  if (CODING_PLAN_UI_DISABLED) return null;
   if (isStartPlanModelProviderId(providerId)) return createCodingPlanProviderNodeKey(providerId);
   const familySpec = resolveModelProviderFamilySpecByProviderId(providerId);
   return familySpec ? createPresetProviderNodeKey(familySpec.startPlanProviderId) : null;

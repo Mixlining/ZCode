@@ -1,4 +1,4 @@
-import { redactFeedbackText } from "@zcode/shared";
+import { redactFeedbackText, ZCODE_VENDOR_ACTIONS_DISABLED } from "@zcode/shared";
 /* eslint-disable max-lines -- 反馈 HTTP 客户端集中维护新后端协议、鉴权头合并、OSS 表单直传和响应归一化。 */
 import { randomUUID } from "node:crypto";
 import { createReadStream } from "node:fs";
@@ -314,6 +314,10 @@ export class FeedbackHttpClient {
     init?: ApiRequestInit,
     authHeaders?: Record<string, string>,
   ): Promise<T> {
+    // 厂商动作硬关闭：反馈工单的请求不再发出，直接以错误返回（界面保留，提交时提示失败）。
+    if (ZCODE_VENDOR_ACTIONS_DISABLED) {
+      throw new Error("反馈提交在当前构建中已停用");
+    }
     const headers = mergeFeedbackRequestHeaders(
       authHeaders ?? (await this.options.getAuthHeaders()),
       init?.headers,
@@ -499,6 +503,10 @@ export class FeedbackHttpClient {
     contentType: string,
     options?: FeedbackUploadFileOptions,
   ): Promise<FeedbackAttachment> {
+    // 厂商动作硬关闭：附件上传（含 OSS 直传）一并停用，直接以错误返回。
+    if (ZCODE_VENDOR_ACTIONS_DISABLED) {
+      throw new Error("反馈附件上传在当前构建中已停用");
+    }
     if (options?.signal?.aborted) {
       throw new FeedbackUploadCanceledError();
     }

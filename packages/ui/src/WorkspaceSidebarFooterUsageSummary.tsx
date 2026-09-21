@@ -33,6 +33,7 @@ import {
   type CodingPlanFunnelContext,
 } from "@/lib/codingPlanFunnelTelemetry.js";
 import { type SidebarUsageCodingPlanProviderId } from "@/lib/sidebarUsageCodingPlanProviderPreference.js";
+import { CODING_PLAN_UI_DISABLED } from "@zcode/shared";
 import { useEnterpriseCodingPlanProducts } from "@/settings/model-provider-section/useEnterpriseCodingPlanProducts.js";
 import {
   buildCodingPlanUsageSources,
@@ -307,6 +308,10 @@ export function useWorkspaceSidebarFooterUsageSummaryState({
   // 入口预热 entitlement，个人计划徽标缺失。可见时触发一次 access 刷新，复用共享
   // 1 分钟 freshness window、失败退避和 in-flight 合并；hook disabled 时 refresh 是 no-op。
   useEffect(() => {
+    // 套餐硬关闭：footer 不再预热套餐额度，避免一进主界面就发出 3 个 entitlement 请求。
+    if (CODING_PLAN_UI_DISABLED) {
+      return;
+    }
     for (const refresh of [
       zaiEntitlement.refresh,
       bigmodelEntitlement.refresh,
@@ -430,6 +435,10 @@ export function WorkspaceSidebarFooterUsageSummaryContent({
   const { intl } = useZCodeIntl();
   const entryGate = useCodingPlanEntryGate();
   const { providerEntitlements, upgradeTargetProviderId } = state;
+  // 套餐硬关闭：资料菜单里的「使用统计」与「升级」两个条目不再渲染。
+  if (CODING_PLAN_UI_DISABLED) {
+    return null;
+  }
   const upgradeProviderSnapshot =
     providerEntitlements.find((item) => item.providerId === upgradeTargetProviderId)?.snapshot ??
     null;

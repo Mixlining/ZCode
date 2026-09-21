@@ -50,6 +50,17 @@ export const RUNTIME_ZCODE_DEBUG =
 // appARMSBootstrap 与 services 的 telemetryCore），恢复时需要一起改回。
 export const ZCODE_TELEMETRY_ENABLED: boolean = false;
 
+// 硬禁用：会话分享、反馈工单与附件上传、帮助/社区/产品文档/更新日志外链的底层调用直接返回空或
+// 错误（界面与入口保留）。这些调用都会把请求发往厂商服务，本构建不再使用；恢复时改回 false。
+export const ZCODE_VENDOR_ACTIONS_DISABLED: boolean = true;
+
+// 硬禁用：套餐与账号登录界面整体关闭——设置→模型里的套餐页与套餐登录、模板选择器里的套餐模板、
+// 用量面板的套餐 tab、侧边栏套餐额度与等级徽章、会话内的额度横幅与重置提醒、启动时的登录门禁与
+// 自动引导都不再出现，只保留「添加供应商」与自定义供应商流程；Z.ai / BigModel 登录入口一并隐藏。
+// 组件、i18n 与底层服务全部保留，恢复时改回 false（自动引导另有 OccupationOnboarding 的
+// AUTO_ONBOARDING_DISABLED，测试期登录门禁另见 rootStartupGate）。
+export const CODING_PLAN_UI_DISABLED: boolean = true;
+
 /** 数仓事件上报端点：由运行时环境变量提供，未配置即停用，构建产物不内嵌。 */
 export const ZCODE_TELEMETRY_REPORT_ENDPOINT =
   typeof process !== "undefined" ? (process.env.ZCODE_TELEMETRY_REPORT_ENDPOINT ?? "") : "";

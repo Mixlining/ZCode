@@ -13,6 +13,7 @@ import {
   resolveRuntimeZCodeEndpointOrigin,
   ZCODE_ENV,
   ZCODE_PRODUCT_FLAVOR,
+  ZCODE_VENDOR_ACTIONS_DISABLED,
   buildZCodeEndpointUrls,
   getCommunityUrlFromConfigs,
   getFeedbackUrlFromConfig,
@@ -265,7 +266,10 @@ async function openFeedback(
     resolveTargetWindow(targetWindow)?.webContents.send(PlatformChannels.OpenFeedbackDialog);
     return;
   }
-  if (config.feedback_url) await shell.openExternal(config.feedback_url);
+  // 厂商动作硬关闭：反馈外链不再打开（站内表单的提交也已在下层停用）。
+  if (config.feedback_url && !ZCODE_VENDOR_ACTIONS_DISABLED) {
+    await shell.openExternal(config.feedback_url);
+  }
 }
 
 async function openCommunity(
@@ -276,6 +280,8 @@ async function openCommunity(
   },
   fetchRemoteConfig?: () => Promise<unknown>,
 ) {
+  // 厂商动作硬关闭：社区外链不再打开，也不再读取远端帮助配置。
+  if (ZCODE_VENDOR_ACTIONS_DISABLED) return;
   const communityUrl = await resolveCommunityUrl({ locale, logger, fetchRemoteConfig });
   if (!communityUrl) {
     logger.warn("[community] community_urls is missing from both remote and local config");
@@ -459,6 +465,8 @@ export async function openChangelog(
   locale: Locale,
   endpointOrigin = DEFAULT_ZCODE_ENDPOINT_ORIGIN,
 ) {
+  // 厂商动作硬关闭：更新日志外链不再打开。
+  if (ZCODE_VENDOR_ACTIONS_DISABLED) return;
   await shell.openExternal(resolveChangelogUrl(locale, endpointOrigin));
 }
 

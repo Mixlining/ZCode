@@ -1,4 +1,5 @@
 import { CodingPlanEntryButton } from "@/settings/CodingPlanEntryButton.js";
+import { CODING_PLAN_UI_DISABLED } from "@zcode/shared";
 /**
  * ChatErrorBanner — 错误提示组件
  *
@@ -208,22 +209,25 @@ export function ChatErrorBanner({
 
         {modelConfigMissing ? (
           <>
-            <CodingPlanEntryButton
-              type="button"
-              variant="default"
-              size="sm"
-              onClick={onOpenUpgrade}
-              className={cn(
-                actionButtonClassName,
-                "button-gradient gap-1.5 text-white hover:bg-transparent hover:opacity-90 dark:bg-[#484A58] dark:hover:bg-[#484A58]",
-              )}
-              aria-label={intl.formatMessage({
-                id: "chat.quota.action.upgrade",
-              })}
-            >
-              <RocketIcon className="size-3.5" />
-              {intl.formatMessage({ id: "chat.quota.action.upgrade" })}
-            </CodingPlanEntryButton>
+            {/* 套餐硬关闭：不再提供「升级」入口，只留跳转模型设置的「配置」。 */}
+            {!CODING_PLAN_UI_DISABLED ? (
+              <CodingPlanEntryButton
+                type="button"
+                variant="default"
+                size="sm"
+                onClick={onOpenUpgrade}
+                className={cn(
+                  actionButtonClassName,
+                  "button-gradient gap-1.5 text-white hover:bg-transparent hover:opacity-90 dark:bg-[#484A58] dark:hover:bg-[#484A58]",
+                )}
+                aria-label={intl.formatMessage({
+                  id: "chat.quota.action.upgrade",
+                })}
+              >
+                <RocketIcon className="size-3.5" />
+                {intl.formatMessage({ id: "chat.quota.action.upgrade" })}
+              </CodingPlanEntryButton>
+            ) : null}
             <Button
               type="button"
               variant="outline"

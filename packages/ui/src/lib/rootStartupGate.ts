@@ -41,7 +41,10 @@ export function shouldShowRootStartupLoading(state: RootStartupLoadingVisibility
 }
 
 export function shouldEnableProviderAvailabilityLoginEntryGuard(): boolean {
-  return true;
+  // 硬关闭：本构建不再在启动时弹出账号/套餐登录页（Z.ai 与 BigModel 的登录入口已隐藏），
+  // 未配置供应商时直接进主界面，由模型设置里的「添加供应商」引导完成配置。
+  // 守卫实现保留，恢复时改回 true。
+  return false;
 }
 
 export function shouldResolveProviderStartupState(state: ProviderStartupResolutionState): boolean {
