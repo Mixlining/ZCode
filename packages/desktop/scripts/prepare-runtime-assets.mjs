@@ -9,7 +9,11 @@ import { getTargetPlatform } from "./target-platform.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const desktopRoot = resolve(scriptDir, "..");
-const pnpmCommand = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+// 修复原因：这里原来在 win32 上硬编码 `pnpm.cmd`，只有 npm 安装的 pnpm 才提供该文件；
+// mise 等非 npm 布局只用 `pnpm` 暴露入口（GitHub windows runner 上即如此），于是子进程
+// 启动就报 "'pnpm.cmd' is not recognized"。统一用裸命令名，由 scripts/spawn-command.mjs
+// 交给 cmd.exe 按 PATHEXT 解析（npm 布局解析到 pnpm.cmd，mise 布局解析到 pnpm.exe）。
+const pnpmCommand = "pnpm";
 const target = getTargetPlatform();
 const nativeSearchReleasePlan = resolveNativeSearchReleasePlan({
   platform: target.os,

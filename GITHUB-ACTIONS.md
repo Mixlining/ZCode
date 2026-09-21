@@ -78,6 +78,22 @@ ZCODE_ENV=production ZCODE_SKIP_REMOTE_ASSETS=1 pnpm run bundle:desktop -- --os 
 - **远端资产、远端 Node 版本**：`prepare:remote-assets` 会下载各平台 Node 与 node-pty 预编译产物，本次已显式跳过；若将来要出内嵌远端资产的包，去掉 `ZCODE_SKIP_REMOTE_ASSETS` 并预留更长超时。
 - **不自动 bump 版本**：产物版本号来自根 `package.json`，发版前需自行改版本并提交；`.release-it.mjs` 的 `release` 流程与 CI 未打通（release-it 不创建 GitHub Release）。
 
+## 故障排查
+
+**构建报 `'pnpm.cmd' is not recognized as an internal or external command`（出现在 `prepare:runtime-assets` 阶段）**
+
+原因：`packages/desktop/scripts/prepare-runtime-assets.mjs` 曾在 win32 上把 pnpm 硬编码成 `pnpm.cmd`，而只有 npm 安装的 pnpm 才提供这个文件；工作流里的 pnpm 来自 mise，PATH 上没有 `pnpm.cmd`，于是子进程一启动就报错。现已改为裸命令名 `pnpm`，由 [`scripts/spawn-command.mjs`](scripts/spawn-command.mjs) 交给 `cmd.exe` 按 `PATHEXT` 解析（npm 布局解析到 `pnpm.cmd`，mise 布局解析到 `pnpm.exe`），与 `bundle.mjs` 等较新脚本的写法一致。
+
+同类残留（本工作流不经过，仅出现在本地 dev / bootstrap / remote-assets 路径）：`scripts/bootstrap.mjs`、`scripts/dev-desktop-env.mjs`、`scripts/dev-desktop-remote-prod.mjs`、`scripts/prepare-prebuilds.mjs`、`scripts/mise-run.mjs`、`packages/desktop/scripts/ensure-local-runtime-assets.mjs` 仍写死 `pnpm.cmd`。若将来在 mise 环境下跑到并报同样的错，用 `grep -rn "pnpm.cmd" scripts packages` 找出来按同一方式改掉即可。
+
+**其他常见情况**
+
+- 安装包能装但系统提示「未知发布者」：未配置签名 secret，配置 `CSC_LINK` / `CSC_KEY_PASSWORD` 后重新运行。
+- 缓存导致的怪异失败：到 Settings → Actions → Caches 删掉对应缓存后重跑；pnpm store 缓存的 key 绑定 `pnpm-lock.yaml`，Electron 缓存的 key 绑定 `packages/desktop/package.json`。
+- 首次运行超时：无缓存时需要下载 Electron 与 electron-builder 工具包，可把 `timeout-minutes` 提到 120。
+- 产物名带 `_TEST` 后缀或 productName 变成 `ZCode Preview`：`ZCODE_ENV` 不是 `production` 了。
+- 远程工作区部署时找不到远端运行时：目标 CDN 上没有当前版本的资产，用 `ZCODE_REMOTE_ASSET_CDN_BASE_URL` variable 指向你自己的分发源。
+
 ## 想改的时候改哪里
 
 | 想做的事                   | 改哪里                                                                                                                                                                     |
