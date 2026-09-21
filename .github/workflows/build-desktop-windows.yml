@@ -1,0 +1,132 @@
+name: Build Desktop (Windows)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 90
+
+    env:
+      # 只有 production 才得到 "ZCode" 身份与不带 _TEST 后缀的产物名。
+      ZCODE_ENV: production
+      # Windows 安装包不嵌入 mock-cdn 远端资产；远程工作区在运行时按 CDN 拉取。
+      ZCODE_SKIP_REMOTE_ASSETS: "1"
+      ZCODE_TARGET_OS: win32
+      ZCODE_TARGET_ARCH: x64
+      # 与 mise.toml 的 [env] 保持一致，避免 Electron 走默认源。
+      ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
+      # 缓存目录收进工作区（仓库 .gitignore 已预留这三个目录名）。
+      ELECTRON_CACHE: ${{ github.workspace }}/.electron-cache
+      ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.electron-builder-cache
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up toolchain from mise.toml
+        uses: jdx/mise-action@v4
+
+      - name: Point pnpm store into the workspace
+        run: pnpm config set store-dir "${{ github.workspace }}/.pnpm-store"
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: .pnpm-store
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+
+      - name: Cache Electron and electron-builder binaries
+        uses: actions/cache@v4
+        with:
+          path: |
+            .electron-cache
+            .electron-builder-cache
+          key: electron-${{ runner.os }}-${{ hashFiles('packages/desktop/package.json') }}
+          restore-keys: electron-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck (root)
+        run: pnpm typecheck
+
+      - name: Lint (root)
+        run: pnpm lint
+
+      - name: Write .env from repository variables (optional)
+        shell: pwsh
+        env:
+          REPO_VAR_ZCODE_BASE_URL: ${{ vars.ZCODE_BASE_URL }}
+          REPO_VAR_ZCODE_CDN_BASE_URL: ${{ vars.ZCODE_CDN_BASE_URL }}
+          REPO_VAR_ZCODE_REMOTE_ASSET_CDN_BASE_URL: ${{ vars.ZCODE_REMOTE_ASSET_CDN_BASE_URL }}
+          REPO_VAR_ZCODE_DEPS_BASE_URL: ${{ vars.ZCODE_DEPS_BASE_URL }}
+        run: |
+          $mapping = [ordered]@{
+            ZCODE_BASE_URL                  = $env:REPO_VAR_ZCODE_BASE_URL
+            ZCODE_CDN_BASE_URL              = $env:REPO_VAR_ZCODE_CDN_BASE_URL
+            ZCODE_REMOTE_ASSET_CDN_BASE_URL = $env:REPO_VAR_ZCODE_REMOTE_ASSET_CDN_BASE_URL
+            ZCODE_DEPS_BASE_URL             = $env:REPO_VAR_ZCODE_DEPS_BASE_URL
+          }
+          $lines = foreach ($key in $mapping.Keys) {
+            if ($mapping[$key]) { "$key=$($mapping[$key])" }
+          }
+          if ($lines) {
+            $lines | Set-Content -Path .env -Encoding utf8
+            Write-Host "已写入 .env：$($lines -join '; ')"
+          } else {
+            Write-Host "未配置 repository variable，使用仓库内置默认端点。"
+          }
+
+      - name: Build Windows desktop installer
+        run: pnpm run bundle:desktop -- --os win --arch x64
+
+      - name: Collect installer and checksum
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem packages/desktop/dist/*.exe |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (-not $exe) { throw "未找到安装包：packages/desktop/dist/*.exe" }
+          Write-Host "产物：$($exe.Name)（$([math]::Round($exe.Length / 1MB, 1)) MB）"
+          $hash = (Get-FileHash $exe.FullName -Algorithm SHA256).Hash.ToLower()
+          "$hash  $($exe.Name)" |
+            Set-Content packages/desktop/dist/SHA256SUMS.txt -Encoding ascii
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zcode-desktop-windows-x64
+          path: |
+            packages/desktop/dist/*.exe
+            packages/desktop/dist/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish prerelease (tag runs only)
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          $files = @(Get-ChildItem packages/desktop/dist/*.exe,
+            packages/desktop/dist/SHA256SUMS.txt | ForEach-Object FullName)
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag @files --clobber
+          } else {
+            gh release create $tag @files --title "ZCode Desktop $tag" `
+              --prerelease --generate-notes
+          }
