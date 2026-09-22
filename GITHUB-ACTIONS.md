@@ -1,6 +1,6 @@
 # GitHub Actions 说明
 
-本仓库的 GitHub Actions 目前只有一个工作流：[`.github/workflows/build-desktop-windows.yml`](.github/workflows/build-desktop-windows.yml)，用于在 GitHub 托管的 Windows runner 上编译**桌面版（Windows x64，含远程工作区能力）**并产出可安装的 NSIS 安装包。
+本仓库的 GitHub Actions 目前有两个工作流：[`.github/workflows/check.yml`](.github/workflows/check.yml) 在每次 push（以及 `pull_request`）时于 Ubuntu runner 上并行跑四项静态检查（`pnpm typecheck`、`pnpm lint`、`pnpm fmt:check`、`pnpm architecture:check`），**不产出任何产物**；[`.github/workflows/build-desktop-windows.yml`](.github/workflows/build-desktop-windows.yml) 用于在 GitHub 托管的 Windows runner 上编译**桌面版（Windows x64，含远程工作区能力）**并产出可安装的 NSIS 安装包——下文只讲构建流。
 
 本仓库此前没有任何 CI 配置（`git ls-files` 里没有 `.github/`，源码注释引用过的 `.gitlab/ci/00-workflow.yml` 与 `scripts/ci/ci-repo-hygiene.mjs` 都不在本仓库内），因此这份工作流是从零新增的，不替代任何既有流水线。
 
@@ -106,7 +106,8 @@ ZCODE_ENV=production ZCODE_SKIP_REMOTE_ASSETS=1 pnpm run bundle:desktop -- --os 
 
 ## 相关文件
 
-- 工作流：[`.github/workflows/build-desktop-windows.yml`](.github/workflows/build-desktop-windows.yml)
+- 检查工作流：[`.github/workflows/check.yml`](.github/workflows/check.yml)
+- 构建工作流：[`.github/workflows/build-desktop-windows.yml`](.github/workflows/build-desktop-windows.yml)
 - 打包入口：[`packages/desktop/scripts/bundle.mjs`](packages/desktop/scripts/bundle.mjs)
 - 打包配置：[`packages/desktop/electron-builder.config.js`](packages/desktop/electron-builder.config.js)
 - 运行时资产：[`packages/desktop/scripts/prepare-runtime-assets.mjs`](packages/desktop/scripts/prepare-runtime-assets.mjs)、[`scripts/prepare-prebuilds.mjs`](scripts/prepare-prebuilds.mjs)

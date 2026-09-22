@@ -1,0 +1,64 @@
+name: Check
+
+# 只做静态检查，不产出任何可分发产物：每次 push 与 PR 并行跑四项仓库根已有的检查命令。
+# 与 build-desktop-windows.yml（tag 触发、出 Windows 安装包）互不依赖，打 tag 不触发本工作流。
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    strategy:
+      # 四项检查各自上报状态：一项失败不取消其余项，一次就能看全。
+      fail-fast: false
+      matrix:
+        include:
+          - name: Typecheck
+            command: pnpm typecheck
+          - name: Lint
+            command: pnpm lint
+          - name: Format
+            command: pnpm fmt:check
+          - name: Architecture
+            command: pnpm architecture:check
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up toolchain from mise.toml
+        uses: jdx/mise-action@v4
+
+      - name: Point pnpm store into the workspace
+        run: pnpm config set store-dir "${{ github.workspace }}/.pnpm-store"
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          # 四个矩阵 job 共用同一个缓存条目：并发保存时只有一个能落盘，其余只打警告，不影响结果。
+          path: .pnpm-store
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+
+      - name: Install dependencies
+        # 静态检查不需要原生二进制与 Electron：跳过安装脚本可免去 Electron 二进制（约 344MB）
+        # 下载与 ubuntu 上的 electron-rebuild，单个 job 的安装从数分钟降到十几秒。
+        # 各 workspace 包的 exports 直接指向 src/*.ts，检查只读源码，不依赖任何构建产物。
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Run check
+        run: ${{ matrix.command }}
