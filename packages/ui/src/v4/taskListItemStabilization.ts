@@ -47,10 +47,16 @@ export function areTaskListItemsEquivalent(left: ZCodeTaskMeta, right: ZCodeTask
   return areStabilizedValuesEquivalent(left, right);
 }
 
-/** 引用稳定化：等价条目复用旧对象；顺序与内容全等时复用整个旧数组。 */
+/**
+ * 引用稳定化：等价条目复用旧对象；顺序与内容全等时复用整个旧数组。
+ *
+ * 空表也要稳定化。早退 `previous.length === 0` 会让「本来就是空」的列表在每次重验时
+ * 拿到全新数组，下游 memo / effect 全部失效——空态因此跟着每个 Controller 帧重建，
+ * 表现为左侧任务区闪一下。空表与空表等价，直接复用旧引用即可。
+ */
 export function stabilizeTaskListItems<T extends ZCodeTaskMeta>(previous: T[], next: T[]): T[] {
   if (previous.length === 0) {
-    return next;
+    return next.length === 0 ? previous : next;
   }
   const previousByKey = new Map(
     previous.map((meta) => [buildTaskListItemIdentityKey(meta), meta] as const),

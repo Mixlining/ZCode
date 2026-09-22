@@ -33,7 +33,7 @@ import {
   type CodingPlanFunnelContext,
 } from "@/lib/codingPlanFunnelTelemetry.js";
 import { type SidebarUsageCodingPlanProviderId } from "@/lib/sidebarUsageCodingPlanProviderPreference.js";
-import { CODING_PLAN_UI_DISABLED } from "@zcode/shared";
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import { useEnterpriseCodingPlanProducts } from "@/settings/model-provider-section/useEnterpriseCodingPlanProducts.js";
 import {
   buildCodingPlanUsageSources,
@@ -171,7 +171,7 @@ export function useWorkspaceSidebarFooterUsageSummaryState({
     // Team 项目上下文只在企业 pricing/customerInfo 返回，账号级头像徽标也不能被当前连接方式卡住。
     // 套餐硬关闭：footer 的 team/套餐徽标不再渲染，企业定价请求也不再发出。
     enabled:
-      !CODING_PLAN_UI_DISABLED &&
+      !CODING_PLAN_DISABLED &&
       enabled &&
       !providerSourcesLoading &&
       bigmodelFamilyAllowed &&
@@ -181,7 +181,7 @@ export function useWorkspaceSidebarFooterUsageSummaryState({
   });
   const zaiEnterpriseProducts = useEnterpriseCodingPlanProducts({
     enabled:
-      !CODING_PLAN_UI_DISABLED &&
+      !CODING_PLAN_DISABLED &&
       enabled &&
       !providerSourcesLoading &&
       zaiFamilyAllowed &&
@@ -319,7 +319,7 @@ export function useWorkspaceSidebarFooterUsageSummaryState({
   // 1 分钟 freshness window、失败退避和 in-flight 合并；hook disabled 时 refresh 是 no-op。
   useEffect(() => {
     // 套餐硬关闭：footer 不再预热套餐额度，避免一进主界面就发出 3 个 entitlement 请求。
-    if (CODING_PLAN_UI_DISABLED) {
+    if (CODING_PLAN_DISABLED) {
       return;
     }
     for (const refresh of [
@@ -446,7 +446,7 @@ export function WorkspaceSidebarFooterUsageSummaryContent({
   const entryGate = useCodingPlanEntryGate();
   const { providerEntitlements, upgradeTargetProviderId } = state;
   // 套餐硬关闭：资料菜单里的「使用统计」与「升级」两个条目不再渲染。
-  if (CODING_PLAN_UI_DISABLED) {
+  if (CODING_PLAN_DISABLED) {
     return null;
   }
   const upgradeProviderSnapshot =

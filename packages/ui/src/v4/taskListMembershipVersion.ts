@@ -31,7 +31,12 @@ function getTaskListMembershipVersion(): number {
 // 各 bump 一次，一次归属 mutation 会触发多轮全局 membership 重拉。这里按事件内容 key
 // 在短窗口内去重：key 包含 meta 的时间字段（updatedAt/unreadAt），保证只有"同一事件的
 // 重复投递"被合并；快速连续的真实 mutation（pin→unpin 等）reason/时间戳不同，不会被误吞。
-// 不带 meta 的事件（bulk archive / group 操作）无法构造可靠 key，直接放行不去重。
+//
+// 不带 meta 的事件（bulk archive / group 操作）无法构造逐 task 的 key，但可以按
+// workspace + reason 去重：bump 的语义是"立刻重验"而不是增量数据，合并 500ms 窗口内
+// 同一 workspace 的重复信号不会丢失任何变更（重验读到的是当前状态）。旧实现对这些事件
+// 无条件放行，于是同一批 bulk 事件会让每个 workspace 各触发一轮 membership 重拉
+// （每次 1 + 4×scopes 个 RPC），这是任务列表侧最明显的 RPC 放大路径。
 const BUMP_DEDUPE_WINDOW_MS = 500;
 const BUMP_DEDUPE_MAX_KEYS = 256;
 const recentBumpAtByKey = new Map<string, number>();
@@ -47,25 +52,10 @@ interface MembershipBumpEventLike {
   };
 }
 
-export function bumpTaskListMembershipVersionForWorkspaceEvent(
-  event: MembershipBumpEventLike,
-): void {
-  if (!event.taskMeta || !event.taskId) {
-    bumpTaskListMembershipVersion();
-    return;
-  }
-  const workspaceKey = event.workspaceIdentity?.trim() || event.workspacePath;
-  const dedupeKey = [
-    workspaceKey,
-    event.taskId,
-    event.reason,
-    event.taskMeta.updatedAt,
-    event.taskMeta.unreadAt ?? "",
-  ].join("::");
-  const now = Date.now();
+function shouldSkipRecentBump(dedupeKey: string, now: number): boolean {
   const lastBumpAt = recentBumpAtByKey.get(dedupeKey);
   if (lastBumpAt !== undefined && now - lastBumpAt < BUMP_DEDUPE_WINDOW_MS) {
-    return;
+    return true;
   }
   for (const [key, bumpedAt] of recentBumpAtByKey) {
     if (now - bumpedAt >= BUMP_DEDUPE_WINDOW_MS) {
@@ -74,6 +64,32 @@ export function bumpTaskListMembershipVersionForWorkspaceEvent(
   }
   if (recentBumpAtByKey.size < BUMP_DEDUPE_MAX_KEYS) {
     recentBumpAtByKey.set(dedupeKey, now);
+  }
+  return false;
+}
+
+export function bumpTaskListMembershipVersionForWorkspaceEvent(
+  event: MembershipBumpEventLike,
+): void {
+  const workspaceKey = event.workspaceIdentity?.trim() || event.workspacePath;
+  if (!event.taskMeta || !event.taskId) {
+    // bulk 事件按 workspace + reason 去重：同一 workspace 的重复投递合并成一次重验。
+    const now = Date.now();
+    if (shouldSkipRecentBump(`${workspaceKey}::${event.reason}::bulk`, now)) {
+      return;
+    }
+    bumpTaskListMembershipVersion();
+    return;
+  }
+  const dedupeKey = [
+    workspaceKey,
+    event.taskId,
+    event.reason,
+    event.taskMeta.updatedAt,
+    event.taskMeta.unreadAt ?? "",
+  ].join("::");
+  if (shouldSkipRecentBump(dedupeKey, Date.now())) {
+    return;
   }
   bumpTaskListMembershipVersion();
 }

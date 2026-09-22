@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import {
+  CODING_PLAN_DISABLED,
   normalizeProviderFamilyDomain,
   type AppSettings,
   type OffPeakCodingPlanSupport,
@@ -165,6 +166,10 @@ export const useOffPeakTaskStore = create<OffPeakTaskState>((set, get) => ({
   pendingCreateDraft: null,
 
   async initialize({ offPeakTaskService, codingPlanSubscriptionService }) {
+    // 闲时任务整个域随套餐硬禁用：创建与准入都以套餐凭据为前提，本构建只支持自带 API Key。
+    // 这里直接短路，既不读远端灰度配置也不列取任务——store 初值（grayConfig=null、
+    // tasks=[]）已让入口不渲染、列表为空，因此不需要额外写状态，也就不会引发重渲染。
+    if (CODING_PLAN_DISABLED) return;
     // Bug 原因：New Task 与 Automations 在页面切换时可能短暂重叠挂载，两个 initialize
     // 会并发请求同一个 Team Plan availability，后到的全局 429 可能覆盖先到的成功结果。
     // Store 级 single-flight 保证所有入口共用一次完整准入检查。
@@ -207,6 +212,9 @@ export const useOffPeakTaskStore = create<OffPeakTaskState>((set, get) => ({
   },
 
   refreshCodingPlanSupport(service, freshnessKey) {
+    // 闲时任务硬禁用：资格检查会请求套餐支持与取号额度，这里直接短路。
+    // 不写状态：禁用时状态本就该停在初值，写状态反而会让每个 Registry revision 都触发重渲染。
+    if (CODING_PLAN_DISABLED) return Promise.resolve();
     // 两个入口收到同一 Registry/连接通知只检查一次；手动刷新无 key，始终重查。
     if (
       freshnessKey !== undefined &&
@@ -273,6 +281,16 @@ export const useOffPeakTaskStore = create<OffPeakTaskState>((set, get) => ({
   },
 
   async createTask(input, service) {
+    // 闲时任务硬禁用：不再向 host 提交创建请求，直接返回稳定分类（与 host 侧 offpeak_disabled 同码）。
+    if (CODING_PLAN_DISABLED) {
+      return {
+        ok: false,
+        failureStage: "client_validation",
+        errorCategory: "client_validation",
+        errorCode: "offpeak_disabled",
+        providerName: "",
+      } as const satisfies OffPeakTaskCreateResult;
+    }
     set({ operationId: "offpeak:create", error: null });
     try {
       const result = await service.createTask(

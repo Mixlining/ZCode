@@ -7,6 +7,7 @@ import type {
   UserInfo,
 } from "@zcode/shared";
 import {
+  CODING_PLAN_DISABLED,
   DesktopCommandIds,
   resolveProviderFamilyDomainFromOAuthProvider,
   ZCODE_JWT_INVALID_BROADCAST_CHANNEL,
@@ -128,6 +129,16 @@ export function useRootOAuthEffects({
   useEffect(() => {
     let disposed = false;
     async function restoreOAuthSessionInBackground() {
+      // 硬禁用：本构建只支持自带 API Key 接入，启动时不再恢复旧 OAuth 会话。
+      // 这里必须显式落定“恢复中”标志——它的唯一写者就是本流程，漏写会让
+      // shouldBlockRootRender 恒为真（启动画面挂住、工作区会话永不恢复）。
+      // 同时不再读取缓存 user_info、不做账号刷新，避免旧配置绕过界面开关触发
+      // 套餐权益与额度查询。
+      if (CODING_PLAN_DISABLED) {
+        logger.info("[Root] 套餐已停用，跳过启动 OAuth 会话恢复");
+        setIsRestoringOAuthSession(false);
+        return;
+      }
       logger.info("[Root] 后台启动 OAuth 本地会话恢复");
       let hasRestoredUser = false;
       try {

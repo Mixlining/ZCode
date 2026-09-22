@@ -29,6 +29,7 @@ import {
   resolveConversationShareCodeFromPath,
 } from "./share/conversationShareRoute.js";
 import type { IPlatformService, RemoteTarget, ServerRemoteInfo } from "@zcode/shared";
+import { ZCODE_VENDOR_ACTIONS_DISABLED } from "@zcode/shared";
 import { WEB_DEFAULT_THEME, resolveWebInitialTheme } from "./webThemeSeed.js";
 
 function resolveWebThemePreference(defaultTheme: Theme = WEB_DEFAULT_THEME): Theme {
@@ -234,6 +235,10 @@ function createWebPlatform(): IPlatformService {
       window.open(url, "_blank", "noopener,noreferrer");
     },
     openFeedback: async () => {
+      // 厂商动作硬关闭：Web 反馈入口与桌面同构短路，不读远端 help 配置、不打开外链表单。
+      if (ZCODE_VENDOR_ACTIONS_DISABLED) {
+        return;
+      }
       const feedbackUrl = await resolveFeedbackUrl();
       if (!feedbackUrl) {
         return;
@@ -241,6 +246,9 @@ function createWebPlatform(): IPlatformService {
       window.open(feedbackUrl, "_blank", "noopener,noreferrer");
     },
     openCommunity: async () => {
+      if (ZCODE_VENDOR_ACTIONS_DISABLED) {
+        return;
+      }
       const locale = document.documentElement.lang === "en-US" ? "en-US" : "zh-CN";
       const communityUrl = await resolveWebCommunityUrl(locale);
       if (!communityUrl) {
@@ -249,6 +257,11 @@ function createWebPlatform(): IPlatformService {
       window.open(communityUrl, "_blank", "noopener,noreferrer");
     },
     canOpenCommunity: async (locale) => {
+      // 能力探测直接判不可用：内置 config 里仍有 community_urls，若走本地回退会误报可用，
+      // 让快速命令出现一个点了没反应的社区入口。
+      if (ZCODE_VENDOR_ACTIONS_DISABLED) {
+        return false;
+      }
       const communityUrl = await resolveWebCommunityUrl(locale);
       return typeof communityUrl === "string" && communityUrl.length > 0;
     },

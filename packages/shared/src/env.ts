@@ -54,12 +54,15 @@ export const ZCODE_TELEMETRY_ENABLED: boolean = false;
 // 错误（界面与入口保留）。这些调用都会把请求发往厂商服务，本构建不再使用；恢复时改回 false。
 export const ZCODE_VENDOR_ACTIONS_DISABLED: boolean = true;
 
-// 硬禁用：套餐与账号登录界面整体关闭——设置→模型里的套餐页与套餐登录、模板选择器里的套餐模板、
-// 用量面板的套餐 tab、侧边栏套餐额度与等级徽章、会话内的额度横幅与重置提醒、启动时的登录门禁与
-// 自动引导都不再出现，只保留「添加供应商」与自定义供应商流程；Z.ai / BigModel 登录入口一并隐藏。
-// 组件、i18n 与底层服务全部保留，恢复时改回 false（自动引导另有 OccupationOnboarding 的
-// AUTO_ONBOARDING_DISABLED，测试期登录门禁另见 rootStartupGate）。
-export const CODING_PLAN_UI_DISABLED: boolean = true;
+// 硬禁用：本构建只支持自带 API Key 接入，不再提供 ZCode 官方套餐（Z.ai / BigModel Coding Plan）。
+// 三层同时收口：① 入口层——套餐页、套餐登录、模板选择器套餐模板、用量面板套餐 tab、侧边栏套餐
+// 额度与等级徽章、会话额度横幅与重置提醒、启动登录门禁与自动引导都不再出现，Z.ai / BigModel
+// 登录入口一并隐藏；② 服务边界——权益、额度、商品、定价、支付、订单、协议查询一律返回空值，
+// 不请求厂商；③ 启动恢复——不恢复旧 OAuth 会话，账号来源解析不再认本地 OAuth 凭据，模型请求
+// 也不再经官方网关改写到 zcode.z.ai。组件、i18n 与底层服务全部保留，仅加守卫；恢复时改回 false
+// （自动引导另有 OccupationOnboarding 的 AUTO_ONBOARDING_DISABLED，测试期登录门禁另见
+// rootStartupGate）。目录类例外见 spec/vendor-disable.md。
+export const CODING_PLAN_DISABLED: boolean = true;
 
 // 硬关闭：内存诊断采样器（renderer / host / scheduler / agent CLI 四个进程各自的定时采样与本地
 // 日志）默认不启动。它们是排查内存增长的取证手段，需要在排查时把这里改成 true 再复现。

@@ -212,6 +212,8 @@ export async function resolveFeedbackUrl(options: {
     warn: (...args: unknown[]) => void;
   };
 }): Promise<string | undefined> {
+  // 厂商动作硬关闭：不读远端反馈地址（入口守卫之外再兜一层，避免新增调用方绕过）。
+  if (ZCODE_VENDOR_ACTIONS_DISABLED) return undefined;
   return resolveRemoteAppConfigValue({
     ...options,
     logPrefix: "feedback",
@@ -227,6 +229,8 @@ export async function resolveCommunityUrl(options: {
     warn: (...args: unknown[]) => void;
   };
 }): Promise<string | undefined> {
+  // 厂商动作硬关闭：社区外链已停用，不再读取远端 help 配置（能力探测与打开都走这里）。
+  if (ZCODE_VENDOR_ACTIONS_DISABLED) return undefined;
   let remoteConfig: unknown;
   try {
     remoteConfig = await fetchRemoteAppConfig(options.fetchRemoteConfig);
@@ -249,6 +253,9 @@ async function openFeedback(
   targetWindow?: BrowserWindow | null,
   fetchRemoteConfig?: () => Promise<unknown>,
 ) {
+  // 厂商动作硬关闭：反馈入口在这里就短路——既不再读远端配置，也不打开站内表单
+  // （工单提交与附件上传已在底层停用，打开表单只会让用户填完才发现无法提交）。
+  if (ZCODE_VENDOR_ACTIONS_DISABLED) return;
   let remoteConfig: unknown;
   let localConfig: unknown;
   try {
@@ -266,8 +273,7 @@ async function openFeedback(
     resolveTargetWindow(targetWindow)?.webContents.send(PlatformChannels.OpenFeedbackDialog);
     return;
   }
-  // 厂商动作硬关闭：反馈外链不再打开（站内表单的提交也已在下层停用）。
-  if (config.feedback_url && !ZCODE_VENDOR_ACTIONS_DISABLED) {
+  if (config.feedback_url) {
     await shell.openExternal(config.feedback_url);
   }
 }

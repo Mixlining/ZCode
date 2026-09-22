@@ -1,4 +1,4 @@
-import { resolveRuntimeZCodeEndpointOrigin } from "@zcode/shared";
+import { CODING_PLAN_DISABLED, resolveRuntimeZCodeEndpointOrigin } from "@zcode/shared";
 import type { EnvRecord } from "./model-execution.js";
 
 /**
@@ -54,6 +54,12 @@ export function resolveOfficialCodingPlanGatewayUrl(
   requestUrl: string,
   env: EnvRecord = process.env,
 ): OfficialCodingPlanGatewayDecision {
+  // 套餐硬禁用：本构建只支持自带 API Key 接入，模型请求一律直连用户配置的端点。
+  // 改写会把「用户自建 provider + 自带 key」的请求和凭证静默送到 zcode.z.ai 网关，
+  // 与产品规则直接冲突，因此这里在最早的解析入口就停用改写。
+  if (CODING_PLAN_DISABLED) {
+    return { viaGateway: false, url: requestUrl };
+  }
   const parsed = parseHttpsUrl(requestUrl);
   if (!parsed) {
     return { viaGateway: false, url: requestUrl };

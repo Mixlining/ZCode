@@ -31,7 +31,7 @@ import { DesktopWindowFrame } from "@/DesktopWindowFrame.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { getPathLeaf } from "@/lib/path.js";
-import { CODING_PLAN_UI_DISABLED } from "@zcode/shared";
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import { useProviderSettingsView } from "@/hooks/useProviderSettingsView.js";
 import { useUsageEntitlement } from "@/hooks/useUsageEntitlement.js";
 import {
@@ -151,7 +151,7 @@ function SettingsUsageProviderTabs({
       label: intl.formatMessage({ id: "settings.usage.tab.appUsage" }),
     },
     // 套餐硬关闭：不再生成套餐 tab。
-    ...(CODING_PLAN_UI_DISABLED
+    ...(CODING_PLAN_DISABLED
       ? []
       : codingPlanSources.map((source, index) => ({
           id: createSettingsUsageCodingPlanTabId(source.id),
@@ -166,7 +166,7 @@ function SettingsUsageProviderTabs({
           }),
         }))),
   ];
-  const visibleActiveTab = CODING_PLAN_UI_DISABLED
+  const visibleActiveTab = CODING_PLAN_DISABLED
     ? "app"
     : activeTab === "codingPlan" && codingPlanSources[0]
       ? createSettingsUsageCodingPlanTabId(codingPlanSources[0].id)
@@ -391,7 +391,7 @@ export function SettingsPage({
   const usageZaiEntitlement = useUsageEntitlement({
     // 套餐硬关闭：用量页只剩本地「应用用量」，套餐额度探测与刷新不再发起。
     enabled:
-      !CODING_PLAN_UI_DISABLED &&
+      !CODING_PLAN_DISABLED &&
       activeSection === "usage" &&
       !usageProviderSettingsLoading &&
       Boolean(usageZaiProviderFingerprint),
@@ -407,11 +407,11 @@ export function SettingsPage({
     }),
     // 个人 Usage source 依赖 entitlement snapshot；冷启动无缓存时若不先探测，
     // source 不会渲染，子面板也无法触发 access 刷新。共享 freshness window 继续负责限频。
-    refreshOnMount: !CODING_PLAN_UI_DISABLED,
+    refreshOnMount: !CODING_PLAN_DISABLED,
   });
   const usageBigmodelEntitlement = useUsageEntitlement({
     enabled:
-      !CODING_PLAN_UI_DISABLED &&
+      !CODING_PLAN_DISABLED &&
       activeSection === "usage" &&
       !usageProviderSettingsLoading &&
       Boolean(usageBigmodelProviderFingerprint),
@@ -425,7 +425,7 @@ export function SettingsPage({
       providerId: BUILTIN_MODEL_PROVIDER_IDS.bigmodelIndividualCodingPlan,
       providerFingerprint: usageBigmodelProviderFingerprint,
     }),
-    refreshOnMount: !CODING_PLAN_UI_DISABLED,
+    refreshOnMount: !CODING_PLAN_DISABLED,
   });
   // 原只拉 bigmodel family 的企业 pricing，zai team plan 在使用统计页
   // 永远拿不到 team project 上下文；后续又误用 Individual Provider 的权益作为 Team
@@ -434,7 +434,7 @@ export function SettingsPage({
   const usageBigmodelEnterpriseProducts = useEnterpriseCodingPlanProducts({
     // 套餐硬关闭：用量页的套餐 tab 已不再生成，企业定价请求也不再发出。
     enabled:
-      !CODING_PLAN_UI_DISABLED &&
+      !CODING_PLAN_DISABLED &&
       !usageProviderSettingsLoading &&
       Boolean(usageBigmodelTeamProviderFingerprint),
     authenticated: true,
@@ -442,7 +442,7 @@ export function SettingsPage({
   });
   const usageZaiEnterpriseProducts = useEnterpriseCodingPlanProducts({
     enabled:
-      !CODING_PLAN_UI_DISABLED &&
+      !CODING_PLAN_DISABLED &&
       !usageProviderSettingsLoading &&
       Boolean(usageZaiTeamProviderFingerprint),
     authenticated: true,

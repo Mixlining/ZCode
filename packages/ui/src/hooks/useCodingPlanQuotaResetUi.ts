@@ -8,7 +8,7 @@ import type {
   ZCodeAccountAccess,
   ZCodeProviderAccountAccess,
 } from "@zcode/shared";
-import { CODING_PLAN_UI_DISABLED } from "@zcode/shared";
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import { toast } from "@/components/ui/toast.js";
 import { useOptionalBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { useStableAccountAccess } from "@/hooks/useStableAccountAccess.js";
@@ -388,7 +388,7 @@ export function useCodingPlanQuotaResetUi({
   // 套餐硬关闭：消费方（配额面板与重置提醒）都不再渲染，这里必须连请求一起停——
   // 否则 composer 一挂载就会起 5 分钟 /status + /opportunity 轮询与 1 秒倒计时 ticker。
   const enabled = Boolean(
-    !CODING_PLAN_UI_DISABLED && requestedEnabled && sourceKey?.trim() && usageStatsService && scope,
+    !CODING_PLAN_DISABLED && requestedEnabled && sourceKey?.trim() && usageStatsService && scope,
   );
   const entriesBySource = useZCodeStoreWithDefault(
     (state) => state.codingPlanQuotaResetUiBySource,

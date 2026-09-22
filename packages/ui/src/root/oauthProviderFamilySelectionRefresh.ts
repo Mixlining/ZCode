@@ -7,6 +7,7 @@ import type {
   ZCodeProviderAccountAccess,
 } from "@zcode/shared";
 import {
+  CODING_PLAN_DISABLED,
   getModelProviderFamilySpec,
   resolveProviderFamilyDomainFromOAuthProvider,
 } from "@zcode/shared";
@@ -99,6 +100,12 @@ export async function refreshLatestModelProviderFamilySelectionAfterLogin(params
   provider: OAuthProviderId;
   services: IServiceAccessor;
 }): Promise<ModelProviderFamilyConnectionSelection | null> {
+  // 套餐硬禁用：不再进入账号权益与套餐定价查询。这里必须显式短路而不只是依赖服务边界返回空值——
+  // 空权益会被 resolveAutomaticModelProviderFamilyConnectionSelection 当成「无套餐」并回落到
+  // individual-coding-plan 入口，反过来把一份凭空的连接选择写进用户设置。
+  if (CODING_PLAN_DISABLED) {
+    return null;
+  }
   const domain = resolveProviderFamilyDomainFromOAuthProvider(params.provider);
   if (!domain) {
     return null;
@@ -181,6 +188,8 @@ export async function refreshRestoredOAuthProviderFamilyAfterStartup(params: {
   services: IServiceAccessor;
   refreshAppSettings?: () => Promise<void>;
 }): Promise<ModelProviderFamilyConnectionSelection | null> {
+  // 套餐硬禁用：启动时不再刷新账号事实（含 providerSettingsService.refresh 的权益查询链）。
+  if (CODING_PLAN_DISABLED) return null;
   if (!params.activeProvider) return null;
   const domain = resolveProviderFamilyDomainFromOAuthProvider(params.activeProvider);
   if (!domain) return null;

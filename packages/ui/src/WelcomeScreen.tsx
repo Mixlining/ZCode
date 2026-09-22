@@ -16,7 +16,7 @@ import {
   ZAI_PROVIDER_ID,
   testId,
 } from "@zcode/shared";
-import { CODING_PLAN_UI_DISABLED } from "@zcode/shared";
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import { Alert, AlertDescription } from "./components/ui/alert.js";
 import { Button } from "./components/ui/button.js";
 import { ZCodeAboutLogo } from "@/components/ui/ZCodeAboutLogo.js";
@@ -317,7 +317,7 @@ function LoginPanel({ active, onComplete }: LoginPanelProps) {
             {!loadingProviders ? (
               <div className="space-y-2">
                 {/* 套餐硬关闭：Z.ai / BigModel 账号登录入口一并隐藏，只留「使用 API key」。 */}
-                {!CODING_PLAN_UI_DISABLED
+                {!CODING_PLAN_DISABLED
                   ? visibleProviders.map((provider) => (
                       <Button
                         key={provider.id}

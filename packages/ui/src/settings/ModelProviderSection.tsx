@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button.js";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
 import { useModelProviders } from "@/hooks/useModelProviders.js";
 import { resolveEntitledAccountProviderAccess } from "@/lib/accountProviderAccess.js";
-import { CODING_PLAN_UI_DISABLED } from "@zcode/shared";
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { useServices } from "@/hooks/useServices.js";
 import { useZCodeStore } from "@/store/StoreProvider.js";
@@ -192,7 +192,7 @@ function clearPendingProviderFamilyConnectionSelection(
 
 function resolveProviderFamilySideNodeKey(providerId: BuiltinModelProviderId): string | null {
   // 套餐硬关闭：不再把套餐供应商 id 解析成套餐导航节点，深链与内部登录请求都选不中套餐页。
-  if (CODING_PLAN_UI_DISABLED) return null;
+  if (CODING_PLAN_DISABLED) return null;
   if (isStartPlanModelProviderId(providerId)) return createCodingPlanProviderNodeKey(providerId);
   const familySpec = resolveModelProviderFamilySpecByProviderId(providerId);
   return familySpec ? createPresetProviderNodeKey(familySpec.startPlanProviderId) : null;
@@ -493,6 +493,18 @@ export function ModelProviderSection({
         shouldApply?: () => boolean;
       } = {},
     ) => {
+      // 套餐硬禁用：不再从本地凭据推断「已登录官方账号」。
+      // 旧版本登录过的机器上仍留着 oauth:active_provider / access_token，旧逻辑会把它们当成
+      // 有效登录态，进而打开企业定价等已停用的查询；凭据文件保留，只是不再被读取。
+      // clearUserWhenLoggedOut 是「解绑后同步清掉 App 登录态」的既有契约，必须保留：
+      // 它不依赖凭据读取，去掉会让侧边栏在解绑后继续显示旧登录态。
+      if (CODING_PLAN_DISABLED) {
+        if (options.clearUserWhenLoggedOut) {
+          setUser(null);
+          setOAuthError(null);
+        }
+        return null;
+      }
       const [activeProvider, zaiToken, bigmodelToken] = await Promise.all([
         credentialService.load("oauth:active_provider"),
         credentialService.load(`oauth:${ZAI_PROVIDER_ID}:access_token`),

@@ -55,6 +55,18 @@ export interface OffPeakClientConfig {
   readonly codingPlanActive?: boolean;
 }
 
+/**
+ * 闲时任务整个域禁用时下发的本地关闭配置。
+ *
+ * `enabled: false` 会同时关掉 host 的模型白名单推导（`resolveOffPeakAllowedModels` 直接返回空）
+ * 与前端入口曝光，因此不需要额外信号。声明在契约文件而不是 provider 内部，是为了让服务边界
+ * 的短路分支不依赖 provider 实例；恢复套餐时只需删除守卫。
+ */
+export const EMPTY_DISABLED_OFF_PEAK_CLIENT_CONFIG: OffPeakClientConfig = Object.freeze({
+  enabled: false,
+  modelSelectionView: Object.freeze({ revision: 0, providers: Object.freeze([]) }),
+});
+
 export interface ICodingPlanSubscriptionService {
   batchPreview(request?: CodingPlanBatchPreviewRequest): Promise<CodingPlanBatchPreviewResponse>;
   getStaticProducts(): Promise<CodingPlanStaticProductsConfig>;

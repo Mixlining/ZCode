@@ -10,6 +10,7 @@ import {
   PlatformChannels,
   rendererLogPayloadSchema,
   stringArraySchema,
+  ZCODE_VENDOR_ACTIONS_DISABLED,
   type DesktopCommandId,
   type ApplicationIconRequest,
   type Locale,
@@ -323,6 +324,10 @@ export function registerPlatformIpcHandlers(options: {
   });
 
   ipcMain.handle(PlatformChannels.CanOpenCommunity, async (_event, locale: unknown) => {
+    // 厂商动作硬关闭：能力探测在入口直接判不可用，不读远端 help 配置。
+    // 之前只挡住了真正打开社区页的 openCommunity，启动时的探测仍会发一次
+    // /api/v1/client/configs，属于本次修复的泄漏点。
+    if (ZCODE_VENDOR_ACTIONS_DISABLED) return false;
     const result = localeSchema.safeParse(locale);
     if (!result.success) {
       options.logger.warn("[community] invalid locale:", formatZodError(result.error));

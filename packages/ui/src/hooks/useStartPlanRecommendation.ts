@@ -12,7 +12,7 @@ import { useUsageEntitlementWithService } from "@/hooks/useUsageEntitlement.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { useConfirmDialogStore } from "@/store/confirmDialogStore.js";
 import { resolveStartPlanRecommendation } from "@/lib/startPlanRecommendation.js";
-import { CODING_PLAN_UI_DISABLED } from "@zcode/shared";
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import { toast } from "@/components/ui/toast.js";
 import { logger } from "@/logger.js";
 
@@ -32,13 +32,13 @@ export function useStartPlanRecommendation(
       settings.state.status === "ready" ? settings.state.view : null,
       start?.providerId ?? "",
     ),
-    refreshOnMount: !CODING_PLAN_UI_DISABLED,
+    refreshOnMount: !CODING_PLAN_DISABLED,
     mountRefreshReason: "access",
   });
   return useCallback(
     async (selection: ModelSelection): Promise<ModelSelection | null> => {
       // 套餐硬关闭：不再做体验套餐推荐，提交时直接沿用用户选择。
-      if (CODING_PLAN_UI_DISABLED) return selection;
+      if (CODING_PLAN_DISABLED) return selection;
       // 提交不等待网络；过期额度跳过推荐，访问刷新沿用一分钟节流与失败退避。
       void entitlement.refresh({ silent: true, reason: "access" });
       const candidate = entitlement.error

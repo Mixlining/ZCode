@@ -1,5 +1,5 @@
 import { CodingPlanEntryButton } from "@/settings/CodingPlanEntryButton.js";
-import { CODING_PLAN_UI_DISABLED } from "@zcode/shared";
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 /**
  * ChatErrorBanner — 错误提示组件
  *
@@ -210,7 +210,7 @@ export function ChatErrorBanner({
         {modelConfigMissing ? (
           <>
             {/* 套餐硬关闭：不再提供「升级」入口，只留跳转模型设置的「配置」。 */}
-            {!CODING_PLAN_UI_DISABLED ? (
+            {!CODING_PLAN_DISABLED ? (
               <CodingPlanEntryButton
                 type="button"
                 variant="default"

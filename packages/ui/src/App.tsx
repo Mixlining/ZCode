@@ -1,6 +1,7 @@
 /* eslint-disable max-lines -- App 当前集中编排 workspace 级状态、导航、Git 派生数据和 shell wiring；已将新增 side pane memory 桥接抽出，剩余拆分需要按 shell 边界单独重构。 */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
+import { ZCODE_VENDOR_ACTIONS_DISABLED } from "@zcode/shared";
 import type { GitChangeSourceId, WorkspacePurpose } from "@zcode/shared";
 import { useZCodeStore } from "@/store/StoreProvider.js";
 import { getVisibleTaskMetas, useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
@@ -673,6 +674,9 @@ export function App({
   }, [openFeedbackSubmit, openFeedbackTickets, platform]);
   const handleOpenCommunity = useCallback(() => platform.openCommunity(), [platform]);
   const handleOpenProductDocs = useCallback(() => {
+    // 厂商动作硬关闭：产品文档外链不再打开（与 helpMenuActions.openProductDocs 同一守卫，
+    // 否则快速命令里仍有一个点了会跳到厂商站点的入口）。
+    if (ZCODE_VENDOR_ACTIONS_DISABLED) return;
     platform.openExternal(ZCODE_PRODUCT_DOCS_URL);
   }, [platform]);
   const themeTarget = resolveTheme(theme) === "dark" ? "light" : "dark";

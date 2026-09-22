@@ -1,6 +1,10 @@
-import type { ApiClient } from "@zcode/shared";
+import type { ApiClient, EnterpriseCodingPlanOrderStatusRequest } from "@zcode/shared";
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import type { ICredentialService } from "../credential/credential.js";
-import type { ICodingPlanSubscriptionService } from "./codingPlanSubscription.js";
+import {
+  EMPTY_DISABLED_OFF_PEAK_CLIENT_CONFIG,
+  type ICodingPlanSubscriptionService,
+} from "./codingPlanSubscription.js";
 import { BigModelCodingPlanSubscriptionProvider } from "./bigmodelCodingPlanSubscriptionProvider.js";
 import type { ModelSelectionView } from "@zcode/provider";
 import { ZaiCodingPlanSubscriptionProvider } from "./zaiCodingPlanSubscriptionProvider.js";
@@ -10,6 +14,98 @@ interface CodingPlanSubscriptionServiceDependencies {
   credentialService: Pick<ICredentialService, "load">;
   resolveOffPeakModelSelectionView?: () => Promise<ModelSelectionView>;
 }
+
+/**
+ * 套餐域硬禁用时被替换的方法集合。
+ *
+ * 只列套餐、商品、定价、支付、订单、协议，以及依赖套餐凭据的闲时任务；
+ * 模型能力与平台配置类方法（动态工作流灰度、模型上下文预算、强制更新）不属于套餐域，
+ * 继续走真实实现（它们各自的远端读取另有 REMOTE_ROLLOUT_DISABLED 等开关收敛）。
+ */
+type CodingPlanDisabledMethod =
+  | "batchPreview"
+  | "getStaticProducts"
+  | "getStaticTeamProducts"
+  | "getStartPlanPreview"
+  | "getOffPeakClientConfig"
+  | "productInfo"
+  | "preview"
+  | "createSign"
+  | "updateSign"
+  | "checkPayment"
+  | "checkPendingOrders"
+  | "queryStripeCards"
+  | "bindStripeCard"
+  | "unbindStripeCard"
+  | "payStripe"
+  | "checkPaypalSupport"
+  | "createPaypalSetupToken"
+  | "subscribePaypal"
+  | "getEnterprisePricing"
+  | "getEnterpriseBalance"
+  | "calculateEnterpriseOrder"
+  | "createEnterpriseOrder"
+  | "getEnterprisePendingOrders"
+  | "cancelEnterpriseOrder"
+  | "continueEnterpriseOrderPayment"
+  | "checkEnterpriseOrderStatus";
+
+/**
+ * 套餐域硬禁用时使用的空实现。
+ *
+ * 返回值都是契约允许的中性值：读取类为空值/空列表，动作类为「未发生」状态（未支付、无订单、
+ * 已关闭），使调用方自然降级为空态。这里不请求厂商、也不写失败日志——界面已隐藏，
+ * 报错只会污染日志。
+ *
+ * 唯一不在表内的是 `useCodingPlanReset`：它属于 `usageStatsService`，其返回类型
+ * `CodingPlanResetUseResult` 只能表达成功（`{ used: true }`），伪造成功等于谎报一次额度重置。
+ */
+const DISABLED_CODING_PLAN_METHODS: Pick<ICodingPlanSubscriptionService, CodingPlanDisabledMethod> =
+  {
+    batchPreview: async () => ({ productList: [], isSubscribed: false, isAuthenticated: false }),
+    getStaticProducts: async () => ({}),
+    getStaticTeamProducts: async () => ({}),
+    getStartPlanPreview: async () => null,
+    getOffPeakClientConfig: async () => EMPTY_DISABLED_OFF_PEAK_CLIENT_CONFIG,
+    productInfo: async (request) => ({ productId: request.productId }),
+    preview: async (request) => ({ productId: request.productId, bizId: "" }),
+    createSign: async () => ({ sign: "" }),
+    updateSign: async () => ({ sign: "" }),
+    checkPayment: async () => ({ status: "CLOSED" }),
+    checkPendingOrders: async () => ({ hasPendingOrders: false }),
+    queryStripeCards: async () => [],
+    bindStripeCard: async (request) => ({ paymentMethodId: request.paymentMethodId }),
+    unbindStripeCard: async () => "",
+    payStripe: async () => ({}),
+    checkPaypalSupport: async () => ({ isSupport: false }),
+    createPaypalSetupToken: async () => ({}),
+    subscribePaypal: async () => ({}),
+    getEnterprisePricing: async () => ({ productList: [] }),
+    getEnterpriseBalance: async () => ({ giveBalance: 0, cashBalance: 0, totalBalance: 0 }),
+    calculateEnterpriseOrder: async () => ({
+      totalOriginalAmount: 0,
+      totalPayAmount: 0,
+      thirdPayAmount: 0,
+    }),
+    createEnterpriseOrder: async () => ({
+      orderNo: "",
+      totalOriginalAmount: 0,
+      totalPayAmount: 0,
+      thirdPayAmount: 0,
+    }),
+    getEnterprisePendingOrders: async () => [],
+    cancelEnterpriseOrder: async (request) => ({ orderNo: request.orderNo, status: "CLOSED" }),
+    continueEnterpriseOrderPayment: async (request) => ({
+      orderNo: request.orderNo,
+      totalOriginalAmount: 0,
+      totalPayAmount: 0,
+      thirdPayAmount: 0,
+    }),
+    checkEnterpriseOrderStatus: async (request: EnterpriseCodingPlanOrderStatusRequest) => ({
+      orderNo: request.orderNo,
+      paymentStatus: "CLOSED",
+    }),
+  };
 
 /**
  * 原 service 把所有调用直接绑定到单一 BigModelCodingPlanSubscriptionProvider，
@@ -36,7 +132,7 @@ export function createCodingPlanSubscriptionService(
     family?: "bigmodel" | "zai",
   ): BigModelCodingPlanSubscriptionProvider => (family === "zai" ? zaiProvider : bigmodelProvider);
 
-  return {
+  const liveService: ICodingPlanSubscriptionService = {
     batchPreview: (request) => bigmodelProvider.batchPreview(request),
     getStaticProducts: () => bigmodelProvider.getStaticProducts(),
     getStaticTeamProducts: () => bigmodelProvider.getStaticTeamProducts(),
@@ -72,4 +168,12 @@ export function createCodingPlanSubscriptionService(
       bigmodelProvider.continueEnterpriseOrderPayment(request),
     checkEnterpriseOrderStatus: (request) => bigmodelProvider.checkEnterpriseOrderStatus(request),
   };
+
+  // 套餐硬禁用：只替换套餐域方法，其它方法保持真实实现。守卫放在 service 边界而不是 UI
+  // 或 provider，是为了让 Renderer 之外的调用方（Host、后台刷新、CLI）也无法绕过。
+  if (CODING_PLAN_DISABLED) {
+    return { ...liveService, ...DISABLED_CODING_PLAN_METHODS };
+  }
+
+  return liveService;
 }

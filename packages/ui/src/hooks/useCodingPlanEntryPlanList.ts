@@ -5,7 +5,7 @@ import { useZCodeStore } from "@/store/StoreProvider.js";
 import { useCodingPlanEntitlements } from "@/settings/model-provider-section/useCodingPlanEntitlements.js";
 import {
   BUILTIN_MODEL_PROVIDER_IDS,
-  CODING_PLAN_UI_DISABLED,
+  CODING_PLAN_DISABLED,
   type EnterpriseCodingPlanPricingProduct,
 } from "@zcode/shared";
 import { buildOwnedEntryPlanList } from "@/lib/codingPlanOwnedEntryPlans.js";
@@ -42,7 +42,7 @@ export function useCodingPlanEntryPlanList(): CodingPlanEntryInventory {
   } | null>(null);
   useEffect(() => {
     // 套餐硬关闭：入口套餐清单与企业定价的消费方都不再渲染，启动时这批请求不再发出。
-    if (CODING_PLAN_UI_DISABLED) return;
+    if (CODING_PLAN_DISABLED) return;
     if (!providerSettingsView) return;
     let cancelled = false;
     // 团队订阅以 authenticated pricing 为准，不用静态商品目录推断已购套餐。

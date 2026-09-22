@@ -9,7 +9,7 @@ import {
   TID_TASK_SETTINGS_BUTTON,
 } from "@zcode/shared";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
-import { CODING_PLAN_UI_DISABLED } from "@zcode/shared";
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar.js";
 import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
@@ -350,7 +350,7 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
               onUpgradeClick={onUpgradeClick}
             />
             {/* 套餐硬关闭：账号登录入口一并隐藏（登录提供方只有 Z.ai / BigModel 两家）。 */}
-            {onLogin && !user && !CODING_PLAN_UI_DISABLED ? (
+            {onLogin && !user && !CODING_PLAN_DISABLED ? (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={onLogin} data-testid={TID_LOGIN_MENU_ITEM}>

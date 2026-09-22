@@ -109,6 +109,9 @@ export function useGlobalTaskList(params: {
   const [loading, setLoading] = useState(workspaceScopes.length > 0);
   const requestSerialRef = useRef(0);
   const manualRefreshSerialRef = useRef(0);
+  // 首次结果落定前，空列表只能用 loading 占位；一旦有结果（含空结果），后续重验必须静默，
+  // 否则每个 Controller 帧都会把「还没有任务」换回 spinner，表现为左侧任务区闪烁。
+  const resolvedRef = useRef(false);
 
   const query = useMemo(
     () => ({
@@ -133,10 +136,14 @@ export function useGlobalTaskList(params: {
     async (version: WindowControllerTaskListVersion) => {
       const requestSerial = ++requestSerialRef.current;
       if (workspaceScopes.length === 0) {
-        setItems([]);
-        itemsRef.current = [];
-        setTotal(0);
-        setHasMore(false);
+        // 空 scope 也要保持引用稳定：每次都 setItems([]) 会让本 hook 的消费者在每个
+        // Controller revision 都重渲染（DOM 文案不变，但整棵空态子树重建）。
+        if (itemsRef.current.length !== 0) {
+          itemsRef.current = [];
+          setItems(itemsRef.current);
+          setTotal(0);
+          setHasMore(false);
+        }
         setLoading(false);
         return;
       }
@@ -146,7 +153,11 @@ export function useGlobalTaskList(params: {
         setLoading(false);
         return;
       }
-      setLoading(true);
+      // 只有「首次尚未落定」才显示占位符；已解析过的列表在后台重验时保持当前内容，
+      // 避免空态与 spinner 反复互换。
+      if (!resolvedRef.current) {
+        setLoading(true);
+      }
       try {
         const result = await controllerRegistry.list(queryKey, version, query);
         if (requestSerialRef.current !== requestSerial) {
@@ -163,6 +174,7 @@ export function useGlobalTaskList(params: {
           ),
         );
         itemsRef.current = nextItems;
+        resolvedRef.current = true;
         setItems(nextItems);
         setTotal(result.total);
         setHasMore(result.hasMore);
@@ -189,6 +201,12 @@ export function useGlobalTaskList(params: {
       manualRefreshSerial: manualRefreshSerialRef.current,
     });
   }, [controllerRevision, load, taskListVersionSignature, workspaceSourceGenerationSignature]);
+
+  useEffect(() => {
+    // 「已解析」按查询身份判定：search / sort / 可见上限 / workspace 组合变化后是新查询，
+    // 必须重新允许 loading 占位，否则会先显示上一个查询的旧任务行再跳成新结果。
+    resolvedRef.current = false;
+  }, [queryKey]);
 
   useEffect(() => {
     // 远程 workspace 从断开占位恢复为在线 session 时 identity/path 不变，

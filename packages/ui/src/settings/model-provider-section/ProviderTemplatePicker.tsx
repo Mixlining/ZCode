@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import { CODING_PLAN_UI_DISABLED } from "@zcode/shared";
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import { logger } from "@/logger.js";
 import { ProviderLogo } from "./ProviderLogo.js";
 import { useProviderDetailFeedback } from "./ProviderDetailFeedback.js";
@@ -36,7 +36,7 @@ export function ProviderTemplatePicker({
   const { dismissFeedback, showFeedback } = useProviderDetailFeedback();
   const customLabel = intl.formatMessage({ id: "settings.modelProvider.newProviderName" });
   // 套餐硬关闭：zai-api / bigmodel-api 走编程套餐 API Key，不再列出；两个 standard API Key 模板保留。
-  const zhipuIds = CODING_PLAN_UI_DISABLED
+  const zhipuIds = CODING_PLAN_DISABLED
     ? ["bigmodel-standard-api", "zai-standard-api"]
     : ["bigmodel-api", "zai-api", "bigmodel-standard-api", "zai-standard-api"];
   const groups = [

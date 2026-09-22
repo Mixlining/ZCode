@@ -1,5 +1,5 @@
 import { AppUsagePanel } from "@/settings/usage-stats/AppUsagePanel.js";
-import { CODING_PLAN_UI_DISABLED } from "@zcode/shared";
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import {
   CodingPlanUsagePanel,
   type CodingPlanUsageSource,
@@ -21,7 +21,7 @@ export function UsageStatsSection({
   selectedCodingPlanSource?: CodingPlanUsageSource | null;
 }) {
   // 套餐硬关闭：用量页只保留本地「应用用量」，套餐面板不再渲染。
-  if (CODING_PLAN_UI_DISABLED || activeTab === "app") {
+  if (CODING_PLAN_DISABLED || activeTab === "app") {
     return <AppUsagePanel />;
   }
 

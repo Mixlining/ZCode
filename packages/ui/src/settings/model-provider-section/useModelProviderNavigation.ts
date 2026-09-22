@@ -22,7 +22,7 @@ import {
   type PresetProviderSpec,
 } from "@/settings/model-provider-section/constants.js";
 import { pickCodingPlanEntitlementProvider } from "@/lib/codingPlanProvider.js";
-import { CODING_PLAN_UI_DISABLED } from "@zcode/shared";
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import {
   createCodingPlanProviderNodeKey,
   createCustomProviderNodeKey,
@@ -94,7 +94,7 @@ export function useModelProviderNavigation({
     () =>
       // 套餐硬关闭：不再生成套餐导航项。否则这里会解析出 preset:*/coding-plan:*/team:* 这类
       // 已不在导航里的节点键，选中项解析成 null，详情页永久停在「加载中」。
-      CODING_PLAN_UI_DISABLED
+      CODING_PLAN_DISABLED
         ? []
         : CODING_PLAN_PROVIDER_SPECS.filter((spec) =>
             shouldShowCodingPlanForProviderFamilyDomain(spec.oauthProviderId, providerFamilyDomain),
@@ -158,7 +158,7 @@ export function useModelProviderNavigation({
   const connectionModeCodingPlanItems = useMemo(
     () =>
       // 套餐硬关闭：连接方式项也整体为空——即使套餐项为空，已购团队套餐仍会补出 team:* 节点键。
-      CODING_PLAN_UI_DISABLED
+      CODING_PLAN_DISABLED
         ? []
         : buildVisibleFamilyConnectionItems({
             items: codingPlanItems.filter((item) => !isStartPlanModelProviderId(item.presetId)),
@@ -233,7 +233,7 @@ export function useModelProviderNavigation({
 
     // 套餐硬关闭：智谱分组（Start Plan 预设 + 套餐/团队套餐连接项）整体不再出现，
     // 只保留自定义供应商分组。
-    return CODING_PLAN_UI_DISABLED ? groups.filter((group) => group.id !== "preset") : groups;
+    return CODING_PLAN_DISABLED ? groups.filter((group) => group.id !== "preset") : groups;
   }, [
     customProviders,
     codingPlanItems,

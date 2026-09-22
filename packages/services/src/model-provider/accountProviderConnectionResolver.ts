@@ -9,6 +9,7 @@ import type {
 } from "@zcode/provider";
 import { AccountProviderService, createAccountProviderConfigResolver } from "@zcode/provider";
 import {
+  CODING_PLAN_DISABLED,
   type ApiClient,
   type ProviderFamilyConnectionSelectionSettings,
   type ProviderFamilyDomain,
@@ -103,6 +104,20 @@ export function createAccountProviderConnectionResolver(
             : [],
         );
       if (configured.length === 0) continue;
+
+      // 套餐硬禁用：账号域整体不可用，且不再读取本地 OAuth 凭据。
+      // 旧版本登录过的机器上仍留着 oauth:active_provider / access_token，继续解析会拿它们去请求
+      // getCustomerInfo、组织 api_keys 与套餐权益——界面开关挡不住这条后台链路。
+      // 这里统一按「未连接」标记；凭据文件保留（删除不可逆），只是不再被读取。
+      if (CODING_PLAN_DISABLED) {
+        for (const { providerId } of configured) {
+          availabilityByProviderId.set(providerId, {
+            kind: "unavailable",
+            reason: "coding_plan_not_connected",
+          });
+        }
+        continue;
+      }
 
       // 旧团队身份补全只限制付费访问，Start 只依赖当前登录账号。
       const queryable = configured.filter(({ providerId, planKind }) => {
