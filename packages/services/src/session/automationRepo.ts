@@ -1033,6 +1033,32 @@ export class AutomationRepo {
       .run({ id: automationId, now: Date.now() });
   }
 
+  /**
+   * 是否还有「下次会触发」的自动化工作：enabled 且未终态截止，且存在 retry_at / next_run_at，
+   * 或正在认领中（running=1）。manual run 尚未被认领时也要算——它在 automation_runs 里排队。
+   * 只读判定，不做认领；scheduler 用它决定常驻进程是否需要继续存在。
+   */
+  async hasPendingWork(): Promise<boolean> {
+    await this.ensureReady();
+    const db = this.getDatabase();
+    const scheduled = db
+      .prepare(
+        `SELECT 1 FROM automations
+        WHERE enabled = 1 AND (retry_at IS NOT NULL OR next_run_at IS NOT NULL OR running = 1)
+        LIMIT 1`,
+      )
+      .get();
+    if (scheduled) return true;
+    const manualRun = db
+      .prepare(
+        `SELECT 1 FROM automation_runs
+        WHERE trigger = 'manual' AND dispatch_status = 'claimed'
+        LIMIT 1`,
+      )
+      .get();
+    return Boolean(manualRun);
+  }
+
   /** manual run 结束后只释放 single-flight 锁，不修改 automation 的调度状态。 */
   async releaseManualClaim(automationId: string, workspaceKey: string): Promise<void> {
     await this.ensureReady();

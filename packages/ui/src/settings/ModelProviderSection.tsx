@@ -293,15 +293,18 @@ export function ModelProviderSection({
   }, [providerSettingsView]);
   const providerConnectionRefreshSignal = providerSettingsView?.revision;
   const [initialModelProviderTarget] = useState(() => consumePendingSettingsModelProviderTarget());
-  const [invalidProviderTarget, setInvalidProviderTarget] = useState(() =>
-    Boolean(
-      initialModelProviderTarget && !resolveCodingPlanIntentProviderId(initialModelProviderTarget),
-    ),
-  );
+  // 落点解析不出导航节点即视为不可用：既包括未知 provider id，也包括本构建已隐藏的套餐供应商
+  // （resolveProviderFamilySideNodeKey 在套餐硬关闭时返回 null），两者都只提示，不静默落到别的供应商。
   const [selectedNodeKey, setSelectedNodeKey] = useState<string | null>(() => {
     const providerId = resolveCodingPlanIntentProviderId(initialModelProviderTarget);
     return providerId ? resolveProviderFamilySideNodeKey(providerId) : null;
   });
+  const [invalidProviderTarget, setInvalidProviderTarget] = useState(
+    () =>
+      Boolean(initialModelProviderTarget) &&
+      resolveCodingPlanIntentProviderId(initialModelProviderTarget) !== null &&
+      selectedNodeKey === null,
+  );
   const [presetSubscriptionProviderId, setPresetSubscriptionProviderId] =
     useState<BuiltinModelProviderId | null>(null);
   const [codingPlanStatusSyncProviderId, setCodingPlanStatusSyncProviderId] =
@@ -342,9 +345,12 @@ export function ModelProviderSection({
         return true;
       }
 
-      setInvalidProviderTarget(false);
+      const sideNodeKey = resolveProviderFamilySideNodeKey(providerId);
+      // 套餐硬关闭时套餐供应商解析不出导航节点，同样只提示不可用；若继续静默回落，
+      // 用户会落到别的供应商页而不知道深链目标已被隐藏。
+      setInvalidProviderTarget(sideNodeKey === null);
       setTemplatePickerOpen(false);
-      setSelectedNodeKey(resolveProviderFamilySideNodeKey(providerId));
+      setSelectedNodeKey(sideNodeKey);
       return true;
     },
     [],
@@ -1145,6 +1151,7 @@ export function ModelProviderSection({
           }}
           onCodingPlanDisconnect={handleCodingPlanDisconnect}
           onOpenApiKeyUrl={handleOpenApiKeyUrl}
+          onAddProvider={() => setTemplatePickerOpen(true)}
           onSelectNavItem={handleSelectNavItem}
           onOpenBigModelRegistration={() => {
             // 未注册提示来自一次失败的 OAuth checking 状态；跳转注册后要恢复普通状态，避免提示卡住。

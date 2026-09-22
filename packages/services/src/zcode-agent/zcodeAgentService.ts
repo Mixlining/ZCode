@@ -873,6 +873,11 @@ interface CreateZCodeAgentServiceOptions extends Omit<
     run: ZCodeAutomationRun;
   }) => Promise<void>;
   /**
+   * 自动化写入后请求唤醒 scheduler 进程（desktop host 注入 parentPort 转发）。
+   * scheduler 空闲时会自行退出；缺省只靠它启动时的首轮 tick 认领，排定工作不会漏跑但会延迟。
+   */
+  onAutomationSchedulerWakeRequested?: (automationId: string) => void;
+  /**
    * Off-Peak 会话内创建。config 同时承担曝光门（enabled && Selection View 非空 →
    * session create/resume 下发 offPeakToolEnabled）与缺省解析（model=白名单末位 /
    * thoughtLevel=最高档）；service 供 offPeak/create、offPeak/list 协议 handler 调用。
@@ -1071,7 +1076,9 @@ export function createZCodeAgentService(
       : undefined;
   // AutomationRepo 也持有 tasks-index.sqlite 连接，disposeAll 需一并收口（见下方 disposeAll 注释）
   const automationRepo = new AutomationRepo();
-  const automationService = new AutomationService(automationRepo);
+  const automationService = new AutomationService(automationRepo, {
+    requestSchedulerWake: options?.onAutomationSchedulerWakeRequested,
+  });
   const automationTaskIndexRepo = new TaskIndexRepo();
   const pluginProcessManager = new ZCodeAgentProcessManager({
     commandResolver: options?.commandResolver,

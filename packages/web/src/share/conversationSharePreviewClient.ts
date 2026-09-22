@@ -1,4 +1,5 @@
 import {
+  ZCODE_VENDOR_ACTIONS_DISABLED,
   conversationShareErrorEnvelopeSchema,
   conversationShareKnownErrorCodeSchema,
   conversationSharePreviewDataSchema,
@@ -134,6 +135,14 @@ export class ConversationSharePreviewClient {
   }
 
   async getPreview(shareCode: string, accessToken?: string): Promise<ConversationSharePreview> {
+    // 厂商动作硬关闭：会话分享在本构建已停用（桌面侧发布入口与底层调用都返回错误），
+    // web 落地页的预览取数同样不发出请求，避免为一个不可用功能打厂商接口。
+    if (ZCODE_VENDOR_ACTIONS_DISABLED) {
+      throw new ConversationSharePreviewClientError({
+        kind: "invalid_contract",
+        message: "Conversation share is disabled in this build",
+      });
+    }
     if (!isSafeConversationShareCode(shareCode)) {
       throw new ConversationSharePreviewClientError({
         kind: "invalid_contract",

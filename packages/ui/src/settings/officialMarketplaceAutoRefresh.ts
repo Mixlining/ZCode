@@ -1,4 +1,9 @@
+import { MARKETPLACE_AUTO_REFRESH_DISABLED } from "@zcode/shared";
+
 // 商店页「目录自动刷新」（Catalog Auto-Refresh）的节流判据。
+//
+// 本构建 MARKETPLACE_AUTO_REFRESH_DISABLED 硬禁用自动刷新：claim 恒为 false，商店目录只在
+// 用户手动点刷新时更新。
 //
 // 需求：每次进入商店页都默认刷新 ZCode 官方市场，让 CDN 新上架插件无需手动点刷新即可见；
 // 但要节流（距上次成功刷新不足窗口则跳过）与防抖（刷新失败后、请求仍在飞时不重复触发）。
@@ -41,6 +46,10 @@ export function claimMarketplaceAutoRefresh(
   lastUpdated: string | undefined,
   now: number = Date.now(),
 ): boolean {
+  // 硬禁用自动刷新：进入商店页不再自动发目录请求，刷新只由用户手动触发。
+  if (MARKETPLACE_AUTO_REFRESH_DISABLED) {
+    return false;
+  }
   const shouldRefresh = shouldAutoRefreshMarketplace({
     lastUpdated,
     lastAttemptAt: lastAttemptAtByMarketplace.get(marketplaceId),

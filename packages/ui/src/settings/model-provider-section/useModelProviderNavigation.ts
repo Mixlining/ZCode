@@ -92,56 +92,60 @@ export function useModelProviderNavigation({
 
   const codingPlanItems = useMemo(
     () =>
-      CODING_PLAN_PROVIDER_SPECS.filter((spec) =>
-        shouldShowCodingPlanForProviderFamilyDomain(spec.oauthProviderId, providerFamilyDomain),
-      ).map((spec) => {
-        const provider = modelProviders.find((item) => item.providerId === spec.id) ?? null;
-        const accountEntitled = entitledAccountProviderIds.has(spec.id);
-        const entitlementProvider = pickCodingPlanEntitlementProvider(provider);
-        const entitlement = codingPlanEntitlements[spec.id];
-        const state = resolveCodingPlanEntitlementState({
-          providerId: spec.id,
-          accountEntitled,
-          accountAvailability: provider?.accountState?.availability,
-          accountUnavailableReason: provider?.accountState?.unavailableReason,
-          entitlement,
-          modelProvidersLoading,
-        });
+      // 套餐硬关闭：不再生成套餐导航项。否则这里会解析出 preset:*/coding-plan:*/team:* 这类
+      // 已不在导航里的节点键，选中项解析成 null，详情页永久停在「加载中」。
+      CODING_PLAN_UI_DISABLED
+        ? []
+        : CODING_PLAN_PROVIDER_SPECS.filter((spec) =>
+            shouldShowCodingPlanForProviderFamilyDomain(spec.oauthProviderId, providerFamilyDomain),
+          ).map((spec) => {
+            const provider = modelProviders.find((item) => item.providerId === spec.id) ?? null;
+            const accountEntitled = entitledAccountProviderIds.has(spec.id);
+            const entitlementProvider = pickCodingPlanEntitlementProvider(provider);
+            const entitlement = codingPlanEntitlements[spec.id];
+            const state = resolveCodingPlanEntitlementState({
+              providerId: spec.id,
+              accountEntitled,
+              accountAvailability: provider?.accountState?.availability,
+              accountUnavailableReason: provider?.accountState?.unavailableReason,
+              entitlement,
+              modelProvidersLoading,
+            });
 
-        return {
-          key: createCodingPlanProviderNodeKey(spec.id),
-          type: "codingPlan" as const,
-          presetId: spec.id,
-          oauthProviderId: spec.oauthProviderId,
-          label: isStartPlanModelProviderId(spec.id)
-            ? "Start Plan"
-            : `${spec.providerName} - ${intl.formatMessage({
-                id: "settings.modelProvider.connectionMode.codingPlan",
-              })}`,
-          providerName: spec.providerName,
-          provider: entitlementProvider,
-          accountEntitled,
-          status: state.status,
-          statusLabelId: state.statusLabelId,
-          ...(isStartPlanModelProviderId(spec.id) &&
-          entitlement?.snapshot?.unavailableReason === "not_authenticated"
-            ? {
-                accountLoginRequired: true,
-                statusLabelId: "settings.modelProvider.startPlan.status.loginExpired",
-              }
-            : {}),
-          planLevel: state.planLevel,
-          currentProductId: state.currentProductId,
-          subscriptionBillingCycle: state.subscriptionBillingCycle,
-          subscriptionRenewTime: state.subscriptionRenewTime,
-          subscriptionExpireTime: state.subscriptionExpireTime,
-          subscriptionDetails: state.subscriptionDetails,
-          quotaLimits: state.quotaLimits,
-          mcpQuotaLimit: state.mcpQuotaLimit ?? null,
-          purchaseUrl: spec.purchaseUrl,
-          statusActive: entitlementProvider?.executable === true,
-        };
-      }),
+            return {
+              key: createCodingPlanProviderNodeKey(spec.id),
+              type: "codingPlan" as const,
+              presetId: spec.id,
+              oauthProviderId: spec.oauthProviderId,
+              label: isStartPlanModelProviderId(spec.id)
+                ? "Start Plan"
+                : `${spec.providerName} - ${intl.formatMessage({
+                    id: "settings.modelProvider.connectionMode.codingPlan",
+                  })}`,
+              providerName: spec.providerName,
+              provider: entitlementProvider,
+              accountEntitled,
+              status: state.status,
+              statusLabelId: state.statusLabelId,
+              ...(isStartPlanModelProviderId(spec.id) &&
+              entitlement?.snapshot?.unavailableReason === "not_authenticated"
+                ? {
+                    accountLoginRequired: true,
+                    statusLabelId: "settings.modelProvider.startPlan.status.loginExpired",
+                  }
+                : {}),
+              planLevel: state.planLevel,
+              currentProductId: state.currentProductId,
+              subscriptionBillingCycle: state.subscriptionBillingCycle,
+              subscriptionRenewTime: state.subscriptionRenewTime,
+              subscriptionExpireTime: state.subscriptionExpireTime,
+              subscriptionDetails: state.subscriptionDetails,
+              quotaLimits: state.quotaLimits,
+              mcpQuotaLimit: state.mcpQuotaLimit ?? null,
+              purchaseUrl: spec.purchaseUrl,
+              statusActive: entitlementProvider?.executable === true,
+            };
+          }),
     [
       entitledAccountProviderIds,
       codingPlanEntitlements,
@@ -153,21 +157,24 @@ export function useModelProviderNavigation({
   );
   const connectionModeCodingPlanItems = useMemo(
     () =>
-      buildVisibleFamilyConnectionItems({
-        items: codingPlanItems.filter((item) => !isStartPlanModelProviderId(item.presetId)),
-        codingPlanEntitlements,
-        subscribedTeamProducts,
-        showPurchasedTeamPlanFallback,
-        connectionSelections: {
-          ...connectionSelections,
-          ...pendingConnectionSelections,
-        },
-        teamPlanSelections: Object.fromEntries(
-          Object.entries({ ...connectionSelections, ...pendingConnectionSelections }).filter(
-            ([, selection]) => selection?.kind === "team-coding-plan",
-          ),
-        ),
-      }),
+      // 套餐硬关闭：连接方式项也整体为空——即使套餐项为空，已购团队套餐仍会补出 team:* 节点键。
+      CODING_PLAN_UI_DISABLED
+        ? []
+        : buildVisibleFamilyConnectionItems({
+            items: codingPlanItems.filter((item) => !isStartPlanModelProviderId(item.presetId)),
+            codingPlanEntitlements,
+            subscribedTeamProducts,
+            showPurchasedTeamPlanFallback,
+            connectionSelections: {
+              ...connectionSelections,
+              ...pendingConnectionSelections,
+            },
+            teamPlanSelections: Object.fromEntries(
+              Object.entries({ ...connectionSelections, ...pendingConnectionSelections }).filter(
+                ([, selection]) => selection?.kind === "team-coding-plan",
+              ),
+            ),
+          }),
     [
       codingPlanEntitlements,
       showPurchasedTeamPlanFallback,

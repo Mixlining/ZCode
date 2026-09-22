@@ -9,7 +9,10 @@
  * 语义约定（与 desktopContextPromptRollout 一致，CUA 灰度 fail-close 也复用同一语义）：
  * - 请求失败/超时/解析失败：沿用上次快照（首次即失败 → 初始快照，由 defaultValue 决定）；
  * - 服务端成功但未下发该 key：视为"未启用"，覆盖旧缓存（不能继续沿用旧的开启快照）。
+ * - 本构建 REMOTE_ROLLOUT_DISABLED 硬关闭：整层不请求，直接返回 defaultValue 快照。
  */
+import { REMOTE_ROLLOUT_DISABLED } from "@zcode/shared";
+
 interface SingleFeatureRolloutConfig {
   enabled: boolean;
   configVersion?: string;
@@ -59,6 +62,16 @@ export function createSingleFeatureRollout<T extends SingleFeatureRolloutConfig>
   let inFlight: Promise<T> | undefined;
   const timeoutMs = Math.max(options.timeoutMs ?? SINGLE_FEATURE_REQUEST_TIMEOUT_MS, 1);
   const cacheTtlMs = Math.max(options.cacheTtlMs ?? SINGLE_FEATURE_CACHE_TTL_MS, 1);
+
+  // 灰度硬关闭：不请求远端灰度配置，快照恒为本地默认值（各 feature 的 defaultValue）。
+  // 这样启动时也不会再为「等首次裁决」挂起首个 Host fork，awaitFirstDecision 立即返回。
+  if (REMOTE_ROLLOUT_DISABLED) {
+    return {
+      refresh: () => Promise.resolve(snapshot),
+      getSnapshot: () => snapshot,
+      awaitFirstDecision: () => Promise.resolve(snapshot),
+    };
+  }
 
   const refresh = (): Promise<T> => {
     if (Date.now() < snapshotExpiresAt) {

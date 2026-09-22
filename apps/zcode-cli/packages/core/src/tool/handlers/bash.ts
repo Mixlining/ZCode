@@ -22,6 +22,7 @@ import {
   type ExecutionRunOptions,
   type TraceContext,
 } from "@zcode/contracts";
+import { ZCODE_TELEMETRY_ENABLED } from "@zcode/shared";
 import {
   shouldInjectEmbeddedSearchBashPrelude,
   supportsEmbeddedSearchShellSelection,
@@ -290,6 +291,8 @@ function startBashCommandTelemetry(
   input: BashInput,
   context: ToolExecutionContext,
 ): CommandExecutionSpanWriter | undefined {
+  // 遥测硬关闭：identity 只用于遥测维度，不再解析/哈希命令。
+  if (!ZCODE_TELEMETRY_ENABLED) return undefined;
   const identity = classifySafeCommandIdentity(input.command);
   return context.telemetry?.startCommand({
     category: commandCategory(input.command),

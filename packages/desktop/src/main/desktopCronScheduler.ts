@@ -40,6 +40,8 @@ interface CronSchedulerDeps {
   };
   /** 选一个能执行本地 workspace 派发的 host；无可用 host 时返回 null（scheduler 会退避重试）。 */
   resolveDispatchHost: () => ElectronUtilityProcess | null;
+  /** scheduler 进程结束：空闲自退与崩溃都走这里，句柄一律失效，避免后续 wake 写进已死进程。 */
+  onExited?: () => void;
   /** 闲时任务执行中计数变化（keep-awake：main 据此 + 设置切 powerSaveBlocker）。 */
   onOffPeakActiveCountChanged?: (count: number) => void;
 }
@@ -195,6 +197,7 @@ export function spawnCronScheduler(deps: CronSchedulerDeps): CronSchedulerHandle
   child.on("exit", (code) => {
     unregisterSchedulerProcess(child);
     deps.logger.info(`[cron-scheduler] scheduler process exited code=${code}`);
+    deps.onExited?.();
   });
 
   return {

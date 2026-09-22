@@ -460,6 +460,18 @@ export class OffPeakTaskRepo {
   }
 
   /**
+   * 是否还有「下次会触发」的闲时任务：queued（等服务端放行）或 running（执行中）。
+   * paused 由用户主动停止派发，不算待触发工作，否则一个暂停任务会让 scheduler 永久常驻。
+   */
+  async hasPendingWork(): Promise<boolean> {
+    await this.ensureReady();
+    const row = this.getDatabase()
+      .prepare(`SELECT 1 FROM off_peak_tasks WHERE status IN ('queued', 'running') LIMIT 1`)
+      .get();
+    return Boolean(row);
+  }
+
+  /**
    * 编辑窗口期字段：仅 queued/paused 可编辑；票只锁队列身份，prompt 派发时才读。
    * modelSelection 只能替换为另一份明确 Selection；undefined = 不改。
    */

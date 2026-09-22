@@ -13,6 +13,7 @@ import {
   PlatformChannels,
   remoteTargetSchema,
   rendererTelemetryEventPayloadSchema,
+  ZCODE_TELEMETRY_ENABLED,
   type ArmsRumEnv,
   type RemoteTarget,
   type TelemetryEventPayload,
@@ -326,6 +327,9 @@ export function registerRemoteIpcHandlers(options: {
   });
 
   ipcMain.handle(PlatformChannels.ReportTelemetryEvent, async (_event, payload: unknown) => {
+    // 遥测硬关闭：先判再解析。renderer 的 invoke 立即返回，不再为注定被丢弃的事件做
+    // zod 校验与事件构造（此前门禁在下游 telemetryCore，校验开销照付）。
+    if (!ZCODE_TELEMETRY_ENABLED) return;
     const result = rendererTelemetryEventPayloadSchema.safeParse(payload);
     if (!result.success) {
       options.logger.warn(
@@ -339,6 +343,7 @@ export function registerRemoteIpcHandlers(options: {
   });
 
   ipcMain.handle(PlatformChannels.ReportArmsCustomEvent, async (event, payload: unknown) => {
+    if (!ZCODE_TELEMETRY_ENABLED) return;
     const result = armsCustomEventPayloadSchema.safeParse(payload);
     if (!result.success) {
       options.logger.warn(

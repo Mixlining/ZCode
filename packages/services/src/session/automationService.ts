@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- automation 写入是 cron 生命周期的唯一所有者：校验、next_run_at 计算、生命周期重算与写入后的 scheduler 唤醒必须同一处维护，拆分会把「写入」与「唤醒」的一致性分叉。 */
 import type {
   ZCodeAutomation,
   ZCodeAutomationCreateParams,
@@ -139,7 +140,16 @@ function assertValidAutomationScheduleRule(rule: ZCodeAutomationScheduleRule): v
  * 「restart 重算」等 cron 相关业务，供 UI 管理面 / RPC 调用。
  */
 export class AutomationService {
-  constructor(private readonly repo: AutomationRepo = new AutomationRepo()) {}
+  constructor(
+    private readonly repo: AutomationRepo = new AutomationRepo(),
+    /** 写入后的 scheduler 唤醒入口；desktop host 注入 parentPort 转发，非桌面宿主缺省即不唤醒。 */
+    private readonly options: { requestSchedulerWake?: (automationId: string) => void } = {},
+  ) {}
+
+  /** 写入成功后唤醒 scheduler（空闲时它会自行退出，不唤醒则排定工作要等下次拉起才被认领）。 */
+  private notifyScheduleChanged(automationId: string): void {
+    this.options.requestSchedulerWake?.(automationId);
+  }
 
   async create(params: ZCodeAutomationCreateParams): Promise<ZCodeAutomation> {
     const createdAt = Date.now();
@@ -224,10 +234,12 @@ export class AutomationService {
     const nextRunAt = computeInitialAutomationNextRunAt(createParams, createdAt);
     const endedBeforeFirstRun =
       createParams.endAt !== undefined && (nextRunAt ?? Infinity) > createParams.endAt;
-    return this.repo.create(createParams, {
+    const created = await this.repo.create(createParams, {
       nextRunAt: endedBeforeFirstRun ? null : nextRunAt,
       ...(endedBeforeFirstRun ? { lifecycleStatus: "completed" as const } : {}),
     });
+    this.notifyScheduleChanged(created.automationId);
+    return created;
   }
 
   async list(scope?: {
@@ -421,11 +433,16 @@ export class AutomationService {
       }
     }
 
-    return this.repo.update(automationId, updateParams, options, workspaceKey);
+    const updated = await this.repo.update(automationId, updateParams, options, workspaceKey);
+    this.notifyScheduleChanged(automationId);
+    return updated;
   }
 
   async delete(automationId: string, scope?: AutomationWorkspaceScope): Promise<boolean> {
-    return this.repo.delete(automationId, resolveScopeKey(scope));
+    const deleted = await this.repo.delete(automationId, resolveScopeKey(scope));
+    // 删掉最后一项排定工作时也要唤醒：scheduler 需要一次 tick 才能判定空闲并退出。
+    if (deleted) this.notifyScheduleChanged(automationId);
+    return deleted;
   }
 
   /** 暂停 / 恢复。 */
@@ -434,7 +451,8 @@ export class AutomationService {
     enabled: boolean,
     scope?: AutomationWorkspaceScope,
   ): Promise<void> {
-    return this.repo.setEnabled(automationId, enabled, resolveScopeKey(scope));
+    await this.repo.setEnabled(automationId, enabled, resolveScopeKey(scope));
+    this.notifyScheduleChanged(automationId);
   }
 
   /** 失败任务手动重跑：回 active、清计数，按 cron 重算下次时间。 */
@@ -446,7 +464,8 @@ export class AutomationService {
     // 只有 failed 代表可恢复异常，允许用户手动重排下一次运行。
     if (existing.lifecycleStatus !== "failed") return;
     const nextRunAt = computeAutomationNextRunAt(existing);
-    return this.repo.restart(automationId, { nextRunAt }, workspaceKey);
+    await this.repo.restart(automationId, { nextRunAt }, workspaceKey);
+    this.notifyScheduleChanged(automationId);
   }
 
   /** 立即运行：创建供当前 host 直接派发的 manual run，不修改原 cron 计划。 */
@@ -457,7 +476,9 @@ export class AutomationService {
     const workspaceKey = resolveScopeKey(scope);
     const existing = await this.repo.get(automationId, workspaceKey);
     if (!existing) return null;
-    return this.repo.runNow(automationId, { now: Date.now() }, workspaceKey);
+    const claimed = await this.repo.runNow(automationId, { now: Date.now() }, workspaceKey);
+    if (claimed) this.notifyScheduleChanged(automationId);
+    return claimed;
   }
 
   async listRuns(

@@ -61,6 +61,19 @@ export const ZCODE_VENDOR_ACTIONS_DISABLED: boolean = true;
 // AUTO_ONBOARDING_DISABLED，测试期登录门禁另见 rootStartupGate）。
 export const CODING_PLAN_UI_DISABLED: boolean = true;
 
+// 硬关闭：内存诊断采样器（renderer / host / scheduler / agent CLI 四个进程各自的定时采样与本地
+// 日志）默认不启动。它们是排查内存增长的取证手段，需要在排查时把这里改成 true 再复现。
+export const MEMORY_DIAGNOSTICS_ENABLED: boolean = false;
+
+// 硬禁用：不再拉取远端灰度配置（/api/v1/client/configs 的灰度字段与套餐侧 dynamicWorkflow）。
+// 灰度控制的功能固定在各自本地默认值：desktop context prompt 关闭、动态工作流关闭，
+// 本地环境变量覆盖（ZCODE_DYNAMIC_WORKFLOW_MODE 等）仍然生效；恢复时改回 false。
+export const REMOTE_ROLLOUT_DISABLED: boolean = true;
+
+// 硬禁用：官方商店进入页面时的目录自动刷新（保留手动刷新入口）。它会在每次进入商店页发一次
+// 厂商目录请求；恢复时改回 false。
+export const MARKETPLACE_AUTO_REFRESH_DISABLED: boolean = true;
+
 /** 数仓事件上报端点：由运行时环境变量提供，未配置即停用，构建产物不内嵌。 */
 export const ZCODE_TELEMETRY_REPORT_ENDPOINT =
   typeof process !== "undefined" ? (process.env.ZCODE_TELEMETRY_REPORT_ENDPOINT ?? "") : "";

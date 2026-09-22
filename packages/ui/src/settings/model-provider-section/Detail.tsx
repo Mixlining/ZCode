@@ -26,6 +26,8 @@ import {
   type ModelProviderNavItem,
 } from "./constants.js";
 import { InlineEditableProviderCard } from "./InlineEditableProviderCard.js";
+import { Button } from "@/components/ui/button.js";
+import { PluginInstallEmptyState } from "@/settings/PluginInstallEmptyState.js";
 import {
   ModelProviderLoadingCard,
   PresetProviderPlaceholderCard,
@@ -251,6 +253,7 @@ export function ModelProviderSectionDetail({
   onOpenBigModelRegistration,
   onCodingPlanPurchaseComplete,
   onSelectNavItem,
+  onAddProvider,
   providerSettingsView: providerSettingsViewOverride,
 }: {
   selectedNavItem: ModelProviderNavItem | null;
@@ -300,6 +303,8 @@ export function ModelProviderSectionDetail({
   onOpenBigModelRegistration: () => void;
   onCodingPlanPurchaseComplete: () => void | Promise<void>;
   onSelectNavItem?: (item: ModelProviderNavItem) => void;
+  /** 无可选中项时的空态入口；只在这一处收口，空态不再依赖右侧壳层的按钮。 */
+  onAddProvider: () => void;
   providerSettingsView?: ProviderSettingsView | null;
 }) {
   const { intl } = useZCodeIntl();
@@ -391,7 +396,23 @@ export function ModelProviderSectionDetail({
   }, [selectedItemKey]);
 
   if (!selectedNavItem) {
-    return <ModelProviderLoadingCard loadingLabel={loadingLabel} />;
+    // 无可选中项不是加载中：本构建隐藏了套餐分组，本地没有任何自定义供应商时导航为空，
+    // 之前的兜底会一直渲染 loading 卡片，看起来像永久卡死。导航里还有可选项时是选中校正的
+    // 过渡帧（fallback effect 下一帧才落下 key），此时保持 loading，避免闪一帧空态。
+    if (presetLoading || navigationItems.length > 0) {
+      return <ModelProviderLoadingCard loadingLabel={loadingLabel} />;
+    }
+    return (
+      <PluginInstallEmptyState
+        title={intl.formatMessage({ id: "settings.modelProvider.empty" })}
+        description={intl.formatMessage({ id: "settings.modelProvider.emptyStateHint" })}
+        actions={
+          <Button type="button" variant="outline" size="sm" onClick={onAddProvider}>
+            {intl.formatMessage({ id: "settings.modelProvider.addProviderAction" })}
+          </Button>
+        }
+      />
+    );
   }
 
   if (selectedNavItem.type === "preset") {

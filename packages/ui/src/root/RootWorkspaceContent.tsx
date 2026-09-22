@@ -7,6 +7,7 @@ import { WorkspaceSettingsLayer } from "@/root/WorkspaceSettingsLayer.js";
 import type { AppProps } from "@/app-shell/types.js";
 import type { RootProps } from "@/root/types.js";
 import type { IFeedbackService, IServiceAccessor } from "@zcode/services";
+import { ZCODE_TELEMETRY_ENABLED } from "@zcode/shared";
 import { ConversationTelemetryWorkspaceAttachment } from "@/v4/telemetry/ConversationTelemetryAttachment.js";
 
 const StableWorkspaceApp = memo(App);
@@ -122,7 +123,8 @@ export function RootWorkspaceContent({
             只用 opacity 和 pointer-events 仍会让底层权限/AskUserQuestion 卡片的 autofocus
             抢走设置表单焦点；设置页覆盖期间必须把整棵 workspace 标为 inert，等用户显式返回后再恢复交互。 */}
         <ConversationTelemetryWorkspaceAttachment
-          enabled={isDesktop === true}
+          // 遥测硬关闭：桌面渲染层不再订阅会话遥测事实（CLI 采集与服务端 taskActivityTracker 不受影响）。
+          enabled={isDesktop === true && ZCODE_TELEMETRY_ENABLED}
           foregroundEnabled={!isSettingsTabActive}
           services={workspaceScopedServices}
           workspacePath={workspaceShellPath}

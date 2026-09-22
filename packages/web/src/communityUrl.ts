@@ -1,5 +1,6 @@
 import {
   DEFAULT_ZCODE_ENDPOINT_ORIGIN,
+  ZCODE_VENDOR_ACTIONS_DISABLED,
   ZCODE_VERSION,
   buildHelpAppConfigUrl,
   createHelpAppConfigReader,
@@ -19,6 +20,10 @@ const readHelpConfig = createHelpAppConfigReader({
 });
 
 export async function resolveWebHelpConfig(options: ResolveWebCommunityUrlOptions = {}) {
+  // 厂商动作硬关闭：不再请求远端 help/community 配置（与桌面端同一开关），直接用内置入口。
+  if (ZCODE_VENDOR_ACTIONS_DISABLED) {
+    return resolveHelpAppConfig(undefined, options.localConfig ?? localDefaultAppConfig);
+  }
   const env = import.meta.env;
   const endpoint =
     options.endpointOrigin ??

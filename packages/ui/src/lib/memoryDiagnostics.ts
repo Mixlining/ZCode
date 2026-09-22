@@ -3,6 +3,7 @@ import {
   createMemorySampleWriteGate,
   formatMemorySampleLine,
   MEMORY_SAMPLE_INTERVAL_MS,
+  MEMORY_DIAGNOSTICS_ENABLED,
   type MemoryDiagnosticsRegistry,
   type MemorySample,
   type RendererHeapSample,
@@ -56,6 +57,10 @@ interface MemoryDiagnosticsLoggerHandle {
 export function startMemoryDiagnosticsLogger(
   options: StartMemoryDiagnosticsLoggerOptions = {},
 ): MemoryDiagnosticsLoggerHandle {
+  if (!MEMORY_DIAGNOSTICS_ENABLED) {
+    // 硬关闭：默认不起 60 秒采样定时器（renderer 里它是常驻 CPU 与日志写入来源）。
+    return { sampleNow: () => false, stop: () => {} };
+  }
   const now = options.now ?? (() => Date.now());
   const readHeap = options.readHeap ?? readRendererHeapSnapshot;
   const write = options.write ?? logMemoryDiagnostics;

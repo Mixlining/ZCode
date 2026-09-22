@@ -169,13 +169,23 @@ export function useWorkspaceSidebarFooterUsageSummaryState({
   const bigmodelEnterpriseProducts = useEnterpriseCodingPlanProducts({
     // footer badge 和升级入口都需要识别 Team Plan。
     // Team 项目上下文只在企业 pricing/customerInfo 返回，账号级头像徽标也不能被当前连接方式卡住。
+    // 套餐硬关闭：footer 的 team/套餐徽标不再渲染，企业定价请求也不再发出。
     enabled:
-      enabled && !providerSourcesLoading && bigmodelFamilyAllowed && Boolean(bigmodelTeamProvider),
+      !CODING_PLAN_UI_DISABLED &&
+      enabled &&
+      !providerSourcesLoading &&
+      bigmodelFamilyAllowed &&
+      Boolean(bigmodelTeamProvider),
     authenticated: true,
     family: "bigmodel",
   });
   const zaiEnterpriseProducts = useEnterpriseCodingPlanProducts({
-    enabled: enabled && !providerSourcesLoading && zaiFamilyAllowed && Boolean(zaiTeamProvider),
+    enabled:
+      !CODING_PLAN_UI_DISABLED &&
+      enabled &&
+      !providerSourcesLoading &&
+      zaiFamilyAllowed &&
+      Boolean(zaiTeamProvider),
     authenticated: true,
     family: "zai",
   });

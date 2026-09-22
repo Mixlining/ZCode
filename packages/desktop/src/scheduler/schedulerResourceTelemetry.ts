@@ -12,6 +12,7 @@ import {
   NODE_SELF_RESOURCE_SAMPLE_INTERVAL_MS,
   type NodeSelfResourceSamplerOptions,
 } from "@zcode/shared/node";
+import { ZCODE_TELEMETRY_ENABLED } from "@zcode/shared";
 import type { SchedulerToMainMessage } from "./schedulerProtocol.js";
 
 interface SchedulerResourceTelemetryTimerHandle {
@@ -36,6 +37,10 @@ export interface SchedulerResourceTelemetry {
 export function startSchedulerResourceTelemetry(
   options: StartSchedulerResourceTelemetryOptions,
 ): SchedulerResourceTelemetry {
+  if (!ZCODE_TELEMETRY_ENABLED) {
+    // 硬关闭遥测：scheduler 的这个 60 秒自采只为上报，不再计时。
+    return { stop: () => {} };
+  }
   const sampler = createNodeSelfResourceSampler(options);
   const readMemoryUsage = options.readMemoryUsage ?? (() => process.memoryUsage());
   const timer = options.timer ?? {

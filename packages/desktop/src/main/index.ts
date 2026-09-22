@@ -634,8 +634,14 @@ const windowsCuaOperationIndicator = createWindowsCuaOperationIndicator({
 });
 
 // 常驻 cron scheduler 进程句柄；app ready 后拉起，退出前销毁。
+// 无「下次会触发」的工作时该进程会自行退出并清空句柄，之后由 wake 按需重新拉起。
 let cronScheduler: CronSchedulerHandle | null = null;
-// host → main 的定时任务派发结果，转交给 scheduler 结算。经模块变量转发以避免 spawn 顺序耦合。
+/** 最近一次 wake 的时间：用于识别「唤醒与空闲自退重叠」并把这次唤醒重新拉起。 */
+let lastSchedulerWakeAt = 0;
+const SCHEDULER_EXIT_RACE_MS = 2_000;
+/** scheduler 只能在本地库准备完成后启动（它也会打开 tasks-index）。 */
+let localDatabaseReadyForScheduler = false;
+/** host → main 的定时任务派发结果，转交给 scheduler 结算。经模块变量转发以避免 spawn 顺序耦合。 */
 function forwardCronRunResult(
   result: Parameters<CronSchedulerHandle["handleCronRunResult"]>[0],
 ): void {
@@ -646,12 +652,49 @@ function forwardOffPeakRunResult(
 ): void {
   cronScheduler?.handleOffPeakRunResult(result);
 }
+/** 按需拉起 scheduler：库未就绪时推迟到 ready，等首个 tick 认领已落库的工作。 */
+function ensureCronScheduler(): CronSchedulerHandle | null {
+  if (cronScheduler) {
+    return cronScheduler;
+  }
+  if (!localDatabaseReadyForScheduler) {
+    logger.info("[cron-scheduler] spawn deferred until local database is ready");
+    return null;
+  }
+  try {
+    cronScheduler = spawnCronScheduler({
+      hostProcessLocalEnv,
+      logger,
+      resolveDispatchHost: resolveCronDispatchHost,
+      // keep-awake 已改为纯设置驱动；计数上报保留给后续诊断/配额用途，不再联动 blocker。
+      onOffPeakActiveCountChanged: () => {},
+      onExited: () => {
+        // 空闲自退与崩溃都在这里收口：句柄失效后由下一次 wake 重新拉起。
+        cronScheduler = null;
+        // 临界：scheduler 判定空闲后正在退出时到达的 wake 会发给已死的进程而丢失，
+        // 新写入的排定工作就会漏跑。紧邻退出前的唤醒补拉一次，让它自己再判定一次是否真的空闲；
+        // 清掉时间戳保证同一次唤醒只补拉一次（补拉后若确实空闲会立刻再退出，不再循环拉起）。
+        if (Date.now() - lastSchedulerWakeAt < SCHEDULER_EXIT_RACE_MS) {
+          lastSchedulerWakeAt = 0;
+          logger.info("[cron-scheduler] respawn after wake raced with idle exit");
+          ensureCronScheduler();
+        }
+      },
+    });
+  } catch (error) {
+    logger.error("[cron-scheduler] failed to spawn scheduler process:", error);
+    cronScheduler = null;
+  }
+  return cronScheduler;
+}
 function wakeCronScheduler(automationId: string): void {
-  cronScheduler?.wake(automationId);
+  lastSchedulerWakeAt = Date.now();
+  ensureCronScheduler()?.wake(automationId);
 }
 function wakeOffPeakScheduler(offPeakTaskId?: string): void {
   // 复用同一条 scheduler-wake 通道（tick 同时覆盖 cron 与 off-peak 分支），仅日志标签区分。
-  cronScheduler?.wake(`offpeak:${offPeakTaskId ?? "sync"}`);
+  lastSchedulerWakeAt = Date.now();
+  ensureCronScheduler()?.wake(`offpeak:${offPeakTaskId ?? "sync"}`);
 }
 // 选一个本地 host 执行派发：本期本地 workspace 由任一本地窗口 host 的 createTask 按 path 拉起/复用 agent。
 function resolveCronDispatchHost(): ElectronUtilityProcess | null {
@@ -738,6 +781,8 @@ const appTelemetryRuntime = createAppTelemetryRuntime({
 });
 
 function reportRemoteUsageEventForRenderer(rendererId: number, event: TelemetryEventPayload): void {
+  // 遥测硬关闭：不再依赖 renderer context（它也不再被缓存），直接丢弃这条远程连接埋点。
+  if (!ZCODE_TELEMETRY_ENABLED) return;
   const context =
     appTelemetryRuntime.getRendererContext(rendererId) ??
     appTelemetryRuntime.getLatestRendererContext();
@@ -810,13 +855,17 @@ const rendererActionTraceRollout = createRendererActionTraceRollout({
   fetchConfig: electronClientConfigsFetcher,
   logger,
 });
-const localTtftExporter = createLocalTtftExporter({
-  env: { ...hostProcessLocalEnv, ...process.env },
-  version: ZCODE_VERSION || app.getVersion(),
-  logger,
-});
+// 遥测硬关闭时连导出口都不构造：createLocalTtftExporter 会建 MeterProvider 与 11 个 instrument，
+// 而 endpoint 恒为 undefined（OTLP 诊断导出硬禁用），构造出来只有内存开销。
+const localTtftExporter = ZCODE_TELEMETRY_ENABLED
+  ? createLocalTtftExporter({
+      env: { ...hostProcessLocalEnv, ...process.env },
+      version: ZCODE_VERSION || app.getVersion(),
+      logger,
+    })
+  : null;
 ipcMain.on(PlatformChannels.ReportLocalTtftBatch, (_event, batch: unknown) =>
-  localTtftExporter.enqueue(batch),
+  localTtftExporter?.enqueue(batch),
 );
 const rendererActionTraceBroker = createRendererActionTraceBroker({
   exporter: createRendererActionTraceExporter({
@@ -1048,7 +1097,7 @@ async function prepareAppQuit(reason: string, kind: AppShutdownKind = "normal"):
     // 修复原因：Main 过去不会等待仍在发送的 /event/report，正常退出也会直接丢事件。
     // 与其它 owner 并行进入既有屏障，最多等待 2 秒，避免 telemetry 串行放大退出预算。
     appTelemetryCore.flushPendingReports({ timeoutMs: 2_000 }),
-    localTtftExporter.shutdown(),
+    localTtftExporter?.shutdown(),
     rendererActionTraceBroker.shutdown().catch((error) => {
       logger.warn(`[app-quit] renderer action trace shutdown failed (${reason}):`, error);
     }),
@@ -1683,6 +1732,8 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
         explicitQuitRequested: explicitQuitRef.current,
         closeToTrayOnWindows,
         isLastWindow: getMainApplicationWindows().length === 1,
+        // 只有还有待触发工作才需要为后台任务常驻：scheduler 在跑就说明排定工作还在（它空闲时会自退）。
+        hasScheduledWork: cronScheduler !== null,
         label,
         logger,
         shouldConfirmQuit: shouldConfirmAppQuit(),
@@ -1891,17 +1942,8 @@ app.whenReady().then(async () => {
     app.quit();
   });
   onLocalDatabaseStartupReady(() => {
-    try {
-      cronScheduler = spawnCronScheduler({
-        hostProcessLocalEnv,
-        logger,
-        resolveDispatchHost: resolveCronDispatchHost,
-        // keep-awake 已改为纯设置驱动；计数上报保留给后续诊断/配额用途，不再联动 blocker。
-        onOffPeakActiveCountChanged: () => {},
-      });
-    } catch (error) {
-      logger.error("[cron-scheduler] failed to spawn scheduler process:", error);
-    }
+    localDatabaseReadyForScheduler = true;
+    ensureCronScheduler();
   });
 
   if (process.platform === "win32") {
@@ -2127,7 +2169,9 @@ app.whenReady().then(async () => {
   await armsInitPromise;
 
   // ARMS init 完成后首次写入 user.name（落 device_mid）
-  void armsUserIdentitySync.refresh();
+  if (ZCODE_TELEMETRY_ENABLED) {
+    void armsUserIdentitySync.refresh();
+  }
 
   // 未配置 ARMS 端点时不初始化上报 context，避免把空转误当成已启用。
   if (ZCODE_TELEMETRY_ENABLED && ZCODE_ARMS_RUM_ENDPOINT) {
@@ -2149,16 +2193,18 @@ app.whenReady().then(async () => {
       appVersion: ZCODE_VERSION,
       armsEnv: mapZCodeEnvToArmsRumEnv(desktopRuntimeEnv),
     });
+    // MCP 生命周期埋点只喂 ARMS；它此前漏在这个门禁之外，每个 MCP 事件都要构造一遍 payload。
+    configureDesktopMcpTelemetry({
+      deviceMid,
+      appVersion: ZCODE_VERSION,
+      armsEnv: mapZCodeEnvToArmsRumEnv(desktopRuntimeEnv),
+    });
+    registerDesktopResourceTelemetry(logger);
+    // 主窗口 renderer 的 60 秒 heap 样本入口；随 App 生命周期常驻，只注册一次。
+    registerRendererHeapSampleIpc();
   }
-  configureDesktopMcpTelemetry({
-    deviceMid,
-    appVersion: ZCODE_VERSION,
-    armsEnv: mapZCodeEnvToArmsRumEnv(desktopRuntimeEnv),
-  });
+  // 稳定性监控保持注册：它同时承载崩溃/无响应这类真日志（见 desktopStabilityTelemetry 的门禁点）。
   registerDesktopStabilityMonitors(logger, crashCapturePaths);
-  registerDesktopResourceTelemetry(logger);
-  // 主窗口 renderer 的 60 秒 heap 样本入口；随 App 生命周期常驻，只注册一次。
-  registerRendererHeapSampleIpc();
   const defaultDataBaseDir = process.env.HOME?.trim() || homedir();
   registerDesktopZCodeDataSizeTelemetry({
     context: {

@@ -2,6 +2,7 @@ import {
   BIGMODEL_PROVIDER_ID,
   BUILTIN_MODEL_PROVIDER_IDS,
   ZAI_PROVIDER_ID,
+  ZCODE_TELEMETRY_ENABLED,
   collectTelemetryRendererContext,
   isZaiCodingPlanProviderId,
   sanitizeTelemetryEventDetail,
@@ -47,6 +48,8 @@ export async function reportAppTelemetryEvent(
   },
   scope: string,
 ): Promise<void> {
+  // 遥测硬关闭：main 侧入口已丢弃这些事件，renderer 不再构造 payload、不做清洗、不发 IPC。
+  if (!ZCODE_TELEMETRY_ENABLED) return;
   try {
     const reportPayload = {
       context: collectTelemetryRendererContext(),

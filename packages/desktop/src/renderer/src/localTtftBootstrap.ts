@@ -1,8 +1,16 @@
-import type { IPlatformService, LocalTtftRecord } from "@zcode/shared";
+import {
+  ZCODE_TELEMETRY_ENABLED,
+  type IPlatformService,
+  type LocalTtftRecord,
+} from "@zcode/shared";
 import { LocalTtftObserver, setLocalTtftObserver } from "@zcode/ui";
 
 /** 单窗口批量出口；关闭采集只影响新输入，已启用的发送保留原决定。 */
 export function initializeDesktopLocalTtft(platform: IPlatformService): () => void {
+  if (!ZCODE_TELEMETRY_ENABLED) {
+    // 遥测硬关闭：不再起这 1 秒的批次刷新定时器与首字延迟采样。
+    return () => {};
+  }
   if (!platform.reportLocalTtftBatch || !platform.getRendererActionTraceConfig) return () => {};
   const rendererInstanceId = crypto.randomUUID();
   let records: LocalTtftRecord[] = [];

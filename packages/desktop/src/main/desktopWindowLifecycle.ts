@@ -370,6 +370,11 @@ export function handleDesktopWindowCloseRequest(options: {
   explicitQuitRequested?: boolean;
   closeToTrayOnWindows?: boolean;
   isLastWindow: boolean;
+  /**
+   * 是否还有「下次会触发」的自动化/闲时任务。关到托盘或留在 Dock 只是为了让这些任务继续跑，
+   * 没有待触发工作就不需要为它常驻。
+   */
+  hasScheduledWork: boolean;
   label: string;
   logger: { info: (...args: unknown[]) => void };
   shouldConfirmQuit?: boolean;
@@ -377,18 +382,25 @@ export function handleDesktopWindowCloseRequest(options: {
   requestQuit: () => void;
   hideWindow?: () => void;
 }) {
-  if (
+  // 多窗口时其它窗口仍在跑，隐藏到托盘与后台工作无关；只有最后一个窗口才看排定工作。
+  const shouldHideToTray =
     options.platform === "win32" &&
     options.closeToTrayOnWindows &&
     !options.forceQuit &&
-    !options.explicitQuitRequested
-  ) {
+    !options.explicitQuitRequested &&
+    (options.hasScheduledWork || !options.isLastWindow);
+  if (shouldHideToTray) {
     options.logger.info(`[createWindow] window close hidden to tray (${options.label})`);
     options.hideWindow?.();
     return true;
   }
 
-  if (options.platform === "darwin" || options.forceQuit || !options.isLastWindow) {
+  if (options.forceQuit || !options.isLastWindow) {
+    return false;
+  }
+
+  // macOS 关窗语义是隐藏窗口、应用留在 Dock；只有确认没有待触发工作时才按同一规则退出。
+  if (options.platform === "darwin" && options.hasScheduledWork) {
     return false;
   }
 

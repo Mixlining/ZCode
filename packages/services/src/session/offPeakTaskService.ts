@@ -526,9 +526,16 @@ export class OffPeakTaskService implements IOffPeakTaskService {
 
   /** 单次同步周期；显式调用（测试/启动扫描）不受 stopSync 影响，仅自动重排循环受控。 */
   async runSyncCycle(): Promise<void> {
-    if (this.syncRunning) return;
+    if (this.syncRunning) {
+      // 已有一轮在跑：这次请求不能直接丢弃。空闲停轮询后循环只在 create/continue
+      // 重新拉起，若此时恰好有一轮在途，丢掉这次 arm 会让新任务的票状态再无人轮询。
+      this.ensureSyncScheduled(OFF_PEAK_SYNC_MIN_INTERVAL_MS);
+      return;
+    }
     this.syncRunning = true;
     let nextDelay = OFF_PEAK_SYNC_MAX_INTERVAL_MS;
+    // 无待触发工作且没有待核销终态时可以彻底停掉轮询；只有 create/continue 重新唤醒。
+    let shouldReschedule = true;
     try {
       // 1) 核销 outbox 捎带补报（不新增计时器）。
       await this.flushSettleOutbox();
@@ -544,8 +551,9 @@ export class OffPeakTaskService implements IOffPeakTaskService {
         }
       }
       if (withTickets.length === 0 && nonTerminal.length === 0) {
-        // 无任务：不再自动重排，等下一次 create/continue 触发。
+        // 无任务：不再自动重排，等下一次 create/continue 触发（新任务的票状态也由那次拉起）。
         this.consecutiveSyncFailures = 0;
+        shouldReschedule = (await this.deps.repo.listUnsettledTerminal()).length > 0;
         return;
       }
       if (withTickets.length > 0) {
@@ -584,11 +592,17 @@ export class OffPeakTaskService implements IOffPeakTaskService {
       );
     } finally {
       this.syncRunning = false;
-      const clamped = Math.min(
-        Math.max(nextDelay, OFF_PEAK_SYNC_MIN_INTERVAL_MS),
-        OFF_PEAK_SYNC_MAX_INTERVAL_MS,
-      );
-      this.ensureSyncScheduled(clamped);
+      // 空闲时不再重排：之前 finally 无条件重排，让「无任务就停」的注释与实现相反，
+      // 零任务也每 5 分钟读一次库，直到 host 退出。
+      if (shouldReschedule) {
+        const clamped = Math.min(
+          Math.max(nextDelay, OFF_PEAK_SYNC_MIN_INTERVAL_MS),
+          OFF_PEAK_SYNC_MAX_INTERVAL_MS,
+        );
+        this.ensureSyncScheduled(clamped);
+      } else {
+        this.deps.logger.info("off-peak sync idle: no pending task, polling stopped");
+      }
     }
   }
 

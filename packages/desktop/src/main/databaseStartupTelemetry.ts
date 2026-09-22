@@ -1,5 +1,6 @@
 import armsRum from "@arms/rum-electron";
 import {
+  ZCODE_TELEMETRY_ENABLED,
   ZCODE_VERSION,
   type DatabaseStartupState,
   type ArmsCustomEventPayload,
@@ -8,7 +9,9 @@ import { ensureDesktopDeviceMidSync } from "./desktopDeviceMid.js";
 import { buildFinalArmsCustomEventPayload } from "./desktopArmsCustomEvent.js";
 import { logger } from "./logger.js";
 
-const deviceMid = ensureDesktopDeviceMidSync();
+// 懒解析：device_mid 只在真正要上报时才读盘。此前在模块加载期同步读盘，
+// 而遥测硬关闭的构建根本不会上报，等于每次启动白付一次磁盘 IO。
+let deviceMid: string | null = null;
 type Attempt = { lastStage: string; stageAt: number; databaseFinished: boolean; terminal: boolean };
 const attempts = new Map<string, Attempt>();
 
@@ -20,6 +23,7 @@ function send(
 ) {
   const eventId = `${state.attemptId}:${name}:${properties?.scope_id ?? properties?.database_id ?? state.sequence}`;
   try {
+    deviceMid ??= ensureDesktopDeviceMidSync();
     const payload = buildFinalArmsCustomEventPayload({
       payload: {
         name,
@@ -51,6 +55,9 @@ function send(
 
 /** 输入是 Host 聚合镜像；不访问数据库/故障磁盘、不写逐样本日志。 */
 export function reportDatabaseStartupState(state: DatabaseStartupState): void {
+  // 遥测硬关闭：整个数据库启动埋点只为 ARMS 服务，poload 构造、attempts 记账与
+  // [database-startup] terminal 日志一并跳过（阶段镜像仍照常转发给 renderer）。
+  if (!ZCODE_TELEMETRY_ENABLED) return;
   let attempt = attempts.get(state.attemptId);
   if (!attempt) {
     if (attempts.size >= 128) attempts.delete(attempts.keys().next().value!);

@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { cpus, totalmem } from "node:os";
-import { ZCODE_MCP_RESOURCE_SAMPLE_INTERVAL_MS, type ZCodeMcpResourceSample } from "@zcode/shared";
+import {
+  ZCODE_MCP_RESOURCE_SAMPLE_INTERVAL_MS,
+  ZCODE_TELEMETRY_ENABLED,
+  type ZCodeMcpResourceSample,
+} from "@zcode/shared";
 import {
   createProcessProbe,
   type ProcessProbe,
@@ -44,6 +48,15 @@ export interface McpResourceTelemetryOptions {
 
 /** 一个 tracker 一个定时器和探针；CPU 基线只活到下次采样，不保存历史序列。 */
 export function createMcpResourceTelemetry(options: McpResourceTelemetryOptions) {
+  // 遥测硬关闭：不建 5 分钟定时器、不 spawn 外部进程（Windows tasklist / macOS ps）、
+  // 不维护每 pid 的 CPU 基线表——样本的消费者（app 侧资源遥测）已经停用。
+  if (!ZCODE_TELEMETRY_ENABLED) {
+    return {
+      sampleNow: async (): Promise<void> => {},
+      start: (): void => {},
+      stop: (): void => {},
+    };
+  }
   const probe = options.processProbe ?? createProcessProbe({ platform: options.platform });
   const logicalCpuCount = options.logicalCpuCount ?? Math.max(1, cpus().length);
   const totalMemoryGb = options.totalMemoryGb ?? Math.round(totalmem() / 1024 ** 3);

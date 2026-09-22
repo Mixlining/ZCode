@@ -389,7 +389,9 @@ export function SettingsPage({
     BUILTIN_MODEL_PROVIDER_IDS.bigmodelTeamCodingPlan,
   );
   const usageZaiEntitlement = useUsageEntitlement({
+    // 套餐硬关闭：用量页只剩本地「应用用量」，套餐额度探测与刷新不再发起。
     enabled:
+      !CODING_PLAN_UI_DISABLED &&
       activeSection === "usage" &&
       !usageProviderSettingsLoading &&
       Boolean(usageZaiProviderFingerprint),
@@ -405,10 +407,11 @@ export function SettingsPage({
     }),
     // 个人 Usage source 依赖 entitlement snapshot；冷启动无缓存时若不先探测，
     // source 不会渲染，子面板也无法触发 access 刷新。共享 freshness window 继续负责限频。
-    refreshOnMount: true,
+    refreshOnMount: !CODING_PLAN_UI_DISABLED,
   });
   const usageBigmodelEntitlement = useUsageEntitlement({
     enabled:
+      !CODING_PLAN_UI_DISABLED &&
       activeSection === "usage" &&
       !usageProviderSettingsLoading &&
       Boolean(usageBigmodelProviderFingerprint),
@@ -422,19 +425,26 @@ export function SettingsPage({
       providerId: BUILTIN_MODEL_PROVIDER_IDS.bigmodelIndividualCodingPlan,
       providerFingerprint: usageBigmodelProviderFingerprint,
     }),
-    refreshOnMount: true,
+    refreshOnMount: !CODING_PLAN_UI_DISABLED,
   });
   // 原只拉 bigmodel family 的企业 pricing，zai team plan 在使用统计页
   // 永远拿不到 team project 上下文；后续又误用 Individual Provider 的权益作为 Team
   // 商品门禁，导致仅有 Team Plan 的账号仍然没有 Usage 来源。企业商品只依赖对应的
   // Team Account Provider，个人额度继续依赖 Individual Provider，避免两个产品身份串线。
   const usageBigmodelEnterpriseProducts = useEnterpriseCodingPlanProducts({
-    enabled: !usageProviderSettingsLoading && Boolean(usageBigmodelTeamProviderFingerprint),
+    // 套餐硬关闭：用量页的套餐 tab 已不再生成，企业定价请求也不再发出。
+    enabled:
+      !CODING_PLAN_UI_DISABLED &&
+      !usageProviderSettingsLoading &&
+      Boolean(usageBigmodelTeamProviderFingerprint),
     authenticated: true,
     family: "bigmodel",
   });
   const usageZaiEnterpriseProducts = useEnterpriseCodingPlanProducts({
-    enabled: !usageProviderSettingsLoading && Boolean(usageZaiTeamProviderFingerprint),
+    enabled:
+      !CODING_PLAN_UI_DISABLED &&
+      !usageProviderSettingsLoading &&
+      Boolean(usageZaiTeamProviderFingerprint),
     authenticated: true,
     family: "zai",
   });

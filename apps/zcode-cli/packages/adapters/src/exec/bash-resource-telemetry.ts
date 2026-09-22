@@ -3,6 +3,7 @@ import { freemem } from "node:os";
 import {
   BASH_RESOURCE_MAX_SAMPLES,
   BASH_RESOURCE_SAMPLE_INTERVAL_MS,
+  ZCODE_TELEMETRY_ENABLED,
   type ZCodeToolExecResource,
 } from "@zcode/shared";
 import { createProcessProbe, type ProcessProbe } from "../device/process-probe.js";
@@ -24,6 +25,10 @@ interface BashResourceTelemetryOptions {
 export function createBashResourceTelemetry(options: BashResourceTelemetryOptions): {
   finish(exitKind: ZCodeToolExecResource["exitKind"]): void;
 } {
+  // 遥测硬关闭：不订阅 1 秒共享轮询、不每 15 秒读 /proc 或 ps、不在命令结束时报样本。
+  if (!ZCODE_TELEMETRY_ENABLED) {
+    return { finish: (): void => {} };
+  }
   const platform = options.platform ?? process.platform;
   const startedAt = performance.now();
   const probe = options.probe ?? createProcessProbe({ platform });

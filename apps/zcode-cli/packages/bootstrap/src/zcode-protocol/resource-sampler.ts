@@ -1,7 +1,9 @@
 import type { Logger } from "@zcode/contracts";
 import {
   createMemorySampleWriteGate,
+  MEMORY_DIAGNOSTICS_ENABLED,
   memoryUsageToSampleFields,
+  ZCODE_TELEMETRY_ENABLED,
   zcodeProtocolNotifications,
   type MemorySample,
   type ZCodeProtocolNotification,
@@ -23,10 +25,13 @@ export function startProtocolResourceSampler(
     const memoryDiagnosticsGate = createMemorySampleWriteGate();
     const sampler = createZCodeProcessResourceSampler({
       onSample: (sample, memoryUsage) => {
-        send({
-          method: zcodeProtocolNotifications.processResourceSample,
-          params: sample,
-        });
+        // 遥测硬关闭：不再把 60 秒进程样本发给 app（main 侧入口已丢弃，累加器也永不排空）。
+        if (ZCODE_TELEMETRY_ENABLED) {
+          send({
+            method: zcodeProtocolNotifications.processResourceSample,
+            params: sample,
+          });
+        }
         // resident session TTL / 水位收敛借用资源采样节拍（60s）作兜底，不新增定时器；
         // sampler 对 onSample 已有异常兜底，单次 rebalance 失败不影响遥测上报。
         server.rebalanceResidentSessions();
@@ -36,6 +41,11 @@ export function startProtocolResourceSampler(
           server.pruneDetachedChildPublishers();
         } catch {
           // 兜底淘汰失败不影响资源上报与诊断日志。
+        }
+        // 内存诊断日志默认关闭：这个 60 秒节拍本身还驱动 resident session 收敛与事件存储淘汰，
+        // 不能整段停掉，只把门控写盘这一步放到开关后面。
+        if (!MEMORY_DIAGNOSTICS_ENABLED) {
+          return;
         }
         try {
           const memorySample: MemorySample = {

@@ -11,6 +11,7 @@ import {
   dispatchFinalArmsCustomEvent,
   type FinalArmsCustomEventE2EController,
 } from "./desktopArmsCustomEvent.js";
+import { ZCODE_TELEMETRY_ENABLED } from "@zcode/shared";
 
 const REMOTE_USAGE_ARMS_GROUP = "remote_usage";
 const REMOTE_USAGE_ARMS_EVENT_CONNECT_RESULT = "remote_connect_result";
@@ -112,6 +113,11 @@ function buildRemoteDisconnectArmsPayload(params: {
 
 export function configureRemoteUsageArmsTelemetry(config: RemoteUsageArmsTelemetryConfig): void {
   stopRemoteUsageArmsPeriodicSampling();
+  if (!ZCODE_TELEMETRY_ENABLED) {
+    // 遥测硬关闭：不再注册这 5 分钟的活跃会话计数采样（它此前不受遥测开关约束）。
+    telemetryConfig = null;
+    return;
+  }
   telemetryConfig = config;
   const schedule = config.setInterval ?? setInterval;
   periodicTimer = schedule(reportPeriodicGauge, REMOTE_USAGE_GAUGE_INTERVAL_MS);

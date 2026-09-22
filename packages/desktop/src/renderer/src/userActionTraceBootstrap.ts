@@ -2,6 +2,7 @@ import {
   DISABLED_RENDERER_ACTION_TRACE_CONFIG,
   RENDERER_ACTION_TRACE_SERVICE_NAME,
   ZCODE_ENV,
+  ZCODE_TELEMETRY_ENABLED,
   ZCODE_VERSION,
   type IPlatformService,
   type RendererActionTraceConfigV1,
@@ -12,6 +13,11 @@ export function initializeDesktopUserActionTrace(options: {
   platform: IPlatformService;
   isLocalDevelopmentRuntime: boolean;
 }): () => void {
+  if (!ZCODE_TELEMETRY_ENABLED) {
+    // 遥测硬关闭：不注册渲染层 action trace 采集（它会按远端灰度上报批次）。
+    setUserActionTelemetry(null);
+    return () => {};
+  }
   const sendBatch = options.platform.reportRendererActionTraceBatch;
   const getConfig = options.platform.getRendererActionTraceConfig;
   if (!sendBatch || !getConfig) {

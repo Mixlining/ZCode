@@ -106,6 +106,7 @@ async function tick(): Promise<void> {
         }
         // keep-awake：上报执行中计数，main 据此 + 设置决定 powerSaveBlocker。
         await reportOffPeakActiveCount();
+        await exitWhenNoPendingWork();
       } catch (error) {
         log("error", `tick failed: ${error instanceof Error ? error.message : String(error)}`);
       }
@@ -322,6 +323,33 @@ async function settleDispatchResult(
       .get(automationId)
       .then((automation) => (automation ? computeAutomationNextRunAt(automation, now) : null)),
   });
+}
+
+/**
+ * 没有「下次会触发」的工作时收尾退出：常驻 scheduler 只在真的有自动化或闲时任务时占用内存。
+ * 仍持有在途派发/认领时不退出——那些工作还没有结算。main 从进程 exit 事件清空句柄，
+ * 之后 create/update/runNow 等写入会经 host 的 wake 重新拉起进程。
+ */
+async function exitWhenNoPendingWork(): Promise<void> {
+  if (disposed || inFlight.size > 0 || offPeakInFlight.size > 0) {
+    return;
+  }
+  let hasWork = true;
+  try {
+    hasWork = (await repo.hasPendingWork()) || (await offPeakRepo.hasPendingWork());
+  } catch (error) {
+    // 判定失败时保持常驻：漏退只多占一份内存，误退会让已排定的任务不再触发。
+    log(
+      "warn",
+      `pending work check failed, keep scheduler alive: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return;
+  }
+  if (hasWork) {
+    return;
+  }
+  log("info", "no pending scheduled work, scheduler exiting");
+  await dispose();
 }
 
 async function dispose(): Promise<void> {

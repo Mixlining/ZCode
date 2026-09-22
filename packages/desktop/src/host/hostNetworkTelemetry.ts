@@ -1,4 +1,4 @@
-import { HostResponseTypes } from "@zcode/shared";
+import { HostResponseTypes, ZCODE_TELEMETRY_ENABLED } from "@zcode/shared";
 import { setNetworkTelemetrySink, type NetworkObservation } from "@zcode/rpc";
 
 interface HostNetworkTelemetryParentPort {
@@ -30,6 +30,11 @@ function flushHostNetworkTelemetryBatch(): void {
 export function registerHostNetworkTelemetry(
   parentPort: HostNetworkTelemetryParentPort | null | undefined,
 ): void {
+  if (!ZCODE_TELEMETRY_ENABLED) {
+    // 遥测硬关闭：不注册采集与 30 秒 flush 定时器，也不占用 host 的观察缓冲。
+    activeParentPort = null;
+    return;
+  }
   // 修复原因：desktop host 是 Electron utility process，通信端口在 process.parentPort；
   // node:worker_threads.parentPort 在这里为 null，会导致 LLM/RPC 网络遥测批次无法发回 main。
   activeParentPort = parentPort ?? null;

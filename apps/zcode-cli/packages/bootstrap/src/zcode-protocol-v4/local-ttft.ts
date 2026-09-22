@@ -15,6 +15,7 @@ import {
   ConversationTelemetryFactNormalizer,
   streamingParentToolCallId,
 } from "./conversation-telemetry-facts.js";
+import { ZCODE_TELEMETRY_ENABLED } from "@zcode/shared";
 import { randomUUID } from "node:crypto";
 import {
   LOCAL_TTFT_MAX_PENDING,
@@ -45,6 +46,8 @@ export class LocalTtftRecorder {
   ) {}
 
   receive(envelope: CommandEnvelope, busy: boolean): boolean {
+    // 遥测硬关闭：不记录、不起 1 秒时钟、不订阅 preparation（消费者与上报出口都已停用）。
+    if (!ZCODE_TELEMETRY_ENABLED) return true;
     this.prune();
     if (
       !envelope.ttft ||
@@ -121,6 +124,7 @@ export class LocalTtftRecorder {
     }
   }
   admitted(commandId: string): void {
+    if (!ZCODE_TELEMETRY_ENABLED) return;
     const record = this.records.get(commandId);
     if (record) {
       record.admittedAt ??= this.now();
@@ -128,6 +132,7 @@ export class LocalTtftRecorder {
     }
   }
   event(sessionId: string, event: SessionEvent): void {
+    if (!ZCODE_TELEMETRY_ENABLED) return;
     if (!this.records.size) return;
     this.queueEvent(sessionId, event);
     if (
@@ -358,6 +363,7 @@ export class LocalTtftRecorder {
     }
   }
   forSession(sessionId: string, commandId?: string): LocalTtftFacts | undefined {
+    if (!ZCODE_TELEMETRY_ENABLED) return undefined;
     this.prune();
     return [...this.completed.values(), ...this.records.values()]
       .reverse()

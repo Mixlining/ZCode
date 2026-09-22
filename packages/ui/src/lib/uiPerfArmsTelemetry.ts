@@ -1,4 +1,5 @@
 import {
+  ZCODE_TELEMETRY_ENABLED,
   sanitizeTelemetryModelValue,
   type ArmsCustomEventPayload,
   type IPlatformService,
@@ -55,7 +56,8 @@ function sanitizeModelProperty(
 
 // 原因:ARMS 属观测链路,UI 主流程(启动/发送/渲染)不得因埋点失败而中断。
 function emit(payload: ArmsCustomEventPayload): void {
-  if (!armsReporter) {
+  // 遥测硬关闭：main 侧 handler 已直接丢弃，renderer 不再做清洗与 IPC 往返。
+  if (!ZCODE_TELEMETRY_ENABLED || !armsReporter) {
     return;
   }
   const sanitized: ArmsCustomEventPayload = {

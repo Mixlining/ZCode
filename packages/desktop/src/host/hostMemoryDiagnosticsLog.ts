@@ -1,6 +1,7 @@
 import {
   createMemorySampleWriteGate,
   formatMemorySampleLine,
+  MEMORY_DIAGNOSTICS_ENABLED,
   MEMORY_SAMPLE_INTERVAL_MS,
   memoryUsageToSampleFields,
   type MemorySample,
@@ -48,6 +49,11 @@ interface HostMemoryDiagnosticsLog {
 export function startHostMemoryDiagnosticsLog(
   options: StartHostMemoryDiagnosticsLogOptions,
 ): HostMemoryDiagnosticsLog {
+  if (!MEMORY_DIAGNOSTICS_ENABLED) {
+    // 硬关闭：Host 这个 60 秒采样器同时驱动本地 [memory] 日志与 HostResourceSample，
+    // 默认不起定时器；排查内存问题时把开关改回 true。
+    return { sampleNow: () => false, stop: () => {} };
+  }
   const readMemoryUsage = options.readMemoryUsage ?? (() => process.memoryUsage());
   const now = options.now ?? (() => Date.now());
   const timer = options.timer ?? {

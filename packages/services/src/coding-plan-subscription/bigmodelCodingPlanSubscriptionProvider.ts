@@ -64,6 +64,7 @@ import {
   ZAI_PROVIDER_ID,
   ZCODE_VERSION,
   DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY,
+  REMOTE_ROLLOUT_DISABLED,
   createDynamicWorkflowClientConfig,
   normalizeDynamicWorkflowMode,
   resolveDynamicWorkflowClientConfig,
@@ -248,6 +249,10 @@ export class BigModelCodingPlanSubscriptionProvider {
   }): Promise<DynamicWorkflowClientConfig> {
     // 覆盖合法即短路：判据（normalize）与快照构造（resolve）都留在 shared，这里不复述取值域。
     if (normalizeDynamicWorkflowMode(process.env[ZCODE_DYNAMIC_WORKFLOW_MODE_ENV])) {
+      return resolveDynamicWorkflowClientConfig({ remote: undefined, env: process.env });
+    }
+    // 灰度硬关闭：不再请求远端 dynamicWorkflow 字段，本地覆盖之外一律按默认（关闭）处理。
+    if (REMOTE_ROLLOUT_DISABLED) {
       return resolveDynamicWorkflowClientConfig({ remote: undefined, env: process.env });
     }
     if (options?.forceRefresh) {

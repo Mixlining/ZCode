@@ -1,4 +1,5 @@
 import type { WebContents } from "electron";
+import { ZCODE_TELEMETRY_ENABLED } from "@zcode/shared";
 
 /**
  * autoInject 在 dom-ready 才 executeJavaScript init，Vite 场景下 window.load 往往更早结束，
@@ -38,6 +39,9 @@ const ARMS_BROWSER_PERF_LOAD_NUDGE_SCRIPT = `(function () {
 })();`;
 
 export function scheduleArmsBrowserPerfLoadNudge(webContents: WebContents): void {
+  // 遥测硬关闭时 SDK 从不 init：脚本里的 tryNudge 会白等 80×25ms（约 2 秒）等一个
+  // 永远不存在的 window.RumSDK，纯烧渲染进程 CPU，所以连监听都不挂。
+  if (!ZCODE_TELEMETRY_ENABLED) return;
   const nudge = (): void => {
     if (webContents.isDestroyed()) {
       return;

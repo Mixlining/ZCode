@@ -3,6 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import armsRum from "@arms/rum-electron";
 import { BrowserWindow, type WebContents } from "electron";
 import {
+  ZCODE_TELEMETRY_ENABLED,
   mapZCodeEnvToArmsRumEnv,
   type HostAgentProcessErrorResponse,
   type HostAgentProcessExceptionResponse,
@@ -426,6 +427,8 @@ function reportStabilityCustom(
   windowScene?: StabilityWindowScene,
   lifecycleSceneOverride?: StabilityLifecycleScene,
 ): void {
+  // 遥测硬关闭：payload 构造与 SDK 调用全部跳过（调用方仍可做分类判断）。
+  if (!ZCODE_TELEMETRY_ENABLED) return;
   if (!globalContext) {
     return;
   }
@@ -465,6 +468,8 @@ export function reportAgentProcessExceptionToArms(
   event: HostAgentProcessExceptionResponse,
   logger: StabilityLogger,
 ): void {
+  // 遥测硬关闭：不再构造异常上报 payload。
+  if (!ZCODE_TELEMETRY_ENABLED) return;
   if (!globalContext) return;
   const key = `${event.runtimeInstanceId}:${event.diagnostic.errorId}`;
   if (reportedAgentExceptions.has(key)) return;
@@ -518,8 +523,10 @@ export function reportAgentProcessExceptionToArms(
 
 export function reportAgentProcessStartToArms(
   event: HostAgentProcessSpawnedResponse,
-  logger: StabilityLogger,
+  _logger: StabilityLogger,
 ): void {
+  // 遥测硬关闭：不再构造 agent 启动上报 payload。
+  if (!ZCODE_TELEMETRY_ENABLED) return;
   reportStabilityCustom("perf_agent_start", {
     process_role: "agent",
     // mcp-status 与 plugin lane 进程共用 cwd/command，只有 lane 能区分事件来源。
@@ -528,17 +535,14 @@ export function reportAgentProcessStartToArms(
     runtime_generation: event.runtimeGeneration,
     runtime_instance_id: event.runtimeInstanceId,
   });
-  logger.info("[stability] perf_agent_start reported", {
-    pid: event.pid,
-    runtimeGeneration: event.runtimeGeneration,
-    runtimeInstanceId: event.runtimeInstanceId,
-  });
 }
 
 export function reportAgentProcessReadyToArms(
   event: HostAgentProcessReadyResponse,
-  logger: StabilityLogger,
+  _logger: StabilityLogger,
 ): void {
+  // 遥测硬关闭：不再构造 agent 就绪上报 payload。
+  if (!ZCODE_TELEMETRY_ENABLED) return;
   reportStabilityCustom("perf_agent_ready", {
     process_role: "agent",
     // mcp-status 与 plugin lane 进程共用 cwd/command，只有 lane 能区分事件来源。
@@ -548,18 +552,14 @@ export function reportAgentProcessReadyToArms(
     runtime_instance_id: event.runtimeInstanceId,
     startup_duration_ms: event.startupDurationMs,
   });
-  logger.info("[stability] perf_agent_ready reported", {
-    pid: event.pid,
-    runtimeGeneration: event.runtimeGeneration,
-    runtimeInstanceId: event.runtimeInstanceId,
-    startupDurationMs: event.startupDurationMs,
-  });
 }
 
 export function reportAgentProcessExitToArms(
   event: HostAgentProcessExitedResponse,
   logger: StabilityLogger,
 ): void {
+  // 遥测硬关闭：不再构造 agent 退出/崩溃上报 payload。
+  if (!ZCODE_TELEMETRY_ENABLED) return;
   if (event.terminationKind !== "unexpected") {
     return;
   }
@@ -613,21 +613,14 @@ export function reportAgentProcessExitToArms(
     error_fingerprint: diagnostic.errorFingerprint,
   });
   // 上报成功属于观测日志，error 会被 console collector 再生成一条伪 JS 异常。
-  logger.info("[stability] perf_agent_crash reported", {
-    pid: event.pid,
-    exitCode: event.exitCode,
-    signal: event.signal,
-    runtimeGeneration: event.runtimeGeneration,
-    errorName: diagnostic.errorName,
-    errorCode: diagnostic.errorCode,
-    errorFingerprint: diagnostic.errorFingerprint,
-  });
 }
 
 export function reportAgentProcessSpawnErrorToArms(
   event: HostAgentProcessErrorResponse,
-  logger: StabilityLogger,
+  _logger: StabilityLogger,
 ): void {
+  // 遥测硬关闭：不再构造 spawn 失败上报 payload。
+  if (!ZCODE_TELEMETRY_ENABLED) return;
   const diagnostic = parseAgentSpawnDiagnostic(event);
   reportStabilityCustom("perf_agent_spawn_error", {
     process_role: "agent",
@@ -643,13 +636,6 @@ export function reportAgentProcessSpawnErrorToArms(
     error_message: diagnostic.errorMessage,
     error_stack: diagnostic.errorStack,
     error_fingerprint: diagnostic.errorFingerprint,
-  });
-  logger.info("[stability] perf_agent_spawn_error reported", {
-    pid: event.pid,
-    runtimeGeneration: event.runtimeGeneration,
-    errorName: diagnostic.errorName,
-    errorCode: diagnostic.errorCode,
-    errorFingerprint: diagnostic.errorFingerprint,
   });
 }
 
@@ -790,7 +776,10 @@ function clearUnresponsiveWatch(webContentsId: number): void {
   unresponsiveByWebContentsId.delete(webContentsId);
 }
 
-function pollUnresponsiveState(state: UnresponsiveWatchState, logger: StabilityLogger): void {
+function pollUnresponsiveState(state: UnresponsiveWatchState): void {
+  // 遥测硬关闭：这个 1 秒轮询只服务 perf_anr / perf_freeze；unresponsive/responsive 日志
+  // 在 attachWebContentsStabilityWatch 里，不受此处影响。
+  if (!ZCODE_TELEMETRY_ENABLED) return;
   if (state.crashReported) {
     clearUnresponsiveWatch(state.webContentsId);
     return;
@@ -810,11 +799,6 @@ function pollUnresponsiveState(state: UnresponsiveWatchState, logger: StabilityL
       },
       windowScene,
     );
-    logger.warn("[stability] perf_anr reported", {
-      windowId: state.windowId,
-      webContentsId: state.webContentsId,
-      durationMs: elapsedMs,
-    });
   }
 
   if (shouldReportFreeze(elapsedMs, state.freezeReported, state.crashReported)) {
@@ -828,15 +812,10 @@ function pollUnresponsiveState(state: UnresponsiveWatchState, logger: StabilityL
       },
       windowScene,
     );
-    logger.warn("[stability] perf_freeze reported", {
-      windowId: state.windowId,
-      webContentsId: state.webContentsId,
-      durationMs: elapsedMs,
-    });
   }
 
   if (!state.freezeReported && !state.crashReported) {
-    state.pollTimer = setTimeout(() => pollUnresponsiveState(state, logger), 1_000);
+    state.pollTimer = setTimeout(() => pollUnresponsiveState(state), 1_000);
     state.pollTimer.unref?.();
   }
 }
@@ -866,7 +845,7 @@ function attachWebContentsStabilityWatch(
       webContentsId,
       url: webContents.getURL(),
     });
-    pollUnresponsiveState(state, logger);
+    pollUnresponsiveState(state);
   });
 
   webContents.on("responsive", () => {
@@ -895,7 +874,9 @@ export function configureDesktopStabilityTelemetry(context: StabilityGlobalConte
 /** 与 @arms/rum-electron pv-collector 的 initial_load 窗口对齐，避免早于首屏 PV 单独 flush */
 const PERF_APP_START_AFTER_VIEW_MS = 3_200;
 
-function reportPerfAppStart(logger: StabilityLogger): void {
+function reportPerfAppStart(_logger: StabilityLogger): void {
+  // 遥测硬关闭：不再构造启动上报 payload。
+  if (!ZCODE_TELEMETRY_ENABLED) return;
   if (perfAppStartReported) {
     return;
   }
@@ -903,7 +884,6 @@ function reportPerfAppStart(logger: StabilityLogger): void {
   lifecycleScene = "cold_start";
   reportStabilityCustom("perf_app_start", {}, "main", "cold_start");
   lifecycleScene = "runtime";
-  logger.info("[stability] perf_app_start reported");
 }
 
 /**
@@ -915,6 +895,8 @@ export function scheduleReportPerfAppStartAfterMainViewReady(
   webContents: WebContents,
   logger: StabilityLogger,
 ): void {
+  // 遥测硬关闭：不再构造启动上报 payload。
+  if (!ZCODE_TELEMETRY_ENABLED) return;
   if (perfAppStartReported || webContents.isDestroyed()) {
     return;
   }
@@ -969,7 +951,6 @@ export function notifyStabilityAppExit(
     exit_code: options?.exitCode ?? 0,
     exit_kind: options?.exitKind ?? "normal",
   });
-  logger.info("[stability] perf_app_exit reported", { scene, exitCode: options?.exitCode ?? 0 });
 }
 
 function reportPerfCrash(
@@ -989,7 +970,6 @@ function reportPerfCrash(
   // Bugfix: 旧实现按 crash_kind 做五分钟去重，会吞掉同类但不同进程的真实事故。
   // Electron 的 gone 回调本身就是单次事故边界，这里每个回调只上报一次。
   reportStabilityCustom("perf_crash", crashProperties, resolveWindowScene(win));
-  logger.error("[stability] perf_crash reported", crashProperties);
 }
 
 function reportPerfProcessExit(
@@ -999,9 +979,6 @@ function reportPerfProcessExit(
 ): void {
   reportStabilityCustom("perf_process_exit", properties, resolveWindowScene(win));
   // Bug 原因：perf_process_exit 同时承载受控退出和可恢复的 helper 异常退出。
-  // 旧实现统一使用 error，导致正常生命周期被 ARMS console collector 误计为异常。
-  const logLevel = properties.exit_kind === "normal" ? "info" : "warn";
-  logger[logLevel]("[stability] perf_process_exit reported", properties);
 }
 
 export function registerDesktopStabilityMonitors(

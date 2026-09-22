@@ -89,6 +89,8 @@ export function createAppTelemetryRuntime({
 
   return {
     syncRendererContext(input: { rendererId: number; context: TelemetryRendererContext }): void {
+      // 遥测硬关闭：不再按 renderer 缓存 context（此前只增不减，且唯一的读取方是已停用的上报）。
+      if (!ZCODE_TELEMETRY_ENABLED) return;
       rendererContexts.set(input.rendererId, input.context);
       latestRendererContext = input.context;
       flushStartupTelemetry();

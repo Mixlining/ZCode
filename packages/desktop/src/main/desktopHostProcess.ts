@@ -32,6 +32,7 @@ import {
   type RemoteTarget,
   type WorkspacePurpose,
   ZCODE_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV,
+  ZCODE_TELEMETRY_ENABLED,
 } from "@zcode/shared";
 import { getMainLaunchPartialMarks } from "./desktopLaunchMarks.js";
 import { BroadcastHub } from "./broadcastHub.js";
@@ -298,12 +299,16 @@ export function spawnHostProcess(
     }
 
     if (result.data.type === HostResponseTypes.NetworkTelemetryBatch) {
+      // 遥测硬关闭：这些 host 上报的消费者（desktopResourceTelemetry 等）已不再采样，
+      // 直接在入口丢弃，不再做 zod 解析与累加器写入。
+      if (!ZCODE_TELEMETRY_ENABLED) return;
       ingestHostNetworkObservations(result.data.observations);
       return;
     }
 
     // CLI 自采的 60 秒样本：按 services 打的 lane 归入 cli_chat / cli_aux 角色。
     if (result.data.type === HostResponseTypes.AgentResourceSample) {
+      if (!ZCODE_TELEMETRY_ENABLED) return;
       ingestCliResourceSample(
         result.data.sample,
         result.data.runtimeSurface,
@@ -314,6 +319,7 @@ export function spawnHostProcess(
 
     // Host 自采的 60 秒样本：main 只取 heap 作 host 角色事件的 heap 维度。
     if (result.data.type === HostResponseTypes.HostResourceSample) {
+      if (!ZCODE_TELEMETRY_ENABLED) return;
       ingestHostSelfResourceSample(result.data.sample);
       return;
     }
@@ -324,11 +330,13 @@ export function spawnHostProcess(
     }
 
     if (result.data.type === HostResponseTypes.ToolExecResource) {
+      if (!ZCODE_TELEMETRY_ENABLED) return;
       ingestToolExecResource(result.data.sample, result.data.runtimeSurface);
       return;
     }
 
     if (result.data.type === HostResponseTypes.McpResourceSamples) {
+      if (!ZCODE_TELEMETRY_ENABLED) return;
       ingestMcpResourceSamples(
         result.data.samples,
         result.data.runtimeSurface,
@@ -338,11 +346,13 @@ export function spawnHostProcess(
     }
 
     if (result.data.type === HostResponseTypes.McpTelemetry) {
+      if (!ZCODE_TELEMETRY_ENABLED) return;
       dependencies.onMcpTelemetry?.(result.data);
       return;
     }
 
     if (result.data.type === HostResponseTypes.SessionCreateTelemetry) {
+      if (!ZCODE_TELEMETRY_ENABLED) return;
       dependencies.onSessionCreateTelemetry?.(result.data);
       return;
     }

@@ -10,6 +10,7 @@ import {
 } from "node:fs";
 import { basename, join } from "node:path";
 import { app, crashReporter, type BrowserWindow, type WebContents } from "electron";
+import { ZCODE_TELEMETRY_ENABLED } from "@zcode/shared";
 import { getAppConfigDir } from "@zcode/services/node";
 import {
   type CrashDumpV8OomSummary,
@@ -359,14 +360,19 @@ export function initializeCrashCapture(
   mkdirSync(paths.archiveDir, { recursive: true });
   app.setPath("crashDumps", paths.stagingDir);
 
-  const startupArchiveResult = archiveCrashDumps(paths);
-  logCrashArchiveCleanup(logger, startupArchiveResult, "startup");
-  if (startupArchiveResult.archivedFiles.length > 0) {
-    logger.info(
-      `[crash-capture] restored ${startupArchiveResult.archivedFiles.length} local dump(s) from previous runs`,
-    );
+  // 归档只为「远端 crash SDK 会上报并清理 live dmp」这条链路服务：本构建遥测硬关闭、
+  // 本地 crashReporter 也没启动，不会有 dump 产生，所以归档扫描（同步 FS 遍历 + 保留策略）
+  // 整段不执行；崩溃本身的 gone 日志与分类不受影响，恢复遥测时改回开关即可。
+  if (ZCODE_TELEMETRY_ENABLED) {
+    const startupArchiveResult = archiveCrashDumps(paths);
+    logCrashArchiveCleanup(logger, startupArchiveResult, "startup");
+    if (startupArchiveResult.archivedFiles.length > 0) {
+      logger.info(
+        `[crash-capture] restored ${startupArchiveResult.archivedFiles.length} local dump(s) from previous runs`,
+      );
+    }
+    logArchivedCrashDumpSummaries(logger, startupArchiveResult, "startup");
   }
-  logArchivedCrashDumpSummaries(logger, startupArchiveResult, "startup");
 
   if (!remoteCrashReporterEnabled && !hasStartedLocalCrashReporter) {
     hasStartedLocalCrashReporter = true;
@@ -430,7 +436,10 @@ export function registerCrashEventMonitor(
     // 远端 crash SDK 可能会在处理后清理 live 目录里的原始 dmp。
     // 这里在事件后补两次延迟归档，把原始 dump 复制到 ~/.zcode/v2/crash/archive，
     // 这样既保留线上上报，又能在本地留下一份可供排查的副本。
-    scheduleCrashArchive(logger, paths, "render-process-gone");
+    // 遥测硬关闭时没有远端 SDK、也没有 dump，两次同步 FS 扫描纯属浪费（见 initializeCrashCapture）。
+    if (ZCODE_TELEMETRY_ENABLED) {
+      scheduleCrashArchive(logger, paths, "render-process-gone");
+    }
   });
 
   app.on("child-process-gone", (_event, details) => {
@@ -439,7 +448,9 @@ export function registerCrashEventMonitor(
       details,
     );
     hooks?.onChildProcessGone?.(details);
-    scheduleCrashArchive(logger, paths, "child-process-gone");
+    if (ZCODE_TELEMETRY_ENABLED) {
+      scheduleCrashArchive(logger, paths, "child-process-gone");
+    }
   });
 
   app.on("browser-window-created", (_, win) => {

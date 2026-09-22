@@ -4,6 +4,7 @@ import {
   resolveZCodeAgentSpawnCwd,
 } from "@zcode/services/storage-startup";
 import type { DatabaseStartupState } from "@zcode/shared";
+import { ZCODE_TELEMETRY_ENABLED } from "@zcode/shared";
 import { DatabaseStartupCoordinator } from "./databaseStartupCoordinator.js";
 import { StartupDiskSampler } from "./startupDiskSampler.js";
 import { prepareHostStorage, prepareSessionStorage } from "./storagePreparationProcesses.js";
@@ -25,9 +26,16 @@ export function createHostDatabaseStartup(options: {
     publish: options.publish,
     prepare: async (report) => {
       const preparedPaths = new Set<string>();
-      sampler = new StartupDiskSampler({ onSample: (disk) => coordinator.updateDisk(disk) });
+      // 磁盘采样（每 2 秒 statfs）只喂 DatabaseStartupState.disk，而该字段只被遥测读取
+      // （renderer 的启动页不读它）。遥测硬关闭时不起这个轮询。
+      sampler = ZCODE_TELEMETRY_ENABLED
+        ? new StartupDiskSampler({ onSample: (disk) => coordinator.updateDisk(disk) })
+        : undefined;
       const currentSampler = sampler;
       const observePath = async (path: string) => {
+        if (!currentSampler) {
+          return;
+        }
         let timer: ReturnType<typeof setTimeout> | undefined;
         try {
           await Promise.race([
@@ -46,7 +54,7 @@ export function createHostDatabaseStartup(options: {
         report("preparing_host_storage", "checking");
         const tasksPath = getTasksIndexDatabasePath();
         await observePath(tasksPath);
-        currentSampler.start();
+        currentSampler?.start();
         await prepareHostStorage(
           tasksPath,
           (phase, migration) =>
@@ -94,8 +102,10 @@ export function createHostDatabaseStartup(options: {
         }
         throw error;
       } finally {
-        currentSampler.stop();
-        coordinator.updateDisk(currentSampler.snapshot());
+        currentSampler?.stop();
+        if (currentSampler) {
+          coordinator.updateDisk(currentSampler.snapshot());
+        }
       }
     },
   });

@@ -1,5 +1,5 @@
 import armsRum from "@arms/rum-electron";
-import type { ZCodeMcpTelemetryEvent } from "@zcode/shared";
+import { ZCODE_TELEMETRY_ENABLED, type ZCodeMcpTelemetryEvent } from "@zcode/shared";
 
 interface DesktopMcpTelemetryContext {
   appVersion: string;
@@ -17,6 +17,8 @@ export function reportMcpTelemetryToArms(
   event: ZCodeMcpTelemetryEvent,
   runtimeSurface: "local" | "remote",
 ): void {
+  // 遥测硬关闭：不再做事件映射与属性序列化（此前每个 MCP 事件都要构造一遍 payload 再调死 SDK）。
+  if (!ZCODE_TELEMETRY_ENABLED) return;
   // 旧 CLI 的内存通知仍允许协议解析，但不能再生成已废弃的 ARMS 事件。
   if (!context || event.kind === "memory") return;
   const mapped = mapMcpTelemetryEvent(event);

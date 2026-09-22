@@ -72,6 +72,7 @@ import {
 import {
   HostMessageTypes,
   HostResponseTypes,
+  ZCODE_TELEMETRY_ENABLED,
   ZCODE_VERSION,
   formatLogPrefix,
   formatZCodeHostProcessName,
@@ -1977,7 +1978,10 @@ function exposeServicesOnMessagePort(
   logger.info(`creating ChannelServer (deferInit=${deferInit})`);
   const rawServer = new ChannelServer(protocol, "host", 1000, deferInit);
   const loggedServer = new LoggingChannelServer(rawServer, logRpc);
-  const server = new NetworkTelemetryChannelServer(loggedServer);
+  // 遥测硬关闭：网络遥测 sink 不再安装，装饰器只会让每次 RPC 多两次时间读取与一次空 sink 调用。
+  const server = ZCODE_TELEMETRY_ENABLED
+    ? new NetworkTelemetryChannelServer(loggedServer)
+    : loggedServer;
   const agentService = services.getOptional(IZCodeAgentService);
   const connectionScope = agentService
     ? createZCodeAgentConnectionScope(agentService, {
@@ -2831,6 +2835,13 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
                 });
               },
               onAutomationManualRunRequested: dispatchManualAutomationRun,
+              // scheduler 空闲退出后不再常驻，自动化写入必须唤醒 main 重新拉起进程认领。
+              onAutomationSchedulerWakeRequested: (automationId) => {
+                parentPort?.postMessage({
+                  type: HostResponseTypes.CronSchedulerWakeRequest,
+                  automationId,
+                });
+              },
               onOffPeakSchedulerWakeRequested: () => {
                 parentPort?.postMessage({ type: HostResponseTypes.OffPeakSchedulerWakeRequest });
               },

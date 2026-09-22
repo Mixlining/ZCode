@@ -3,6 +3,7 @@ import { registerHostMcpResourceTelemetry } from "./hostMcpResourceTelemetry.js"
 import type { IDisposable } from "@zcode/rpc";
 import { IZCodeAgentService, type ServiceCollection } from "@zcode/services";
 import type { ProcessResourceRuntimeSurface } from "@zcode/shared";
+import { ZCODE_TELEMETRY_ENABLED } from "@zcode/shared";
 import { registerHostAgentResourceTelemetry } from "./hostAgentResourceTelemetry.js";
 import { registerHostMcpTelemetry } from "./hostMcpTelemetry.js";
 
@@ -45,6 +46,11 @@ function disposeAll(registrations: IDisposable[]): void {
 export function registerHostServiceResourceTelemetry(
   options: RegisterHostServiceResourceTelemetryOptions,
 ): IDisposable {
+  // 遥测硬关闭：这四路生产者（agent/MCP/工具执行的资源样本）在 main 侧的消费者已经停用，
+  // 继续注册只会把样本经 utilityProcess 端口发出去再被丢弃。
+  if (!ZCODE_TELEMETRY_ENABLED) {
+    return NO_TELEMETRY;
+  }
   // 旧 Server 的未知事件异常发生在对端异步读循环，下面的本地 try/catch 无法保护它；
   // 因此缺能力时必须在获取服务、发送任何 EventListen 之前退出。
   if (options.telemetrySupported === false) {

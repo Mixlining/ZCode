@@ -1,5 +1,9 @@
 import { BrowserWindow, ipcMain } from "electron";
-import { PlatformChannels, type RendererActionTraceConfigV1 } from "@zcode/shared";
+import {
+  PlatformChannels,
+  ZCODE_TELEMETRY_ENABLED,
+  type RendererActionTraceConfigV1,
+} from "@zcode/shared";
 import type { RendererActionTraceBroker } from "./rendererActionTraceBroker.js";
 import type { RendererActionTraceRollout } from "./rendererActionTraceRollout.js";
 
@@ -14,6 +18,10 @@ export function registerRendererActionTraceIpc(options: {
     warn(...args: unknown[]): void;
   };
 }): () => void {
+  if (!ZCODE_TELEMETRY_ENABLED) {
+    // 遥测硬关闭：不注册 action trace 的 IPC 与 60 秒远端灰度刷新（配置来自网络拉取）。
+    return () => {};
+  }
   type RendererInstanceBinding = {
     current?: string;
     stale: Set<string>;

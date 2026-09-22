@@ -5,6 +5,7 @@ import {
   type ExecutionResult,
   type ToolExecutionTelemetry,
 } from "@zcode/contracts";
+import { ZCODE_TELEMETRY_ENABLED } from "@zcode/shared";
 import type { ToolExecutionContext } from "../types.js";
 import { appendBashCwdStderrSuffix } from "./bash-cwd-policy.js";
 import { getGhRateLimitHint } from "./bash-gh-rate-limit.js";
@@ -106,6 +107,8 @@ function createBashPerformanceTelemetry(
   result: ExecutionResult,
   progressTiming: BashProgressTiming | undefined,
 ): ToolExecutionTelemetry | undefined {
+  // 遥测硬关闭：不再为遥测维度解析命令、算哈希（调用方对 undefined 已有兜底）。
+  if (!ZCODE_TELEMETRY_ENABLED) return undefined;
   const outputBytes = result.stdout.bytes + result.stderr.bytes;
   const firstOutputMs = progressTiming?.firstOutputMs;
   return compactToolExecutionTelemetry({
@@ -130,6 +133,7 @@ function createBashPerformanceTelemetry(
 export function createBashBackgroundPerformanceTelemetry(
   input: BashInput,
 ): ToolExecutionTelemetry | undefined {
+  if (!ZCODE_TELEMETRY_ENABLED) return undefined;
   return compactToolExecutionTelemetry({
     detail: {
       kind: "command",

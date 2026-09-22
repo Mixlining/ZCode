@@ -1,5 +1,6 @@
 import {
   HostResponseTypes,
+  ZCODE_TELEMETRY_ENABLED,
   resolveWorkspaceTelemetryDetail,
   type AutomationSessionCreateTelemetry,
 } from "@zcode/shared";
@@ -14,6 +15,8 @@ export function reportHostSessionCreate(
     workspaceIdentity?: string;
   },
 ): void {
+  // 遥测硬关闭：不再构造事件、也不再经端口发送（main 侧该分支已丢弃）。
+  if (!ZCODE_TELEMETRY_ENABLED) return;
   try {
     const locale = Intl.DateTimeFormat().resolvedOptions();
     const event: AutomationSessionCreateTelemetry = {
