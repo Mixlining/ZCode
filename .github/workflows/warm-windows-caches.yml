@@ -1,0 +1,105 @@
+name: Warm Windows build caches
+
+# 缓存按 ref 隔离：run 只能读取「自身 ref」与「默认分支」两处条目，不同 tag 之间互不可见，
+# 且 tag 触发的 run 会把条目写进隔离作用域（ref 形如 refs/heads/refs/tags/<tag>）。
+# 因此 tag 构建每次都是冷启动。本工作流在默认分支上写好共享条目，让每个 release tag 都能命中：
+# 它是 Windows 缓存的唯一写者，build-desktop-windows.yml 只恢复、不再写 pnpm store。
+# 规则与验收见 spec/desktop-main-static-contracts.md 的「CI 静态门禁」。
+on:
+  workflow_dispatch:
+  push:
+    # 按路径收窄：前三个必须与缓存 key 的输入完全一致，key 变了才有必要重跑。
+    # 最后一项是工作流自身，使它在首次落地或被修改时自动预热一次——
+    # 否则依赖未变但缓存已被清空／尚未建立时，只能靠手动 dispatch 才不会让下一个 tag 冷启动。
+    # 是否默认分支由 job 守卫判断，不把分支名写死在两处。
+    paths:
+      - pnpm-lock.yaml
+      - mise.toml
+      - packages/desktop/package.json
+      - .github/workflows/warm-windows-caches.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: warm-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  warm:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    # 只有默认分支作用域的缓存能被任意 tag 读取；tag 或其他分支上的运行一律跳过，
+    # 避免把条目写进没人能复用的作用域。
+    if: ${{ github.ref_name == github.event.repository.default_branch }}
+
+    env:
+      # 与 build-desktop-windows.yml 保持一致，保证缓存与发布产物同源。
+      ZCODE_ENV: production
+      ZCODE_SKIP_REMOTE_ASSETS: "1"
+      ZCODE_TARGET_OS: win32
+      ZCODE_TARGET_ARCH: x64
+      ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
+      ELECTRON_CACHE: ${{ github.workspace }}/.electron-cache
+      ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.electron-builder-cache
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up toolchain from mise.toml
+        uses: jdx/mise-action@v4
+
+      - name: Point pnpm store into the workspace
+        run: pnpm config set store-dir "${{ github.workspace }}/.pnpm-store"
+
+      - name: Restore pnpm store
+        id: pnpm-cache
+        uses: actions/cache/restore@v6
+        with:
+          # mise.toml 代表 pnpm store 的布局版本：store 按 pnpm 主版本分子目录。
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('mise.toml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+          path: .pnpm-store
+
+      - name: Restore Electron and electron-builder caches
+        id: electron-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            .electron-cache
+            .electron-builder-cache
+          key: electron-${{ runner.os }}-${{ hashFiles('packages/desktop/package.json') }}
+          restore-keys: electron-${{ runner.os }}-
+
+      # 与发布构建同源的安装：不加 --ignore-scripts，Electron 与 desktop 的安装脚本必须执行，
+      # 二进制才会落进 ELECTRON_CACHE。
+      - name: Install dependencies
+        id: install
+        run: pnpm install --frozen-lockfile
+
+      # 恢复与保存分开：安装成功后立即保存 store，后续打包失败也不丢失已下载依赖。
+      - name: Save pnpm store
+        if: ${{ !cancelled() && steps.install.outcome == 'success' && steps.pnpm-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v6
+        with:
+          path: .pnpm-store
+          key: ${{ steps.pnpm-cache.outputs.cache-primary-key }}
+
+      # 真实打包一次，把 electron-builder 的 nsis/winCodeSign 工具也写进缓存；
+      # 顺带在默认分支暴露打包链路是否还能通过。产物不写 .env、不上传、不发布。
+      - name: Build Windows desktop installer
+        id: desktop-build
+        run: pnpm run bundle:desktop -- --os win --arch x64
+
+      - name: Verify packaged Desktop runtime imports
+        run: node packages/desktop/scripts/bundle.mjs --verify-only --os win --arch x64
+
+      - name: Save Electron and electron-builder caches
+        if: ${{ !cancelled() && steps.desktop-build.outcome != 'skipped' && steps.electron-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            .electron-cache
+            .electron-builder-cache
+          key: ${{ steps.electron-cache.outputs.cache-primary-key }}

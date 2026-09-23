@@ -1,6 +1,6 @@
 # GitHub Actions 说明
 
-本仓库的 GitHub Actions 目前有两个工作流：[`.github/workflows/check.yml`](.github/workflows/check.yml) 在每次 push（以及 `pull_request`）时于 Ubuntu runner 上并行跑四项静态检查（`pnpm typecheck`、`pnpm lint`、`pnpm fmt:check`、`pnpm architecture:check`），**不产出任何产物**；[`.github/workflows/build-desktop-windows.yml`](.github/workflows/build-desktop-windows.yml) 用于在 GitHub 托管的 Windows runner 上编译**桌面版（Windows x64，含远程工作区能力）**并产出可安装的 NSIS 安装包——下文只讲构建流。
+本仓库的 GitHub Actions 目前有三个工作流：[`.github/workflows/check.yml`](.github/workflows/check.yml) 在每次 push（以及 `pull_request`）时于 Ubuntu runner 上并行跑四项静态检查（`pnpm typecheck`、`pnpm lint`、`pnpm fmt:check`、`pnpm architecture:check`），**不产出任何产物**；[`.github/workflows/build-desktop-windows.yml`](.github/workflows/build-desktop-windows.yml) 用于在 GitHub 托管的 Windows runner 上编译**桌面版（Windows x64，含远程工作区能力）**并产出可安装的 NSIS 安装包；[`.github/workflows/warm-windows-caches.yml`](.github/workflows/warm-windows-caches.yml) 在默认分支上预热构建工作流要用的 Windows 缓存，让每个新 tag 都能命中——下文以构建流为主，缓存的来龙去脉见「Windows 缓存为什么在 `dev` 上预热」。
 
 本仓库此前没有任何 CI 配置（`git ls-files` 里没有 `.github/`，源码注释引用过的 `.gitlab/ci/00-workflow.yml` 与 `scripts/ci/ci-repo-hygiene.mjs` 都不在本仓库内），因此这份工作流是从零新增的，不替代任何既有流水线。
 
@@ -14,6 +14,15 @@
 tag 是 tag 构建的产品版本来源。打包时 workflow 将去掉 `v` 前缀后的版本临时写入根 `package.json`，使应用 metadata 与安装包文件名使用 tag 版本；打包结束后恢复原文件，不提交版本改动。手动选择分支时保留该分支根 `package.json` 的版本。
 
 同一 ref 的新运行会取消尚未完成的旧运行（`concurrency`），单次运行上限 90 分钟。
+
+预热工作流 `Warm Windows build caches` 的触发方式：
+
+| 方式         | 行为                                                                                                                                                                                                                                |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 推送到 `dev` | 修改 `pnpm-lock.yaml`、`mise.toml`、`packages/desktop/package.json` 或预热工作流自身时自动运行。前三项是缓存 key 的输入文件；第四项让工作流在首次落地或被改动时自动预热一次，免得依赖没变却因缓存缺失/被清空而让下一个 tag 冷启动。 |
+| 手动触发     | Actions 页面选择 `Warm Windows build caches` → `Run workflow`，**ref 必须选 `dev`**。缓存被清空过、或依赖改完立即要打 tag 时，用它把默认分支条目补上即可。                                                                          |
+
+它只预热缓存并把打包链路在 `dev` 上提前跑通：产物不上传、不写 `.env`、不创建 Release。运行在默认分支以外的 ref（含 tag）上时整个 job 会跳过，以免把缓存写进没人能复用的作用域。
 
 ## 产物
 
@@ -40,17 +49,17 @@ tag 是 tag 构建的产品版本来源。打包时 workflow 将去掉 `v` 前�
 
 ## 工作流做了什么
 
-| 步骤     | 命令                                                                         | 说明                                                                                                                                                               |
-| -------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 工具链   | `jdx/mise-action@v4`                                                         | 读 `mise.toml` 安装 node `24.21.0` 与 pnpm `11.27.1`，与项目锁定版本一致（该 action 自 v2.1.0 起支持 Windows runner；如需供应链加固可把 tag 换成 commit SHA）。    |
-| 缓存     | `actions/cache/restore@v6` / `actions/cache/save@v6`                         | 缓存 pnpm store、Electron 与 electron-builder 二进制；key 跟随根 `pnpm-lock.yaml` / `packages/desktop/package.json`。                                              |
-| 安装依赖 | `pnpm install --frozen-lockfile`                                             | 一次安装即覆盖根 workspace 与 `apps/zcode-cli`；三个 `patches/*.patch` 在此生效。                                                                                  |
-| 门槛     | `pnpm typecheck`、Desktop Main `tsc --noEmit`、`pnpm lint`                   | 根类型检查、Desktop Main 无输出类型检查与仓库 Lint；静态检查工作流另外执行格式和架构检查。                                                                         |
-| 端点     | 写 `.env`                                                                    | 见上一节的 variable 表。                                                                                                                                           |
-| 构建     | `pnpm run bundle:desktop -- --os win --arch x64`                             | 唯一入口：内部依次执行 `prepare:runtime-assets` → 生产构建（`tsup` + `vite build`）→ `electron-builder --win --x64` → asar 运行时依赖闭包校验 → 500 MiB 体积审计。 |
-| 包校验   | `node packages/desktop/scripts/bundle.mjs --verify-only --os win --arch x64` | 上传前再次核对最终 `app.asar` 中 Main、Host、scheduler 和 preload 的外置包导入及依赖闭包；缺包时阻止发布。                                                         |
-| 产物     | `Get-FileHash` + `upload-artifact`                                           | 生成 `SHA256SUMS.txt` 并上传安装包。                                                                                                                               |
-| 发布     | `gh release create/upload`                                                   | 仅 tag 触发：创建 prerelease（`--generate-notes`）或向已存在的 Release 追加资产。                                                                                  |
+| 步骤     | 命令                                                                         | 说明                                                                                                                                                                                                                            |
+| -------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 工具链   | `jdx/mise-action@v4`                                                         | 读 `mise.toml` 安装 node `24.21.0` 与 pnpm `11.27.1`，与项目锁定版本一致（该 action 自 v2.1.0 起支持 Windows runner；如需供应链加固可把 tag 换成 commit SHA）。                                                                 |
+| 缓存     | `actions/cache/restore@v6` / `actions/cache/save@v6`                         | 缓存 pnpm store、Electron 与 electron-builder 二进制；key 跟随根 `pnpm-lock.yaml` / `mise.toml` / `packages/desktop/package.json`。Windows 条目由 `dev` 上的预热工作流写入，本工作流只恢复（Electron 缓存保留冷启动降级保存）。 |
+| 安装依赖 | `pnpm install --frozen-lockfile`                                             | 一次安装即覆盖根 workspace 与 `apps/zcode-cli`；三个 `patches/*.patch` 在此生效。                                                                                                                                               |
+| 门槛     | `pnpm typecheck`、Desktop Main `tsc --noEmit`、`pnpm lint`                   | 根类型检查、Desktop Main 无输出类型检查与仓库 Lint；静态检查工作流另外执行格式和架构检查。                                                                                                                                      |
+| 端点     | 写 `.env`                                                                    | 见上一节的 variable 表。                                                                                                                                                                                                        |
+| 构建     | `pnpm run bundle:desktop -- --os win --arch x64`                             | 唯一入口：内部依次执行 `prepare:runtime-assets` → 生产构建（`tsup` + `vite build`）→ `electron-builder --win --x64` → asar 运行时依赖闭包校验 → 500 MiB 体积审计。                                                              |
+| 包校验   | `node packages/desktop/scripts/bundle.mjs --verify-only --os win --arch x64` | 上传前再次核对最终 `app.asar` 中 Main、Host、scheduler 和 preload 的外置包导入及依赖闭包；缺包时阻止发布。                                                                                                                      |
+| 产物     | `Get-FileHash` + `upload-artifact`                                           | 生成 `SHA256SUMS.txt` 并上传安装包。                                                                                                                                                                                            |
+| 发布     | `gh release create/upload`                                                   | 仅 tag 触发：创建 prerelease（`--generate-notes`）或向已存在的 Release 追加资产。                                                                                                                                               |
 
 ## 关键环境变量（工作流已设，改动前请先读这里）
 
@@ -80,6 +89,38 @@ node packages/desktop/scripts/bundle.mjs --verify-only --os win --arch x64
 - **远端资产、远端 Node 版本**：`prepare:remote-assets` 会下载各平台 Node 与 node-pty 预编译产物，本次已显式跳过；若将来要出内嵌远端资产的包，去掉 `ZCODE_SKIP_REMOTE_ASSETS` 并预留更长超时。
 - **不自动提交版本 bump**：tag 构建只在打包期间临时把 tag 版本写入根 `package.json`，随后恢复原文件；分支手动构建继续使用仓库版本。`.release-it.mjs` 的 `release` 流程与 CI 未打通（release-it 不创建 GitHub Release）。
 
+## Windows 缓存为什么在 `dev` 上预热
+
+GitHub Actions 的缓存按 ref 隔离：一次运行只能读取**自身 ref** 与**默认分支**两处的条目；不同 tag 之间互不可见，而且 tag 触发的运行会把条目写进一个隔离作用域（实测其 ref 形如 `refs/heads/refs/tags/<tag>`）。构建工作流只由 `v*` tag 触发，因此每个新 tag 的首次运行必然两个缓存全 miss——即使 key 与上一个 tag 逐字符相同也读不到，只能各存一份约 800 MB 的重复副本，把仓库 10 GB 的缓存额度顶穿并挤掉默认分支上真正有用的条目。
+
+所以缓存的写入权收归一处：
+
+| 缓存                        | key                                                                     | 谁写                               | tag 构建                            |
+| --------------------------- | ----------------------------------------------------------------------- | ---------------------------------- | ----------------------------------- |
+| pnpm store（Windows）       | `pnpm-Windows-${hashFiles('pnpm-lock.yaml')}-${hashFiles('mise.toml')}` | `warm-windows-caches.yml`（`dev`） | 只恢复，不保存                      |
+| Electron + electron-builder | `electron-Windows-${hashFiles('packages/desktop/package.json')}`        | `warm-windows-caches.yml`（`dev`） | 恢复；冷启动时保存一份给该 tag 重跑 |
+| pnpm store（Linux）         | 同一公式                                                                | `check.yml` 的矩阵 job             | 不涉及                              |
+
+key 里的 `mise.toml` 组件代表 pnpm store 的布局版本（store 按 pnpm 主版本分子目录）。若只对 lockfile 取哈希，工具链升级而 lockfile 未变时会得到「精确命中但布局不兼容」的死缓存，且 `cache-hit == 'true'` 会永久跳过保存。三个工作流的这个公式必须逐字符一致。
+
+```mermaid
+sequenceDiagram
+    participant Dev as dev push（paths 命中）
+    participant Warm as warm-windows-caches.yml
+    participant Cache as Actions cache（refs/heads/dev）
+    participant Tag as tag push
+    participant Build as build-desktop-windows.yml
+    Dev->>Warm: 三个 key 输入文件或预热工作流自身变化
+    Warm->>Cache: restore（miss 或前缀兜底）
+    Warm->>Warm: pnpm install + bundle:desktop（真实打包）
+    Warm->>Cache: save pnpm store / electron + electron-builder
+    Tag->>Build: 触发
+    Build->>Cache: restore（与默认分支同 key）
+    Build->>Build: 安装 + 打包，不写 pnpm store
+```
+
+命中情况下 tag 构建的日志是 `Cache restored from key: pnpm-Windows-…`；若依赖刚改完、预热还没跑完就打了 tag，该次构建会按 `restore-keys` 前缀恢复旧 store 做增量安装，或直接冷装一次——这是允许的降级路径，手动 dispatch 预热工作流即可回到稳态。
+
 ## 故障排查
 
 **构建报 `'pnpm.cmd' is not recognized as an internal or external command`（出现在 `prepare:runtime-assets` 阶段）**
@@ -91,7 +132,7 @@ node packages/desktop/scripts/bundle.mjs --verify-only --os win --arch x64
 **其他常见情况**
 
 - 安装包能装但系统提示「未知发布者」：未配置签名 secret，配置 `CSC_LINK` / `CSC_KEY_PASSWORD` 后重新运行。
-- 缓存导致的怪异失败：到 Settings → Actions → Caches 删掉对应缓存后重跑；pnpm store 缓存的 key 绑定 `pnpm-lock.yaml`，Electron 缓存的 key 绑定 `packages/desktop/package.json`。
+- 缓存导致的怪异失败：到 Settings → Actions → Caches 删掉对应缓存后重跑；pnpm store 缓存的 key 绑定 `pnpm-lock.yaml` 与 `mise.toml`，Electron 缓存的 key 绑定 `packages/desktop/package.json`。删完记得在 `dev` 上手动 dispatch 一次 `Warm Windows build caches`，否则下一个 tag 会冷启动。
 - 首次运行超时：无缓存时需要下载 Electron 与 electron-builder 工具包，可把 `timeout-minutes` 提到 120。
 - 产物名带 `_TEST` 后缀或 productName 变成 `ZCode Preview`：`ZCODE_ENV` 不是 `production` 了。
 - 远程工作区部署时找不到远端运行时：目标 CDN 上没有当前版本的资产，用 `ZCODE_REMOTE_ASSET_CDN_BASE_URL` variable 指向你自己的分发源。
@@ -105,11 +146,15 @@ node packages/desktop/scripts/bundle.mjs --verify-only --os win --arch x64
 | 让产物带上你自己的默认端点 | 在仓库 Variables 里配置上一节的四个变量。                                                                                                                                  |
 | 调门槛                     | 增删 `Typecheck (root)` / `Lint (root)` 两个 step，或补上 `pnpm --dir apps/zcode-cli ...` 这类包级检查。                                                                   |
 | 换 runner 或超时           | 工作流顶部的 `runs-on` / `timeout-minutes`。                                                                                                                               |
+| 依赖改完马上要打 tag       | 先在 `dev` 上手动 dispatch 一次 `Warm Windows build caches`，等它成功后再打 tag，否则该 tag 会冷装。                                                                       |
+| 调整预热的触发范围         | `warm-windows-caches.yml` 的 `on.push.paths`；前三个条目必须与缓存 key 的输入文件保持一致（少列会漏预热），第四项是工作流自身的自预热开关。                                |
 
 ## 相关文件
 
 - 检查工作流：[`.github/workflows/check.yml`](.github/workflows/check.yml)
 - 构建工作流：[`.github/workflows/build-desktop-windows.yml`](.github/workflows/build-desktop-windows.yml)
+- 缓存预热工作流：[`.github/workflows/warm-windows-caches.yml`](.github/workflows/warm-windows-caches.yml)
+- 缓存规则与验收：[`spec/desktop-main-static-contracts.md`](spec/desktop-main-static-contracts.md) 的「CI 静态门禁」
 - 打包入口：[`packages/desktop/scripts/bundle.mjs`](packages/desktop/scripts/bundle.mjs)
 - 打包配置：[`packages/desktop/electron-builder.config.js`](packages/desktop/electron-builder.config.js)
 - 运行时资产：[`packages/desktop/scripts/prepare-runtime-assets.mjs`](packages/desktop/scripts/prepare-runtime-assets.mjs)、[`scripts/prepare-prebuilds.mjs`](scripts/prepare-prebuilds.mjs)

@@ -41,12 +41,13 @@ jobs:
       - name: Point pnpm store into the workspace
         run: pnpm config set store-dir "${{ github.workspace }}/.pnpm-store"
 
+      # 只恢复不保存：Windows store 由默认分支的 warm-windows-caches.yml 独占写入，
+      # 否则每个 tag 都会存一份同 key 的重复副本，顶穿仓库缓存上限。
       - name: Restore pnpm store
-        id: pnpm-cache
         uses: actions/cache/restore@v6
         with:
           path: .pnpm-store
-          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('mise.toml') }}
           restore-keys: pnpm-${{ runner.os }}-
 
       - name: Restore Electron and electron-builder caches
@@ -60,15 +61,7 @@ jobs:
           restore-keys: electron-${{ runner.os }}-
 
       - name: Install dependencies
-        id: install
         run: pnpm install --frozen-lockfile
-
-      - name: Save pnpm store
-        if: ${{ !cancelled() && steps.install.outcome == 'success' && steps.pnpm-cache.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@v6
-        with:
-          path: .pnpm-store
-          key: ${{ steps.pnpm-cache.outputs.cache-primary-key }}
 
       - name: Typecheck (root)
         run: pnpm typecheck
@@ -152,6 +145,8 @@ jobs:
       - name: Verify packaged Desktop runtime imports
         run: node packages/desktop/scripts/bundle.mjs --verify-only --os win --arch x64
 
+      # 冷启动降级路径：默认分支条目缺失或被淘汰时，让该 tag 的重跑不必重新下载。
+      # 稳态下应被精确命中跳过。
       - name: Save Electron and electron-builder caches
         if: ${{ !cancelled() && steps.desktop-build.outcome != 'skipped' && steps.electron-cache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v6

@@ -52,8 +52,10 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           # 同一 OS 的矩阵 job 复用一个 store；各 job 安装后显式保存，key 已存在时自动跳过。
+          # key 公式与 warm-windows-caches.yml、build-desktop-windows.yml 必须逐字符一致；
+          # mise.toml 组件代表 pnpm store 布局版本，见 spec/desktop-main-static-contracts.md。
           path: .pnpm-store
-          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('mise.toml') }}
           restore-keys: pnpm-${{ runner.os }}-
 
       - name: Install dependencies
