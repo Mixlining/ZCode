@@ -1,8 +1,44 @@
 import { cpSync, existsSync, mkdirSync } from "node:fs";
+import { access, cp, mkdir } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 
 const require = createRequire(import.meta.url);
+
+export async function ensureStagedTargetNodePtyPrebuild({
+  desktopPackageRoot,
+  stagingDir,
+  targetPlatform,
+}) {
+  const stagedPrebuildDir = resolve(
+    stagingDir,
+    "node_modules",
+    "node-pty",
+    "prebuilds",
+    targetPlatform.key,
+  );
+  try {
+    await access(resolve(stagedPrebuildDir, "pty.node"));
+    return;
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+
+  let sourcePrebuildDir;
+  try {
+    const nodePtyPackageRoot = dirname(
+      require.resolve("node-pty/package.json", { paths: [desktopPackageRoot] }),
+    );
+    sourcePrebuildDir = resolve(nodePtyPackageRoot, "prebuilds", targetPlatform.key);
+    await access(resolve(sourcePrebuildDir, "pty.node"));
+  } catch (error) {
+    // 修复：pnpm 11 的 hoisted 布局可能让 builder 漏装目标 prebuild；源包也缺失时必须在替换 asar 前明确失败。
+    throw new Error(`重打包缺少 ${targetPlatform.key} 的 node-pty/pty.node`, { cause: error });
+  }
+
+  await mkdir(dirname(stagedPrebuildDir), { recursive: true });
+  await cp(sourcePrebuildDir, stagedPrebuildDir, { recursive: true });
+}
 
 export function restoreTargetNodePtyPrebuild({ desktopPackageRoot, targetPlatform }) {
   if (targetPlatform.os !== "linux") {

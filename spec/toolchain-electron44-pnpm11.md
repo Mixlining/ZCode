@@ -63,6 +63,20 @@ Acceptance scenarios:
 2. When a notification is shown, the originating live renderer receives one task notification sound; click still restores/focuses its window, and click/close releases the retained object.
 3. On Linux, the main window remains frameless with native rounded corners around the renderer's existing rounded root; the update-status window remains explicitly square-cornered.
 
+## Desktop ASAR repack after the pnpm 11 migration
+
+- Desktop packaging owns the staged `app.asar` rewrite in `afterPack`. Rewrite when runtime modules or the packaged target prebuild are missing. Before packing, the staging tree must contain the target platform's `node-pty/prebuilds/<platform>/pty.node`; its installed `node-pty` package is the source if the extracted archive omitted that directory. Copy the complete target prebuild directory so its runtime helper files stay together.
+- Keep the candidate archive and `.unpacked` sidecar as one replacement unit. If the source target prebuild is unavailable, fail with a specific error before replacing the current archive. Preserve the existing native-resource and target-prebuild checks after repacking.
+- The package layout may differ between pnpm versions; the archive extraction is not the owner of native assets when the installed target prebuild is available.
+
+Acceptance scenarios:
+
+1. A Windows x64 package whose extracted archive lacks `node-pty/prebuilds/win32-x64` copies that target directory from the installed package, then produces both `app.asar.next` and `app.asar.next.unpacked`.
+2. A package whose extracted archive already contains the target prebuild does not replace it from the install tree.
+3. A missing prebuild in both the extracted archive and installed package fails before the current `app.asar` and sidecar are replaced.
+4. The final package contains only the target platform's node-pty prebuild and passes the existing native-resource policy checks.
+5. Missing target native assets trigger the rewrite even when all runtime modules are present.
+
 ## Acceptance scenarios
 
 1. A developer entering the repository can select Node `24.21.0` and pnpm `11.27.1` from project pins without changing machine-wide installations.

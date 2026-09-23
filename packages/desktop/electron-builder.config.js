@@ -11,6 +11,7 @@ import { resolveNativeSearchReleasePlan } from "../../scripts/native-search-tool
 import { getBuildMetadata } from "./scripts/build-metadata.mjs";
 import { collectRuntimeModuleClosureEntries } from "./scripts/runtime-dependency-closure.mjs";
 import {
+  ensureStagedTargetNodePtyPrebuild,
   resolvePackagedNodePtyPrebuildPath,
   restoreTargetNodePtyPrebuild,
 } from "./scripts/node-pty-package-assets.mjs";
@@ -347,13 +348,21 @@ async function injectHoistedRuntimeModulesIntoAsar(context) {
   const missingRuntimeModules = runTimedSync("afterPack:scan-missing-runtime-modules", () =>
     resolveMissingRuntimeModules(appAsarPath),
   );
-  if (missingRuntimeModules.length === 0) {
+  const packagedTargetPrebuildPath = resolvePackagedNodePtyPrebuildPath({
+    resourcesDir: resolvePackagedResourcesDir(context),
+    platformKey: targetPlatform.key,
+  });
+  const targetPrebuildMissing = !existsSync(packagedTargetPrebuildPath);
+  if (missingRuntimeModules.length === 0 && !targetPrebuildMissing) {
     // 之前 afterPack 每次都完整 extract/pack app.asar，即使运行时依赖已经齐全也会重复重写。
     // 这会把每次打包固定拉长十几秒到几十秒。先做缺失扫描，只有真的缺包才执行重写流程。
     console.log("[afterPack] runtime modules already complete, skip app.asar rewrite");
     return;
   }
   console.log(`[afterPack] missing runtime modules count=${missingRuntimeModules.length}`);
+  if (targetPrebuildMissing) {
+    console.log(`[afterPack] target node-pty prebuild missing: ${packagedTargetPrebuildPath}`);
+  }
 
   // CI 会把 TMPDIR 指到项目内 .tmp，GitLab get_sources/clean 可能在脚本启动前清掉该目录。
   // afterPack 里重写 app.asar 同样依赖 mkdtempSync，必须自己兜底创建父目录，避免后续签名阶段只看到 .app 消失。
@@ -362,6 +371,10 @@ async function injectHoistedRuntimeModulesIntoAsar(context) {
   try {
     runTimedSync("afterPack:asar-extract", () =>
       runAsarCommand(["extract", appAsarPath, stagingDir]),
+    );
+
+    await runTimedAsync("afterPack:ensure-target-node-pty", () =>
+      ensureStagedTargetNodePtyPrebuild({ desktopPackageRoot, stagingDir, targetPlatform }),
     );
 
     const stagingNodeModulesDir = resolve(stagingDir, "node_modules");
