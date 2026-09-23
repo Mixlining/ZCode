@@ -10,6 +10,7 @@ import {
   HostResponseTypes,
   hostResponseMessageSchema,
   InternalChannels,
+  PHONE_REMOTE_DISABLED,
   PlatformChannels,
   resolveWorkspaceKey,
   type RemoteTarget,
@@ -869,6 +870,14 @@ export function createRemoteWorkspaceSessionManager(options: {
     port: MessagePortMain;
     remoteKind: RemoteTarget["kind"];
   } {
+    // 手机远控硬禁用：这是外部 relay 把手机附件接到桌面 Host 会话的唯一入口，
+    // 禁用后不建立 replayable 通道、不设置 clientMode、不向 Host 发 AttachServicePort。
+    // 恢复时删守卫即可复原（详见 spec/remote-disable.md）。
+    if (PHONE_REMOTE_DISABLED) {
+      throw Object.assign(new Error("手机远控已禁用"), {
+        code: "REMOTE_SESSION_OFFLINE" as const,
+      });
+    }
     const route = routesBySessionId.get(params.remoteSessionId);
     if (!route) {
       throw Object.assign(

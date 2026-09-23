@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { BOTS_DISABLED, PHONE_REMOTE_DISABLED } from "@zcode/shared";
 import { Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
@@ -31,6 +32,11 @@ export function WorkspaceWebRemoteControlTrigger({
         <Button
           variant="ghost"
           onClick={() => {
+            // 手机远控硬禁用：入口保持可见，点击后直接返回，不打开弹层、不启动其轮询。
+            // 该弹层渠道（微信/飞书/Telegram）同时依赖 Bot 实现。恢复时删守卫即可复原。
+            if (PHONE_REMOTE_DISABLED || BOTS_DISABLED) {
+              return;
+            }
             logger.info("[WorkspaceWebRemoteControlTrigger] 打开远程控制弹层", {
               workspacePath,
               workspaceIdentity: workspaceIdentity ?? "none",

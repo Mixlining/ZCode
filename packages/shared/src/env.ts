@@ -77,6 +77,26 @@ export const REMOTE_ROLLOUT_DISABLED: boolean = true;
 // 厂商目录请求；恢复时改回 false。
 export const MARKETPLACE_AUTO_REFRESH_DISABLED: boolean = true;
 
+// 硬禁用：消息平台 Bot 域（Telegram / 微信 / 飞书 Lark）。本构建只做本机单机形态，不需要这些
+// 远程 Bot。三层同时收口：① 入口层——Bot 设置与 Web 远控入口保留可见但点击无反应；
+// ② 服务边界——createLocalServices 与 remoteWorkspaceServiceCollection 都不注册 IBotsService，
+// 因而不再构造 BotsRepo、Provider 适配器与内部集合；③ 启动恢复——不执行三类 Provider 的
+// refresh() 与 ensureBotStorageMigrated()，启动期不读取 Bot 配置与状态。实现、协议与 i18n
+// 全部保留，仅加守卫；详见 spec/remote-disable.md，恢复时改回 false。
+export const BOTS_DISABLED: boolean = true;
+
+// 硬禁用：手机远控链路。外部 relay、配对与二维码在上游服务，本仓库内的接缝是
+// attachRemoteWorkspaceSessionHost 的附件接管、Host 的 remote + web-remote-replayable 附件，
+// 以及 packages/server 的 /ws、/api/connect-remote、/ws/remote/:id 路由。禁用后不建立
+// replayable 通道、不接受手机附件；详见 spec/remote-disable.md，恢复时改回 false。
+export const PHONE_REMOTE_DISABLED: boolean = true;
+
+// 硬禁用：远程 workspace（SSH / WSL / Docker）。本构建只服务本地 workspace，不创建远程连接
+// 注册表、不装配远程服务集合、不触发远程运行资产下载（cdn-zcode.z.ai），启动期也不恢复历史
+// 远程连接。workspaceIdentity / remoteSessionId 的贯通逻辑保留（本地链路仍在用 identity）。
+// 详见 spec/remote-disable.md，恢复时改回 false。
+export const REMOTE_WORKSPACE_DISABLED: boolean = true;
+
 /** 数仓事件上报端点：由运行时环境变量提供，未配置即停用，构建产物不内嵌。 */
 export const ZCODE_TELEMETRY_REPORT_ENDPOINT =
   typeof process !== "undefined" ? (process.env.ZCODE_TELEMETRY_REPORT_ENDPOINT ?? "") : "";

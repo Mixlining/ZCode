@@ -11,6 +11,7 @@ import {
   isTrustedCodingPlanWebviewOrigin,
   resolveZaiBusinessBaseUrl,
   PlatformChannels,
+  REMOTE_WORKSPACE_DISABLED,
   remoteTargetSchema,
   rendererTelemetryEventPayloadSchema,
   ZCODE_TELEMETRY_ENABLED,
@@ -397,6 +398,11 @@ export function registerRemoteIpcHandlers(options: {
   });
 
   ipcMain.handle(PlatformChannels.ConnectRemote, async (event, rawPayload: unknown) => {
+    // 远程 workspace 硬禁用：入口即短路，不解析连接目标、不启动 SSH/WSL/Docker 探测、
+    // 不做远程资产安装。界面入口保留可见但点击无反应。恢复时删守卫即可复原。
+    if (REMOTE_WORKSPACE_DISABLED) {
+      return { success: false, error: "远程工作区已禁用" };
+    }
     const wrappedPayload: {
       target: unknown;
       requestId?: unknown;

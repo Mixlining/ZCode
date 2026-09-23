@@ -18,6 +18,9 @@
 | `ZCODE_TELEMETRY_ENABLED`           | `false` | 数仓事件与 ARMS RUM 出网                           |
 | `MEMORY_DIAGNOSTICS_ENABLED`        | `false` | 内存诊断采样定时器                                 |
 
+远程 workspace、手机远控与消息平台 Bot 的硬禁用由 `spec/remote-disable.md` 单独约束，
+与上表是相互独立的轴。
+
 Desktop Main 不加载或等待 ARMS 初始化，也不在窗口聚焦、OAuth 回调或启动后更新 ARMS 用户身份。关闭遥测时不允许以诊断名义创建 ARMS SDK、周期采样或远端上报。崩溃本地记录属于稳定性日志，仍保留。
 
 Host 服务装配不创建没有注册或消费方的 commands、hooks、memory 服务对象；这些工厂与公开入口仍保留，真实请求路径按需调用。
@@ -30,8 +33,10 @@ Host 服务装配不创建没有注册或消费方的 commands、hooks、memory 
   `providerSettingsService.refresh()` 触发。本地回退为 `config/provider/zcode-builtin.json`，
   其中含 4 个厂商模板与 16 个第三方模板；停用它会连第三方模板一起固定在旧版本。
 - 插件市场目录与插件下载（CDN）。
-- 远程工作区运行资产下载（`cdn-zcode.z.ai`）。
 - 用户自行配置的模型端点请求（自带 API Key 的正常业务流量）。
+
+远程工作区运行资产下载（`cdn-zcode.z.ai`）**不再是例外**：远程 workspace 已在
+`spec/remote-disable.md` 中整体硬禁用，该下载路径不再触发。
 
 ## 三层边界
 

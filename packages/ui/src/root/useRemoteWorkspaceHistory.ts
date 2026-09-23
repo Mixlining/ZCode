@@ -8,7 +8,12 @@ import type {
   RemoteSessionClosedEvent,
   RemoteWorkspaceSessionEntry,
 } from "@zcode/shared";
-import { buildSshRemoteHostKey, createUuid, stripRemoteTargetSecrets } from "@zcode/shared";
+import {
+  buildSshRemoteHostKey,
+  createUuid,
+  REMOTE_WORKSPACE_DISABLED,
+  stripRemoteTargetSecrets,
+} from "@zcode/shared";
 import type { IServiceAccessor } from "@zcode/services";
 import {
   bindRemoteWorkspaceIdentity,
@@ -753,6 +758,12 @@ export function useRemoteWorkspaceHistory({
       requestId?: string,
       context?: Parameters<IPlatformService["connectRemote"]>[2],
     ) => {
+      // 远程 workspace 硬禁用：这是 renderer 侧所有远程连接的唯一收口（连接、历史重连、
+      // 会话恢复都经此处）。入口保持可见，点击后在此直接返回，不发起连接请求。
+      // 恢复时删守卫即可复原（详见 spec/remote-disable.md）。
+      if (REMOTE_WORKSPACE_DISABLED) {
+        throw new Error("远程工作区已禁用");
+      }
       const result = await platform.connectRemote(target, requestId, context);
       if (!result.success) {
         throw new Error(getErrorMessage(result.error || "Connection failed"));

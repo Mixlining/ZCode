@@ -41,6 +41,7 @@ import {
   TID_COMPOSER_REMOTE_CONNECTION,
   TID_COMPOSER_WORK_OUTSIDE_PROJECT,
   TID_COMPOSER_WORKSPACE_TRIGGER,
+  REMOTE_WORKSPACE_DISABLED,
   resolveWorkspaceKey,
   type RemoteTarget,
   type RemoteWorkspaceSessionEntry,
@@ -401,6 +402,11 @@ export function ChatEmptyWorkspacePreviewMenu({
             <DropdownMenuItem
               data-testid={TID_COMPOSER_REMOTE_CONNECTION}
               onSelect={() => {
+                // 远程 workspace 硬禁用：入口保持可见，点击后直接无反应，不打开连接弹窗。
+                // 恢复时删守卫即可复原（详见 spec/remote-disable.md）。
+                if (REMOTE_WORKSPACE_DISABLED) {
+                  return;
+                }
                 // 打开远程弹窗时必须让 DropdownMenu 执行默认关闭流程。
                 // 阻止默认 select 会让父菜单与 modal 同时保持打开，浮层层级调整后父菜单会覆盖弹窗。
                 logger.info(

@@ -5,6 +5,7 @@ import {
   APP_RUNTIME_PREFERENCES_CHANGED_BROADCAST_CHANNEL,
   DesktopCommandIds,
   appRuntimePreferencesChangedBroadcastPayloadSchema,
+  BOTS_DISABLED,
   type RemoteTarget,
 } from "@zcode/shared";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
@@ -268,9 +269,12 @@ function RootInner({
         void services.zcodeAgentService.syncAppRuntimePreferences(parsed.data).catch((error) => {
           logger.warn("[settings] 同步跨窗口运行时偏好失败", error);
         });
-        void services.botsService.syncAppRuntimePreferences(parsed.data).catch((error) => {
-          logger.warn("[settings] 同步跨窗口 Bot 运行时偏好失败", error);
-        });
+        // Bot 硬禁用时不注册 IBotsService，跳过该广播同步，避免每次广播都记一条失败 warn。
+        if (!BOTS_DISABLED) {
+          void services.botsService.syncAppRuntimePreferences(parsed.data).catch((error) => {
+            logger.warn("[settings] 同步跨窗口 Bot 运行时偏好失败", error);
+          });
+        }
         return;
       }
 

@@ -11,6 +11,7 @@ import {
 } from "@zcode/provider-node";
 import { getAppConfigDir as resolveAppConfigDir } from "./paths.js";
 import {
+  BOTS_DISABLED,
   buildLocalMediaPreviewUrl,
   CODING_PLAN_DISABLED,
   isProviderProvisioningAccountCredentialKey,
@@ -2336,11 +2337,6 @@ export function createLocalServices(options: {
     settingService,
     cuaProductMcpServerResolver,
   });
-  const botRemoteWorkspaceService = createBotRemoteWorkspaceService({
-    parentPort: options?.parentPort,
-    settingService,
-    credentialService,
-  });
   const oauthService = createOAuthService(credentialService, {
     apiClient,
     onProviderLogout: handleOAuthProviderLogout,
@@ -2454,20 +2450,6 @@ export function createLocalServices(options: {
     .register(ICuaPermissionService, cuaPermissionService)
     .register(ICuaPipSessionService, cuaPipSessionService)
     .register(IConversationShareService, conversationShareService)
-    .register(
-      IBotsService,
-      createBotsService({
-        credentialService,
-        zcodeTaskService,
-        broadcastService,
-        settingService,
-        modelSelectionService: providerRuntime.modelSelection,
-        remoteWorkspaceService: botRemoteWorkspaceService,
-        // 远端与本地 Bot 都读取所属 Environment 的 Model Selection View。
-        // 远端启动期不再轮询旧 Preset，避免重新制造一套模型候选事实。
-        runStartupBackgroundTasks: !isDesktopAttachedRemote,
-      }),
-    )
     .register(IFileWatcherService, createFileWatcherService())
     .register(IOAuthService, oauthService)
     .register(
@@ -2493,6 +2475,29 @@ export function createLocalServices(options: {
       }),
     )
     .register(IClientScenesService, createClientScenesService({ apiClient }));
+  // Bot 硬禁用时不注册 IBotsService：不构造 Repo/Provider/远端桥接，启动期不读取 Bot
+  // 配置、不启动三类 Provider 预热，其内部的重连状态与运行时端口集合也随之消失。
+  // 下游一律经 getOptional(IBotsService) 取用，跳过注册即可自然降级。
+  // 守卫+原逻辑并列，恢复时删守卫即可复原（详见 spec/remote-disable.md）。
+  if (!BOTS_DISABLED)
+    services.register(
+      IBotsService,
+      createBotsService({
+        credentialService,
+        zcodeTaskService,
+        broadcastService,
+        settingService,
+        modelSelectionService: providerRuntime.modelSelection,
+        remoteWorkspaceService: createBotRemoteWorkspaceService({
+          parentPort: options?.parentPort,
+          settingService,
+          credentialService,
+        }),
+        // 远端与本地 Bot 都读取所属 Environment 的 Model Selection View。
+        // 远端启动期不再轮询旧 Preset，避免重新制造一套模型候选事实。
+        runStartupBackgroundTasks: !isDesktopAttachedRemote,
+      }),
+    );
   // 闲时任务硬禁用时不构造 Repo/client/service，也不启动旧任务同步计时器。
   if (offPeakCredentialResolverDeps)
     services.register(

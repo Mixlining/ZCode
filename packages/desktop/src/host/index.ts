@@ -75,6 +75,8 @@ import {
   HostResponseTypes,
   ZCODE_TELEMETRY_ENABLED,
   CODING_PLAN_DISABLED,
+  PHONE_REMOTE_DISABLED,
+  REMOTE_WORKSPACE_DISABLED,
   ZCODE_VERSION,
   formatLogPrefix,
   formatZCodeHostProcessName,
@@ -1646,6 +1648,11 @@ async function createWindowRemoteConnectionHandle(params: {
   remoteAssets: RemoteAssetDirs;
   signal: AbortSignal;
 }): Promise<WindowRemoteConnectionHandle<ServiceCollection, HostRemoteConnectionCapabilities>> {
+  // 远程 workspace 硬禁用：这里是不构造远程服务集合与连接注册表的唯一收口，
+  // 因此不加载 @zcode/server/remote、不触发远程资产安装与下载。恢复时删守卫即可复原。
+  if (REMOTE_WORKSPACE_DISABLED) {
+    throw new Error("远程工作区已禁用");
+  }
   if (!activeServices) throw new Error("Local Host services are not initialized.");
   const clientConfigService = activeServices.get(IClientConfigService);
   if (params.signal.aborted) {
@@ -2751,6 +2758,13 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
   if (msg.type === HostMessageTypes.AttachServicePort) {
     if (!port) {
       logger.error("attach-service-port message missing MessagePort");
+      return;
+    }
+    // 手机远控硬禁用：replayable 恢复链路即手机 attachment 的语义，直接关闭端口拒绝接管；
+    // desktop-continuous 属远程 workspace，由 REMOTE_WORKSPACE_DISABLED 负责。恢复时删守卫即可复原。
+    if (PHONE_REMOTE_DISABLED && msg.clientMode === "web-remote-replayable") {
+      port.close();
+      logger.warn("phone remote attachment rejected: disabled by build configuration");
       return;
     }
     if (msg.scope.kind === "local" && databaseStartup?.coordinator.snapshot.phase !== "ready") {

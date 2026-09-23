@@ -53,6 +53,8 @@ const componentSchemaVersion = 1;
 const remotePlatforms = ["linux-arm64", "linux-x64", "darwin-arm64", "darwin-x64"];
 const pnpmCommand = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 const isBootstrapWithRemote = process.env.ZCODE_BOOTSTRAP_WITH_REMOTE === "1";
+/** 编译期硬编码，对应 packages/shared/src/env.ts 的 REMOTE_WORKSPACE_DISABLED = true。 */
+const REMOTE_ASSETS_DISABLED = true;
 
 /**
  * Node dist 下载源。默认走国内镜像，`ZCODE_NODE_DIST_MIRROR` 可覆盖（与
@@ -1029,6 +1031,19 @@ function prepareRemoteComponentArtifacts() {
 }
 
 async function main() {
+  // 远程 workspace 硬禁用（REMOTE_WORKSPACE_DISABLED = true，见 packages/shared/src/env.ts
+  // 与 spec/remote-disable.md）：本脚本产出的是远端部署用的 mock CDN 资产（node 运行时、
+  // server bundle、node-pty、远端 agent bundle 与 native-search 工具），仅供
+  // packages/server/src/remote/* 的部署与安装链路消费；该链路已禁用，产物不再有任何消费者。
+  // 本地桌面运行时不依赖本脚本（见 prepare-runtime-assets.mjs），mock-cdn 也仅是可选的
+  // 离线缓存，缺失时开发态正常运行。此处直接跳过整轮构建，避免产出无效远端资产。
+  // 与 env.ts 的硬禁用语义一致，这里不读取任何运行时环境变量，恢复时需连同该常量一起改回。
+  if (REMOTE_ASSETS_DISABLED) {
+    console.log(
+      "==> Skipped: remote workspace is disabled by build configuration; mock CDN assets are unused.",
+    );
+    return;
+  }
   console.log(`==> Preparing mock CDN release in ${releaseDir}`);
 
   mkdirSync(releaseDir, { recursive: true });

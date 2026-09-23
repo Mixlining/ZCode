@@ -2,7 +2,11 @@
  * useSettingService —— 设置服务 hooks
  */
 import { useState, useEffect, useCallback } from "react";
-import { APP_RUNTIME_PREFERENCES_CHANGED_BROADCAST_CHANNEL, type AppSettings } from "@zcode/shared";
+import {
+  APP_RUNTIME_PREFERENCES_CHANGED_BROADCAST_CHANNEL,
+  BOTS_DISABLED,
+  type AppSettings,
+} from "@zcode/shared";
 import type { ISettingService } from "@zcode/services";
 import { useServices } from "./useServices.js";
 import { usePlatform } from "./usePlatform.js";
@@ -154,9 +158,11 @@ export function useSettings() {
             patch.modelIoFullRetentionEnabled ??
             settingsStore.snapshot.settings?.modelIoFullRetentionEnabled === true,
         };
+        // Bot 硬禁用时不注册 IBotsService，该 channel 不存在，调用会 reject 并让下面
+        // 的 syncError 抛出、连带整个设置写入失败；这里按守卫跳过（恢复时删守卫即可复原）。
         const syncResults = await Promise.allSettled([
           zcodeAgentService.syncAppRuntimePreferences(preferences),
-          botsService.syncAppRuntimePreferences(preferences),
+          ...(BOTS_DISABLED ? [] : [botsService.syncAppRuntimePreferences(preferences)]),
         ]);
         const syncError = syncResults.find(
           (result): result is PromiseRejectedResult => result.status === "rejected",

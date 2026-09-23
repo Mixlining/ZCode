@@ -68,6 +68,7 @@ import {
 } from "@zcode/services/node";
 import {
   BIGMODEL_PROVIDER_ID,
+  BOTS_DISABLED,
   buildRuntimeZCodeApiUrl,
   DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY,
   type ProviderFamilyDomain,
@@ -324,19 +325,6 @@ export function createRemoteWorkspaceServiceCollection(params: {
     .register(IZCodeAgentService, params.connectionServices.zcodeAgentService)
     .register(IZCodeSessionService, remoteZCodeSessionService)
     .register(IConversationShareService, conversationShareService)
-    .register(
-      IBotsService,
-      createBotsService({
-        credentialService: localCredentialService,
-        zcodeTaskService: remoteZCodeTaskService,
-        broadcastService: localBroadcastService,
-        settingService: localSettingService,
-        modelSelectionService: params.connectionServices.modelSelectionService,
-        // 修复原因：remote workspace host 首屏只需要远端文件/agent 能力；
-        // bot 启动后台任务如果立即轮询或 getAll，会重复拉本机 preset 并放大 SSH/Docker 连接耗时。
-        runStartupBackgroundTasks: false,
-      }),
-    )
     .register(IFileWatcherService, params.connectionServices.fileWatcherService)
     .register(
       IOAuthService,
@@ -379,6 +367,21 @@ export function createRemoteWorkspaceServiceCollection(params: {
       createSettingsSyncService({ settingService: localSettingService }),
     )
     .register(IPromptAttachmentTransferService, params.promptAttachmentTransferService);
+  // Bot 硬禁用时不注册 IBotsService（详见 spec/remote-disable.md），恢复时删守卫即可复原。
+  if (!BOTS_DISABLED)
+    services.register(
+      IBotsService,
+      createBotsService({
+        credentialService: localCredentialService,
+        zcodeTaskService: remoteZCodeTaskService,
+        broadcastService: localBroadcastService,
+        settingService: localSettingService,
+        modelSelectionService: params.connectionServices.modelSelectionService,
+        // 修复原因：remote workspace host 首屏只需要远端文件/agent 能力；
+        // bot 启动后台任务如果立即轮询或 getAll，会重复拉本机 preset 并放大 SSH/Docker 连接耗时。
+        runStartupBackgroundTasks: false,
+      }),
+    );
   registerHostApiNetworkTransportForDispose(services, hostApiNetworkTransport);
   registerRemoteProviderProvisioningExecutor(services, remoteProviderProvisioningService);
   return services;

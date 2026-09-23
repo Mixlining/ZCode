@@ -29,7 +29,7 @@ import {
   resolveConversationShareCodeFromPath,
 } from "./share/conversationShareRoute.js";
 import type { IPlatformService, RemoteTarget, ServerRemoteInfo } from "@zcode/shared";
-import { ZCODE_VENDOR_ACTIONS_DISABLED } from "@zcode/shared";
+import { PHONE_REMOTE_DISABLED, ZCODE_VENDOR_ACTIONS_DISABLED } from "@zcode/shared";
 import { WEB_DEFAULT_THEME, resolveWebInitialTheme } from "./webThemeSeed.js";
 
 function resolveWebThemePreference(defaultTheme: Theme = WEB_DEFAULT_THEME): Theme {
@@ -371,7 +371,9 @@ function resolveDefaultWsOrigin(): string {
 
 async function resolveWebBootstrap(): Promise<WebBootstrapResult> {
   const params = new URLSearchParams(window.location.search);
-  const remoteId = params.get("remote");
+  // 手机远控硬禁用：?remote= 会建立 web-remote-replayable 连接，直接忽略该参数并回落到
+  // 普通 /ws 通道。恢复时删守卫即可复原（详见 spec/remote-disable.md）。
+  const remoteId = PHONE_REMOTE_DISABLED ? null : params.get("remote");
   const wsUrl = remoteId
     ? `${resolveDefaultWsOrigin()}/ws/remote/${remoteId}`
     : `${resolveDefaultWsOrigin()}/ws`;
