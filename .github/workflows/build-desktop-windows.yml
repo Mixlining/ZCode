@@ -63,6 +63,9 @@ jobs:
       - name: Typecheck (root)
         run: pnpm typecheck
 
+      - name: Typecheck Desktop Main (no emit)
+        run: pnpm exec tsc -p packages/desktop/tsconfig.main.json --noEmit --pretty false
+
       - name: Lint (root)
         run: pnpm lint
 

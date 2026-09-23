@@ -11,6 +11,7 @@
 import { randomUUID } from "node:crypto";
 import { ZodError } from "zod";
 import {
+  CODING_PLAN_DISABLED,
   isOffPeakTerminalStatus,
   resolveWorkspaceKey,
   type OffPeakCodingPlanSupport,
@@ -165,6 +166,16 @@ export class OffPeakTaskService implements IOffPeakTaskService {
 
   /** 创建即取号（取号成功才落库）；失败只返回稳定分类，绝不跨 RPC 返回 raw error。 */
   async createTask(params: ZCodeOffPeakTaskCreateParams): Promise<OffPeakTaskCreateResult> {
+    // 直接构造服务的调用也不能绕过产品硬禁用去取远端 ticket。
+    if (CODING_PLAN_DISABLED) {
+      return {
+        ok: false,
+        failureStage: "client_validation",
+        errorCategory: "client_validation",
+        errorCode: "offpeak_disabled",
+        providerName: "",
+      };
+    }
     let providerName = "";
     try {
       providerName = await this.deps.resolveTelemetryProviderName();
@@ -489,6 +500,7 @@ export class OffPeakTaskService implements IOffPeakTaskService {
   // ---- offPeakTaskSync：批量轮询 + 晋级写回 + 核销 outbox ----
 
   startSync(): void {
+    if (CODING_PLAN_DISABLED) return;
     if (!this.syncStopped) return;
     this.syncStopped = false;
     // 启动即扫一次未核销终态（host 启动扫描）。
@@ -526,6 +538,7 @@ export class OffPeakTaskService implements IOffPeakTaskService {
 
   /** 单次同步周期；显式调用（测试/启动扫描）不受 stopSync 影响，仅自动重排循环受控。 */
   async runSyncCycle(): Promise<void> {
+    if (CODING_PLAN_DISABLED) return;
     if (this.syncRunning) {
       // 已有一轮在跑：这次请求不能直接丢弃。空闲停轮询后循环只在 create/continue
       // 重新拉起，若此时恰好有一轮在途，丢掉这次 arm 会让新任务的票状态再无人轮询。

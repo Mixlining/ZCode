@@ -1,4 +1,4 @@
-import type { DatabaseMigrationFacts } from "@zcode/shared";
+import { CODING_PLAN_DISABLED, type DatabaseMigrationFacts } from "@zcode/shared";
 import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import { createRequire } from "node:module";
@@ -99,7 +99,8 @@ export async function prepareTasksIndexStorage(
   const repos = [
     new TaskIndexRepo(path, LOCK_WAIT_MS),
     new AutomationRepo(path, LOCK_WAIT_MS),
-    new OffPeakTaskRepo(path, LOCK_WAIT_MS),
+    // 共享迁移仍保留 off_peak schema；禁用时不运行会改写旧行的业务修复。
+    ...(!CODING_PLAN_DISABLED ? [new OffPeakTaskRepo(path, LOCK_WAIT_MS)] : []),
   ];
   let preparationFailure: unknown;
   try {

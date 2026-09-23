@@ -73,6 +73,7 @@ import {
   HostMessageTypes,
   HostResponseTypes,
   ZCODE_TELEMETRY_ENABLED,
+  CODING_PLAN_DISABLED,
   ZCODE_VERSION,
   formatLogPrefix,
   formatZCodeHostProcessName,
@@ -349,8 +350,10 @@ const cronAutomationRepo = new AutomationRepo();
 const cronRunSubscriptions = new Map<string, { dispose(): void }>();
 
 // ---- 闲时任务（off-peak）派发：与 cron 并行的独立链路（表/消息/常量互不复用）----
-const offPeakTaskRepo = new OffPeakTaskRepo();
-const offPeakRunSubscriptions = new Map<string, { dispose(): void }>();
+const offPeakTaskRepo = CODING_PLAN_DISABLED ? null : new OffPeakTaskRepo();
+const offPeakRunSubscriptions = CODING_PLAN_DISABLED
+  ? null
+  : new Map<string, { dispose(): void }>();
 /**
  * 续跑提示词（"实现时定"的落地）：3h 时间盒到期 / app 重启恢复后 resume 同一
  * session 续发。不重发原始 prompt（会让模型从头再做一遍），而是指示接续未完成的工作。
@@ -376,6 +379,7 @@ interface OffPeakRuntime {
 let offPeakRuntime: OffPeakRuntime | null = null;
 
 async function ensureOffPeakRuntime(): Promise<OffPeakRuntime | null> {
+  if (CODING_PLAN_DISABLED) return null;
   if (offPeakRuntime) return offPeakRuntime;
   const services = activeServices;
   if (!services) return null;
@@ -417,9 +421,9 @@ function offPeakRunSubscriptionKey(taskId: string, traceId: TraceId): string {
 }
 
 function disposeOffPeakRunSubscription(key: string): void {
-  const disposable = offPeakRunSubscriptions.get(key);
+  const disposable = offPeakRunSubscriptions?.get(key);
   if (!disposable) return;
-  offPeakRunSubscriptions.delete(key);
+  offPeakRunSubscriptions?.delete(key);
   disposable.dispose();
 }
 
@@ -456,6 +460,7 @@ async function finalizeOffPeakRun(params: {
   outcome: ZCodeAutomationRunOutcome;
   error?: string;
 }): Promise<void> {
+  if (!offPeakTaskRepo) return;
   // 自动续跑：票据过期（active 3h 到期 / ready 废票）不是失败——
   // 同 task_id 重取号回 queued，等下一个 ready 再 resume 同 session 续跑。
   if (params.outcome === "failed" && isOffPeakTicketExpiredError(params.error)) {
@@ -509,6 +514,7 @@ function trackOffPeakRunOutcome(params: {
   workspacePath: string;
   workspaceIdentity?: string;
 }): void {
+  if (!offPeakRunSubscriptions) return;
   const key = offPeakRunSubscriptionKey(params.taskId, params.traceId);
   disposeOffPeakRunSubscription(key);
   const disposable = params.zcodeTaskService.onDynamicTaskTerminalOutcome(params.taskId)(
@@ -538,6 +544,7 @@ async function dispatchOffPeakRun(request: OffPeakRunDispatchRequest): Promise<{
   conversationId: string;
   sessionId: string;
 }> {
+  if (CODING_PLAN_DISABLED) throw new Error("off-peak is disabled");
   const zcodeTaskService = activeServices?.getOptional(IZCodeTaskService);
   if (!zcodeTaskService) {
     throw new Error("ZCode task service is not initialized.");
@@ -2132,11 +2139,11 @@ async function disposeHostResources(reason: string): Promise<HostShutdownResult>
       disposeCronRunSubscription(key);
     }
     cronAutomationRepo.close();
-    for (const key of Array.from(offPeakRunSubscriptions.keys())) {
+    for (const key of Array.from(offPeakRunSubscriptions?.keys() ?? [])) {
       disposeOffPeakRunSubscription(key);
     }
     disposeOffPeakRuntime();
-    offPeakTaskRepo.close();
+    offPeakTaskRepo?.close();
 
     if (activeSessionRealtimePort) {
       activeSessionRealtimePort.dispose();
@@ -2201,11 +2208,11 @@ function disposeHostResourcesBestEffort(reason: string): void {
     disposeCronRunSubscription(key);
   }
   cronAutomationRepo.close();
-  for (const key of Array.from(offPeakRunSubscriptions.keys())) {
+  for (const key of Array.from(offPeakRunSubscriptions?.keys() ?? [])) {
     disposeOffPeakRunSubscription(key);
   }
   disposeOffPeakRuntime();
-  offPeakTaskRepo.close();
+  offPeakTaskRepo?.close();
   void windowRemoteConnectionRegistry.dispose();
 
   if (activeServices) {
@@ -2377,6 +2384,17 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
   }
 
   if (msg.type === HostMessageTypes.OffPeakRun) {
+    if (CODING_PLAN_DISABLED) {
+      parentPort.postMessage({
+        type: HostResponseTypes.OffPeakRunResult,
+        offPeakTaskId: msg.offPeakTaskId,
+        ok: false,
+        error: "off-peak is disabled",
+        // 与旧 scheduler 混跑时不能把遗留行结算成终态。
+        failureKind: "transient",
+      });
+      return;
+    }
     if (databaseStartup?.coordinator.snapshot.phase !== "ready") {
       parentPort.postMessage({
         type: HostResponseTypes.OffPeakRunResult,
@@ -2842,9 +2860,15 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
                   automationId,
                 });
               },
-              onOffPeakSchedulerWakeRequested: () => {
-                parentPort?.postMessage({ type: HostResponseTypes.OffPeakSchedulerWakeRequest });
-              },
+              ...(!CODING_PLAN_DISABLED
+                ? {
+                    onOffPeakSchedulerWakeRequested: () => {
+                      parentPort?.postMessage({
+                        type: HostResponseTypes.OffPeakSchedulerWakeRequest,
+                      });
+                    },
+                  }
+                : {}),
               onProviderProvisioningSourceChanged: (trigger) => {
                 parentPort?.postMessage({
                   type: HostResponseTypes.ProviderProvisioningSourceChanged,

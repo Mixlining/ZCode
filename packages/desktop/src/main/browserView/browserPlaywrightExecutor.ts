@@ -9,6 +9,30 @@ import { normalizePlaywrightTimeout } from "./browserPlaywrightTimeout.js";
 
 type Done = (partial: Omit<BrowserCommandResult, "elapsedMs">) => BrowserCommandResult;
 
+// 仅用于序列化后在页面上下文执行的函数；局部声明避免给 Electron Main 引入 DOM 全局类型。
+interface RuntimeElement {
+  id: string;
+  tagName: string;
+  outerHTML: string;
+  innerText?: string;
+  value?: string;
+  getAttribute(name: string): string | null;
+  matches(selector: string): boolean;
+  getBoundingClientRect(): { x: number; y: number; width: number; height: number };
+}
+interface RuntimeCreatedElement {
+  id: string;
+  style: { cssText: string };
+  append(...children: RuntimeCreatedElement[]): void;
+  remove(): void;
+}
+declare const document: {
+  elementsFromPoint(x: number, y: number): RuntimeElement[];
+  getElementById(id: string): { remove(): void } | null;
+  createElement(tag: string): RuntimeCreatedElement;
+  documentElement: { append(...children: RuntimeCreatedElement[]): void };
+};
+
 const POLL_INTERVAL_MS = 50;
 
 function serializeRuntimeCall(fn: (...args: any[]) => unknown, ...args: unknown[]): string {
@@ -17,8 +41,9 @@ function serializeRuntimeCall(fn: (...args: any[]) => unknown, ...args: unknown[
 
 function elementInfoRuntime(options: { x: number; y: number; includeNonInteractable?: boolean }) {
   const cssEscape = (value: string) =>
-    globalThis.CSS?.escape?.(value) ?? value.replace(/[^\w-]/g, "\\$&");
-  const candidatesFor = (element: Element) => {
+    (globalThis as { CSS?: { escape?: (value: string) => string } }).CSS?.escape?.(value) ??
+    value.replace(/[^\w-]/g, "\\$&");
+  const candidatesFor = (element: RuntimeElement) => {
     const values: string[] = [];
     if (element.id) values.push(`#${cssEscape(element.id)}`);
     const testId = element.getAttribute("data-testid");
@@ -28,7 +53,7 @@ function elementInfoRuntime(options: { x: number; y: number; includeNonInteracta
     values.push(element.tagName.toLowerCase());
     return [...new Set(values)];
   };
-  const role = (element: Element) =>
+  const role = (element: RuntimeElement) =>
     element.getAttribute("role") ??
     (element.matches("button,input[type=button],input[type=submit]")
       ? "button"
@@ -37,7 +62,7 @@ function elementInfoRuntime(options: { x: number; y: number; includeNonInteracta
         : element.matches("input:not([type]),input[type=text],textarea")
           ? "textbox"
           : null);
-  const interactable = (element: Element) =>
+  const interactable = (element: RuntimeElement) =>
     Boolean(role(element) || element.matches("input,select,textarea,[tabindex],[contenteditable]"));
   return document
     .elementsFromPoint(options.x, options.y)
@@ -45,8 +70,7 @@ function elementInfoRuntime(options: { x: number; y: number; includeNonInteracta
     .map((element) => {
       const rect = element.getBoundingClientRect();
       const candidates = candidatesFor(element);
-      const visibleText =
-        (element as HTMLElement).innerText?.trim() || (element as HTMLInputElement).value || null;
+      const visibleText = element.innerText?.trim() || element.value || null;
       const ariaName = element.getAttribute("aria-label") || visibleText;
       return {
         tagName: element.tagName.toLowerCase(),

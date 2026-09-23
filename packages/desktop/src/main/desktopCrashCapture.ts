@@ -125,8 +125,7 @@ function pruneCrashDumpArchive(
   archiveDir: string,
   policy: CrashArchiveRetentionPolicy,
 ): CrashArchiveCleanupResult {
-  // 启动时必须先完成本地留档与清理，再让 ARMS 扫描并删除 live；这里保持与既有归档一致的
-  // 同步临界区，避免异步 IO 改变 appCrashCaptureBootstrap -> appARMSBootstrap 的先后顺序。
+  // 启动时先完成本地留档与清理，保持与既有归档一致的同步临界区。
   const deletedFiles: string[] = [];
   const failedFiles: string[] = [];
   const dumps: Array<{ entry: string; path: string; mtimeMs: number; size: number }> = [];
@@ -176,6 +175,7 @@ function pruneCrashDumpArchive(
 
   while (keptCount > 1 && (keptCount > maxFiles || keptBytes > maxTotalBytes)) {
     const dump = dumps[keptCount - 1];
+    if (!dump) break;
     dumpsToDelete.push(dump);
     keptCount -= 1;
     keptBytes -= dump.size;

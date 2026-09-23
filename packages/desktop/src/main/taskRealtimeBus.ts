@@ -248,6 +248,7 @@ export class TaskRealtimeBus {
 
     switch (parsed.data.type) {
       case HostResponseTypes.TaskRealtimePublish:
+        // @ts-expect-error TS2345: 跨版本流事件 schema 只验证公共字段；保留现有 Host 消息兼容边界。
         this.handleRealtimePublish(origin, parsed.data.event);
         break;
       case HostResponseTypes.TaskRunLeaseAcquire:
@@ -257,6 +258,7 @@ export class TaskRealtimeBus {
         this.releaseLease(origin.hostId, parsed.data.target);
         break;
       case HostResponseTypes.TaskStreamOpPublish:
+        // @ts-expect-error TS2345: 流事件 payload 允许跨版本扩展；此处不改写已验证的 Host 消息。
         this.handleStreamOpPublish(origin, parsed.data.target, parsed.data.op);
         break;
       case HostResponseTypes.TaskOwnerCommandRequest:
@@ -591,7 +593,11 @@ export class TaskRealtimeBus {
     const coalesced: TaskStreamMirrorPublishOp[] = [];
     for (const op of ops) {
       const previous = coalesced[coalesced.length - 1];
-      if (this.canMergeTextChunk(previous, op)) {
+      if (
+        this.canMergeTextChunk(previous, op) &&
+        op.kind === "stream_event" &&
+        (op.event.type === "agent_message_chunk" || op.event.type === "agent_thought_chunk")
+      ) {
         coalesced[coalesced.length - 1] = {
           kind: "stream_event",
           event: {

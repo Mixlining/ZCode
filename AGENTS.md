@@ -5,6 +5,18 @@
 - 定位问题时，未明确要求修改代码就先调查原因。结合源码、日志和运行时证据，区分已确认原因与待验证假设。
 - 保留与任务无关的本地改动，不自行恢复已移除的模块或内部依赖。
 
+## 项目背景与硬禁用边界
+
+- 本项目基于开源项目改造。厂商能力通过编译期硬编码关闭，保留原有实现以便追踪和维护；ARMS 启动模块及其专用代码已按用户要求移除。不得仅隐藏 UI、改用运行时环境变量或远端配置重新启用这些能力。具体产品规则和目录例外见 `spec/vendor-disable.md`。
+- 必须保持 `packages/shared/src/env.ts` 中的 `ZCODE_TELEMETRY_ENABLED = false`：不向厂商发送数仓事件、ARMS RUM 等远程遥测，也不启动无用途的上报队列和采样器。`MEMORY_DIAGNOSTICS_ENABLED = false` 保持内存诊断定时采样关闭。
+- Desktop Main 不得启动 ARMS SDK 或更新 ARMS 用户身份；本地崩溃记录可以保留，但不得因此恢复远端遥测或采样。
+- 必须保持 `CODING_PLAN_DISABLED = true`：官方 Coding Plan 的登录 OAuth、缓存会话恢复、权益与额度、套餐/支付查询及官方模型网关改写均不可恢复出网。入口、服务边界和启动恢复三层守卫应保持一致。
+- 保持现有 `REMOTE_ROLLOUT_DISABLED`、`ZCODE_VENDOR_ACTIONS_DISABLED` 与 `MARKETPLACE_AUTO_REFRESH_DISABLED` 的硬禁用语义。用户自行配置的模型端点、内置供应商目录、手动插件目录/下载及远程工作区运行资产下载遵循 `spec/vendor-disable.md` 的明确例外。
+- 不为已禁用能力或空闲状态新增常驻子进程、定时器、轮询、采样器或无用途的缓存。保留 scheduler 无待触发工作时自退、需要时唤醒的机制；窗口托盘驻留由用户设置决定，不由 scheduler 是否运行推断。
+- 闲时任务属于官方 Coding Plan，必须在 Host、Desktop Main、scheduler 和 Agent CLI 全链路硬禁用：不装配服务、Repo、同步定时器或工具，不恢复、读取、轮询、派发、结算旧任务；旧 `off_peak_tasks` 行原样保留。普通 cron 自动化及共用 scheduler 的既有启动、自退机制继续可用。
+- 保留闲时任务数据库表、列、索引和所有已发布迁移及其校验内容，确保旧版数据库可直接升级；禁用时跳过会修改旧闲时任务行的业务初始化修复。详见 `spec/vendor-disable.md`。
+- 遥测和内存诊断关闭时，CLI 仍可用既有节拍维护 resident session，但不应为无消费者的资源样本采集 CPU/内存或创建采样标识。
+
 ## 命令与仓库结构
 
 开工前运行 `node scripts/check-workspace-freshness.mjs` 检查基线。Node 版本以 `mise.toml` 为准。
@@ -24,7 +36,7 @@
 | 未使用依赖与导出 | `pnpm knip`                               |
 | 导出引用查询     | `pnpm dep:refs --list-exports <file>`     |
 
-测试入口以目标包当前的 `package.json` 和实际测试文件为准，不假定存在统一的单测或 E2E 命令。
+静态检查入口以当前 `package.json` 为准；本项目修改后的验证不运行单测或 E2E。
 
 - `packages/desktop`：Electron main、host、renderer。
 - `packages/web`、`packages/server`：Web 客户端与服务端。
@@ -39,10 +51,12 @@
 
 - 代码改动使用 `.agents/skills/architecture-governance/SKILL.md`，先运行架构检查，再读取目标模块的受控上下文。
 - 避免重复状态和多条写入路径。明确唯一所有者、接口、依赖方向、事件顺序与幂等边界，不能用超时掩盖同步问题。
-- 有行为改动时先补充对应测试；交互改动需要 E2E 场景。检查测试与实现是否一致，并实际执行可用的验证。未执行或环境受限时如实说明。
+- 有行为改动时先在对应 spec 记录正反路径、状态边界和验收场景；交互改动写明人工验收步骤。本项目修改后只执行静态检查，不启动应用、运行单测/E2E，或直接编译、打包 Desktop 与 CLI 制品。
 - 修复 bug 时用中文注释说明原因和修复依据。发现设计缺陷时先与用户对齐，不不断增加兜底分支。
 - 涉及状态、时序、远端或异步同步的方案，用图展示所有者及事件顺序。
-- 必须执行 `pnpm typecheck` 和 `pnpm lint`，报告真实结果，不将已有失败写成通过。
+- 每次修改后执行 `pnpm typecheck`、`pnpm lint`、`pnpm fmt:check`、`pnpm architecture:check --changed` 和 `git diff --check`，报告真实结果，不将已有失败写成通过。`pnpm typecheck` 是允许的现有检查流程；Desktop Main 改动另用 `pnpm exec tsc -p packages/desktop/tsconfig.main.json --noEmit` 静态核对，并区分其已有错误与新增错误。
+- CI 的 Typecheck 门禁在根类型检查后执行 Desktop Main `tsc --noEmit`。CLI bootstrap 的直接检查依赖未入库的 workspace 声明产物，建立无构建的干净检出检查入口前，不把本地偶然存在的 `dist` 作为 CI 前提。
+- 每次修改后对本次变更链路做静态消融实验：逐项审视新增或保留的条件、参数、状态、封装和依赖，尝试去掉无必要部分；核对调用点和行为边界后重跑静态检查，记录保留理由及净代码变化。不得借消融扩大到无关模块或新增兜底层。
 - 使用异步文件和网络 IO；跨包导入使用公开入口，遵守现有路径别名。
 - 禁止 UI 直接调用 Repo、Service 引用 Runtime 具体实现、跨域导入实现细节及循环依赖。
 

@@ -4,13 +4,10 @@ import "./desktopEarlyDataBaseDirBootstrap.js";
 import "./desktopEarlyChromiumHardwareAccelerationBootstrap.js";
 import { powerMonitor, powerSaveBlocker } from "electron";
 import { crashCapturePaths } from "./appCrashCaptureBootstrap.js";
-import { armsInitPromise } from "./appARMSBootstrap.js";
 import {
   onLocalDatabaseStartupReady,
   configureDatabaseStartupQuit,
 } from "./databaseStartupRelay.js";
-import armsRum from "@arms/rum-electron";
-import { createArmsUserIdentitySync } from "./armsUserIdentity.js";
 import { ensureDesktopDeviceMidSync } from "./desktopDeviceMid.js";
 import {
   createDesktopContextPromptRollout,
@@ -46,7 +43,7 @@ import {
 import type { UtilityProcess as ElectronUtilityProcess } from "electron";
 import { spawn } from "node:child_process";
 import { join, resolve } from "node:path";
-import { homedir, hostname } from "node:os";
+import { homedir } from "node:os";
 import {
   createCredentialService,
   createSettingService,
@@ -73,8 +70,8 @@ import {
   DEFAULT_LOCALE,
   ZCODE_VERSION,
   ZCODE_TELEMETRY_ENABLED,
+  CODING_PLAN_DISABLED,
   ZCODE_ARMS_RUM_ENDPOINT,
-  buildZCodeEndpointUrls,
   resolveZCodeEndpointOrigin,
   shouldEnableE2ETestBridge,
   type UpdateStatePayload,
@@ -112,7 +109,6 @@ import {
   type AppShutdownKind,
 } from "./appShutdownPolicy.js";
 import { createPrimaryWindowCoordinator } from "./primaryWindowCoordinator.js";
-import { createTempTextAttachment } from "./tempTextAttachment.js";
 import { flushMainE2ECoverage } from "./e2eCoverage.js";
 import { resolveStartupWindowBootstrap, type StartupWindowBootstrap } from "./startupWorkspace.js";
 import {
@@ -199,11 +195,6 @@ import {
 } from "./resourceManagerWindow.js";
 import { createDesktopHelpConfigReader } from "./desktopHelpConfig.js";
 import { registerPlatformIpcHandlers } from "./desktopMainIpcPlatform.js";
-import {
-  loadCliMcpFromUserDirectory,
-  migrateLegacyCommonMcp,
-  saveCliMcpToUserDirectory,
-} from "./mcpUserDirectory/index.js";
 import { registerRemoteIpcHandlers } from "./desktopMainIpcRemote.js";
 import {
   configureDesktopStabilityTelemetry,
@@ -650,6 +641,7 @@ function forwardCronRunResult(
 function forwardOffPeakRunResult(
   result: Parameters<CronSchedulerHandle["handleOffPeakRunResult"]>[0],
 ): void {
+  if (CODING_PLAN_DISABLED) return;
   cronScheduler?.handleOffPeakRunResult(result);
 }
 /** 按需拉起 scheduler：库未就绪时推迟到 ready，等首个 tick 认领已落库的工作。 */
@@ -666,8 +658,6 @@ function ensureCronScheduler(): CronSchedulerHandle | null {
       hostProcessLocalEnv,
       logger,
       resolveDispatchHost: resolveCronDispatchHost,
-      // keep-awake 已改为纯设置驱动；计数上报保留给后续诊断/配额用途，不再联动 blocker。
-      onOffPeakActiveCountChanged: () => {},
       onExited: () => {
         // 空闲自退与崩溃都在这里收口：句柄失效后由下一次 wake 重新拉起。
         cronScheduler = null;
@@ -692,6 +682,7 @@ function wakeCronScheduler(automationId: string): void {
   ensureCronScheduler()?.wake(automationId);
 }
 function wakeOffPeakScheduler(offPeakTaskId?: string): void {
+  if (CODING_PLAN_DISABLED) return;
   // 复用同一条 scheduler-wake 通道（tick 同时覆盖 cron 与 off-peak 分支），仅日志标签区分。
   lastSchedulerWakeAt = Date.now();
   ensureCronScheduler()?.wake(`offpeak:${offPeakTaskId ?? "sync"}`);
@@ -803,8 +794,6 @@ function syncAppTelemetryInteractiveState(): void {
       (win) => !win.isDestroyed() && win.isVisible() && win.isFocused(),
     ),
   );
-  // 登出/切号发生在 host 子进程，主进程无即时信号；窗口聚焦时兜底刷新 ARMS user.name
-  void armsUserIdentitySync.refresh();
 }
 
 app.on("browser-window-focus", (_event, win) => {
@@ -875,15 +864,6 @@ const rendererActionTraceBroker = createRendererActionTraceBroker({
   logger,
 });
 let disposeRendererActionTraceIpc: (() => void) | undefined;
-const armsUserIdentitySync = createArmsUserIdentitySync({
-  deviceMid,
-  // 采集停用时 SDK 未初始化，setConfig 会抛错。
-  setUser:
-    ZCODE_TELEMETRY_ENABLED && ZCODE_ARMS_RUM_ENDPOINT
-      ? (user) => armsRum.setConfig("user", user)
-      : () => {},
-});
-
 function extractOpenWorkspacePathFromDeepLinkUrl(url: string): string | null {
   try {
     const parsedUrl = new URL(url);
@@ -1732,8 +1712,6 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
         explicitQuitRequested: explicitQuitRef.current,
         closeToTrayOnWindows,
         isLastWindow: getMainApplicationWindows().length === 1,
-        // 只有还有待触发工作才需要为后台任务常驻：scheduler 在跑就说明排定工作还在（它空闲时会自退）。
-        hasScheduledWork: cronScheduler !== null,
         label,
         logger,
         shouldConfirmQuit: shouldConfirmAppQuit(),
@@ -1780,9 +1758,11 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
             void appTelemetryCore.reportEvent(message.event).catch(() => {});
           },
           onCronRunResult: forwardCronRunResult,
-          onOffPeakRunResult: forwardOffPeakRunResult,
+          ...(!CODING_PLAN_DISABLED ? { onOffPeakRunResult: forwardOffPeakRunResult } : {}),
           onCronSchedulerWakeRequested: wakeCronScheduler,
-          onOffPeakSchedulerWakeRequested: wakeOffPeakScheduler,
+          ...(!CODING_PLAN_DISABLED
+            ? { onOffPeakSchedulerWakeRequested: wakeOffPeakScheduler }
+            : {}),
           authorizeLocalMediaPreviewPath: localMediaPreviewPathRegistry.authorize,
           // browser-use：main 用 WebContentsView+CDP 执行命令。
           handleBrowserExecuteRequest: ({ win: browserWin, ...request }) =>
@@ -1831,7 +1811,7 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
     initialWindowSize: currentDesktopWindowSize,
     currentApplicationLocale: () => currentApplicationLocale,
     resolveBrowserViewOwner: (webContentsId) =>
-      browserGuestManager.getTabOwnerByWebContentsId(webContentsId),
+      browserGuestManager.getTabOwnerByWebContentsId(webContentsId) ?? undefined,
     persistWindowSize: async (state) => {
       currentDesktopWindowSize = state;
       await mainSettingService.update({ desktopWindowSize: state });
@@ -2140,9 +2120,6 @@ app.whenReady().then(async () => {
   registerRemoteIpcHandlers({
     logger,
     appTelemetryRuntime,
-    onOAuthCallbackHandledSideEffect: () => {
-      void armsUserIdentitySync.refresh();
-    },
     appTelemetryCore,
     reportRemoteUsageEvent: reportRemoteUsageEventForRenderer,
     armsCustomContext: {
@@ -2164,14 +2141,6 @@ app.whenReady().then(async () => {
     listAvailableDockerContainers,
     listSSHConfigAliases,
   });
-
-  // 等待 ARMS 完成 init（含渲染进程注入监听），避免首窗 dom-ready 早于 SDK 注册导致无上报
-  await armsInitPromise;
-
-  // ARMS init 完成后首次写入 user.name（落 device_mid）
-  if (ZCODE_TELEMETRY_ENABLED) {
-    void armsUserIdentitySync.refresh();
-  }
 
   // 未配置 ARMS 端点时不初始化上报 context，避免把空转误当成已启用。
   if (ZCODE_TELEMETRY_ENABLED && ZCODE_ARMS_RUM_ENDPOINT) {
@@ -2271,7 +2240,7 @@ app.whenReady().then(async () => {
   });
 
   const protocolUrl = extractDeepLinkUrlFromArgs(process.argv);
-  if (startupDeepLinkConsumptionGate.shouldHandleReadyProtocolUrl(protocolUrl)) {
+  if (protocolUrl && startupDeepLinkConsumptionGate.shouldHandleReadyProtocolUrl(protocolUrl)) {
     handleDeepLink(protocolUrl, logger, {
       confirmationCopy: resolveExternalWorkspaceConfirmationCopy(),
       resolveApplicationWindow: () => getApplicationWindowsExcludingCuaIndicator()[0] ?? null,

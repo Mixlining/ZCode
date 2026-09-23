@@ -18,6 +18,10 @@
 | `ZCODE_TELEMETRY_ENABLED`           | `false` | 数仓事件与 ARMS RUM 出网                           |
 | `MEMORY_DIAGNOSTICS_ENABLED`        | `false` | 内存诊断采样定时器                                 |
 
+Desktop Main 不加载或等待 ARMS 初始化，也不在窗口聚焦、OAuth 回调或启动后更新 ARMS 用户身份。关闭遥测时不允许以诊断名义创建 ARMS SDK、周期采样或远端上报。崩溃本地记录属于稳定性日志，仍保留。
+
+Host 服务装配不创建没有注册或消费方的 commands、hooks、memory 服务对象；这些工厂与公开入口仍保留，真实请求路径按需调用。
+
 ### 明确保留的厂商读取（目录例外）
 
 以下读取会请求厂商端点，但**有意保留**，因为它们提供的是内容目录而非账号事实：
@@ -98,6 +102,34 @@
 | 套餐商品与订单事实       | `codingPlanSubscriptionService`（宿主侧）                         |
 | 闲时任务准入             | host `zcodeAgentService`（`offpeak_disabled`）                    |
 
+## 闲时任务运行链路硬禁用
+
+`CODING_PLAN_DISABLED = true` 时，闲时任务在 Host、Desktop Main、共用 scheduler 和 Agent CLI
+均无运行入口。Host 不装配 `IOffPeakTaskService`、Repo、远端 client 或同步定时器；scheduler
+不创建闲时任务 Repo 与在途/退避状态，不恢复、认领、计数、派发或以旧任务决定进程存活。
+Main 不因闲时任务唤醒 scheduler，也不把闲时任务派发给 Host；Host 拒绝迟到或伪造的
+`OffPeakRun`。CLI 不接受启用闲时工具的旧策略或会话参数，不注入 OffPeakPort。
+Main 与 scheduler 的消息类型由 shared 统一声明，恢复历史协议导入路径不改变消息格式。
+`offpeak/create` 返回现有 `offpeak_disabled` 结果，`offpeak/list` 返回空列表；未注册的
+直接服务 RPC 可以报告不可用，不得因此启动闲时任务资源。
+
+```text
+旧 off_peak_tasks 行 ── 保留原值；不恢复、不轮询、不派发、不结算
+普通 cron 写入 ── Host 唤醒 Main ── 共用 scheduler 认领与派发 ── 无工作后自退
+闲时任务入口 ── Host/CLI 硬禁用 ── 无 Repo、同步 timer、额外进程或远端请求
+```
+
+旧版数据库必须能直接升级：保留 `off_peak_tasks` 表、列、索引、历史迁移及其校验内容。
+共享 tasks-index 迁移仍执行，但禁用时跳过会改写旧闲时任务状态行的 Repo 初始化修复；
+旧行保持原值，以便将来迁回旧版或恢复能力。普通 cron 自动化与共享数据库准备流程保持可用。
+
+遥测与内存诊断均硬关闭时，Agent CLI 保留 resident session 收敛和事件存储淘汰的
+60 秒维护节拍，但不构造资源采样器、不读取 CPU/RSS/heap 或生成采样标识。
+
+静态验收：无任务时 scheduler 沿现有机制自退；只有 cron 任务时正常派发；只有旧闲时
+任务行时不延长 scheduler 存活、不改写旧行、不触发 Host 同步或 Agent 工具。
+上述场景只记录为人工验收清单，不在本项目修改流程中运行应用、单测或 E2E。
+
 ## 验收场景
 
 静态可验证：
@@ -124,4 +156,4 @@
 1. 把上表中需要恢复的常量改回 `false`。
 2. 恢复 `CODING_PLAN_DISABLED` 时，需同时确认三层守卫都能编译通过：入口层短路分支、
    服务边界短路分支、启动恢复早退分支都是「守卫 + 原逻辑」并列结构，删守卫即可复原。
-3. 不需要恢复被删除的模块——本方案只加守卫，不删除组件、i18n 或服务实现。
+3. 套餐、OAuth 与闲时任务实现仍以守卫保留；ARMS 启动模块及其专用共享代码已按要求删除，恢复 ARMS 需单独设计，不得只翻转常量。

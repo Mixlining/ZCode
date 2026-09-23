@@ -4,7 +4,6 @@
  * 遍历、分类、聚合逻辑全部来自 @zcode/services（单一扫描路径）。
  */
 import { isMainThread, parentPort, workerData } from "node:worker_threads";
-import type { StorageRootSpec } from "@zcode/services";
 import { runStorageScan } from "@zcode/services/node";
 import {
   isStorageScanWorkerCommand,
@@ -23,7 +22,7 @@ if (!isMainThread && port) {
     }
   });
   void runStorageScan({
-    roots: data.roots as StorageRootSpec[],
+    roots: data.roots,
     signal: controller.signal,
     progressIntervalMs: data.progressIntervalMs,
     onProgress: (progress) => post({ type: "progress", progress }),

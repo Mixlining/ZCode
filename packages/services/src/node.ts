@@ -12,6 +12,7 @@ import {
 import { getAppConfigDir as resolveAppConfigDir } from "./paths.js";
 import {
   buildLocalMediaPreviewUrl,
+  CODING_PLAN_DISABLED,
   isProviderProvisioningAccountCredentialKey,
   type ProviderProvisioningTrigger,
 } from "@zcode/shared";
@@ -519,7 +520,6 @@ import {
   zcodeAccountAccessSchema,
   zcodeProviderAccountAccessSchema,
   ZCODE_VERSION,
-  ZCODE_ENV,
   buildRuntimeZCodeApiUrl,
 } from "@zcode/shared";
 
@@ -1662,11 +1662,6 @@ export function createLocalServices(options: {
   const subagentsService = createSubagentsService({
     isDesktopRuntime: true,
   });
-  const commandsService = createCommandsService({ isDesktopRuntime: true });
-  const hooksService = createHooksService({
-    grantWorkspaceHookTrust: (params) => zcodeAgentService.grantWorkspaceHookTrust(params),
-  });
-  const memoryService = createMemoryService();
   // 只要当前进程已经装配 Provider Runtime，就由该 Environment 自己的 Selection View
   // 决定执行就绪状态。Desktop-attached remote 也读取远端自己的 Config/Account Facts。
   const modelSelectionReadinessSource = providerRuntime.modelSelection;
@@ -2073,7 +2068,7 @@ export function createLocalServices(options: {
   let offPeakTaskServiceForAgent: OffPeakTaskService | undefined;
   // desktop-attached-remote 装配不暴露 Off-Peak 工具面（远程不在支持范围）。
   const offPeakToolWiring =
-    options?.serviceAuthorityMode === "desktop-attached-remote"
+    CODING_PLAN_DISABLED || options?.serviceAuthorityMode === "desktop-attached-remote"
       ? {}
       : {
           resolveOffPeakClientConfig: () => codingPlanSubscriptionService.getOffPeakClientConfig(),
@@ -2359,37 +2354,42 @@ export function createLocalServices(options: {
   // Desktop Host 曾从 Settings View 再扫描一次 Account Provider，既绕开
   // Registry 的 entitlement/executable 事实，也在多个套餐同时可见时无法唯一选择。
   // 闲时服务与 Host 派发必须共享同一个 Registry-backed 凭据解析闭包。
-  const offPeakCredentialResolverDeps = {
-    credentialService,
-    accountRequestAuthService,
-    resolveAccountProvider: async () => {
-      await providerRuntime.start();
-      // start 缓存的是首次就绪；账号后到或切换后必须读 Registry 最近完成的快照。
-      const snapshot = providerRuntime.registryService.getSnapshot()!;
-      const providers = snapshot.resolution.registryProviders.filter(
-        (candidate) =>
-          candidate.config.access.type === "zhipu-account" &&
-          (candidate.config.access.mode === "individual-coding-plan" ||
-            candidate.config.access.mode === "team-coding-plan"),
-      );
-      if (providers.length !== 1) return null;
-      const provider = providers[0]!;
-      const config = provider.config;
-      const staticAccess = zcodeProviderAccountAccessSchema.parse(config.access.toJSON());
-      const access = await accountRequestAuthService.resolveAccessCurrent(staticAccess);
-      if (!access) return null;
-      return {
-        providerId: provider.providerId,
-        access: zcodeAccountAccessSchema.parse(access),
-        ...(config.api?.baseUrl ? { baseURL: config.api.baseUrl } : {}),
+  const offPeakCredentialResolverDeps = CODING_PLAN_DISABLED
+    ? null
+    : {
+        credentialService,
+        accountRequestAuthService,
+        resolveAccountProvider: async () => {
+          await providerRuntime.start();
+          // start 缓存的是首次就绪；账号后到或切换后必须读 Registry 最近完成的快照。
+          const snapshot = providerRuntime.registryService.getSnapshot()!;
+          const providers = snapshot.resolution.registryProviders.filter(
+            (candidate) =>
+              candidate.config.access.type === "zhipu-account" &&
+              (candidate.config.access.mode === "individual-coding-plan" ||
+                candidate.config.access.mode === "team-coding-plan"),
+          );
+          if (providers.length !== 1) return null;
+          const provider = providers[0]!;
+          const config = provider.config;
+          const staticAccess = zcodeProviderAccountAccessSchema.parse(config.access.toJSON());
+          const access = await accountRequestAuthService.resolveAccessCurrent(staticAccess);
+          if (!access) return null;
+          return {
+            providerId: provider.providerId,
+            access: zcodeAccountAccessSchema.parse(access),
+            ...(config.api?.baseUrl ? { baseURL: config.api.baseUrl } : {}),
+          };
+        },
       };
-    },
-  };
-  const buildOffPeakRequestAuthForTicket: OffPeakRequestAuthBuilder = async (ticketId) =>
-    buildOffPeakRequestAuth({
-      credentials: await resolveOffPeakCredentials(offPeakCredentialResolverDeps),
-      ticketId,
-    });
+  const buildOffPeakRequestAuthForTicket: OffPeakRequestAuthBuilder | null =
+    offPeakCredentialResolverDeps
+      ? async (ticketId) =>
+          buildOffPeakRequestAuth({
+            credentials: await resolveOffPeakCredentials(offPeakCredentialResolverDeps),
+            ticketId,
+          })
+      : null;
   const fileService = createFileService({
     workspaceFileSearchFilter: options?.workspaceFileSearchFilter,
   });
@@ -2466,8 +2466,10 @@ export function createLocalServices(options: {
         }),
       }),
     )
-    .register(IClientScenesService, createClientScenesService({ apiClient }))
-    .register(
+    .register(IClientScenesService, createClientScenesService({ apiClient }));
+  // 闲时任务硬禁用时不构造 Repo/client/service，也不启动旧任务同步计时器。
+  if (offPeakCredentialResolverDeps)
+    services.register(
       IOffPeakTaskService,
       (() => {
         // 闲时任务编排服务（与 automation 服务面独立）：
@@ -2547,7 +2549,8 @@ export function createLocalServices(options: {
         offPeakTaskServiceForAgent = offPeakTaskService;
         return offPeakTaskService;
       })(),
-    )
+    );
+  services
     .register(ISkillsService, skillsService)
     .register(ISkillSyncService, createSkillSyncService())
     .register(IMcpSyncService, mcpSyncService)
@@ -2592,7 +2595,8 @@ export function createLocalServices(options: {
   // 稳定 socket），或用户显式授权流（restartHelper）拉起。启动即零 Helper 常驻。
 
   accountRequestAuthServices.set(services, accountRequestAuthService);
-  offPeakRequestAuthBuilders.set(services, buildOffPeakRequestAuthForTicket);
+  if (buildOffPeakRequestAuthForTicket)
+    offPeakRequestAuthBuilders.set(services, buildOffPeakRequestAuthForTicket);
 
   providerRuntimes.set(services, providerRuntime);
   providerProvisioningSources.set(services, providerProvisioningSource);

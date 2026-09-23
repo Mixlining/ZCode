@@ -1,4 +1,4 @@
-import { zcodeWorkspaceUpdateOffPeakToolPolicyParamsSchema } from "@zcode/shared";
+import { CODING_PLAN_DISABLED, zcodeWorkspaceUpdateOffPeakToolPolicyParamsSchema } from "@zcode/shared";
 import { parseParams, type ZCodeProtocolAgentServerContext } from "./server-types.js";
 
 /**
@@ -12,6 +12,8 @@ export async function updateOffPeakToolPolicy(
   rawParams: unknown,
 ) {
   const params = parseParams(zcodeWorkspaceUpdateOffPeakToolPolicyParamsSchema, rawParams);
-  context.appRuntimePreferences.offPeakToolEnabled = params.enabled;
-  return { workspace: params.workspace, enabled: params.enabled };
+  // 旧 Host 策略也不能重新启用当前构建的闲时任务工具。
+  const enabled = !CODING_PLAN_DISABLED && params.enabled;
+  context.appRuntimePreferences.offPeakToolEnabled = enabled;
+  return { workspace: params.workspace, enabled };
 }

@@ -63,6 +63,7 @@ import {
   zcodeAutomationUpdateParamsSchema,
   zcodeOffPeakCreateParamsSchema,
   zcodeOffPeakListParamsSchema,
+  CODING_PLAN_DISABLED,
   OFF_PEAK_PROVIDER_IDS,
   zcodeComputerUseOperationEventSchema,
   zcodeProviderRuntimeHeadersCancelledSchema,
@@ -2557,6 +2558,15 @@ export function createZCodeAgentService(
           }
           void (async () => {
             try {
+              if (CODING_PLAN_DISABLED) {
+                await client.respond(request.id, {
+                  ok: false,
+                  failureStage: "client_validation",
+                  errorCategory: "client_validation",
+                  errorCode: "offpeak_disabled",
+                });
+                return;
+              }
               const offPeakTaskService = options?.resolveOffPeakTaskService?.();
               if (!offPeakTaskService) {
                 await client.respondError(request.id, {
@@ -2669,6 +2679,10 @@ export function createZCodeAgentService(
           }
           void (async () => {
             try {
+              if (CODING_PLAN_DISABLED) {
+                await client.respond(request.id, { tasks: [] });
+                return;
+              }
               const offPeakTaskService = options?.resolveOffPeakTaskService?.();
               if (!offPeakTaskService) {
                 await client.respondError(request.id, {
@@ -3243,6 +3257,7 @@ export function createZCodeAgentService(
     workspaceIdentity?: string;
     remoteSessionId?: string;
   }): boolean {
+    if (CODING_PLAN_DISABLED) return false;
     if (!options?.resolveOffPeakClientConfig || !options.resolveOffPeakTaskService) return false;
     if (params.remoteSessionId) return false;
     return !params.workspaceIdentity || !isRemoteWorkspaceIdentity(params.workspaceIdentity);

@@ -31,7 +31,7 @@ export function createWindow(options: {
   spawnHostProcess: (
     win: BrowserWindow,
     label: string,
-    initMessage: HostInitMessage,
+    initMessage: Omit<HostInitMessage, "zcodeBuiltinProviderConfigFilePath">,
   ) => ElectronUtilityProcess;
   disposeHostProcess: (
     child: ElectronUtilityProcess,
@@ -116,7 +116,6 @@ export function createWindow(options: {
   }
 
   const wcId = win.webContents.id;
-  const browserWindowId = win.id;
   // 资源遥测据此把主窗口 renderer 归 renderer_main；辅助窗口与 DevTools 归 chromium_other。
   registerMainApplicationWindow(wcId);
   let domReadyGeneration = 0;
@@ -370,11 +369,6 @@ export function handleDesktopWindowCloseRequest(options: {
   explicitQuitRequested?: boolean;
   closeToTrayOnWindows?: boolean;
   isLastWindow: boolean;
-  /**
-   * 是否还有「下次会触发」的自动化/闲时任务。关到托盘或留在 Dock 只是为了让这些任务继续跑，
-   * 没有待触发工作就不需要为它常驻。
-   */
-  hasScheduledWork: boolean;
   label: string;
   logger: { info: (...args: unknown[]) => void };
   shouldConfirmQuit?: boolean;
@@ -382,25 +376,19 @@ export function handleDesktopWindowCloseRequest(options: {
   requestQuit: () => void;
   hideWindow?: () => void;
 }) {
-  // 多窗口时其它窗口仍在跑，隐藏到托盘与后台工作无关；只有最后一个窗口才看排定工作。
-  const shouldHideToTray =
+  // 修复原因：是否驻留托盘由用户设置决定；scheduler 空闲自退不能代替用户的退出意图。
+  if (
     options.platform === "win32" &&
     options.closeToTrayOnWindows &&
     !options.forceQuit &&
-    !options.explicitQuitRequested &&
-    (options.hasScheduledWork || !options.isLastWindow);
-  if (shouldHideToTray) {
+    !options.explicitQuitRequested
+  ) {
     options.logger.info(`[createWindow] window close hidden to tray (${options.label})`);
     options.hideWindow?.();
     return true;
   }
 
   if (options.forceQuit || !options.isLastWindow) {
-    return false;
-  }
-
-  // macOS 关窗语义是隐藏窗口、应用留在 Dock；只有确认没有待触发工作时才按同一规则退出。
-  if (options.platform === "darwin" && options.hasScheduledWork) {
     return false;
   }
 

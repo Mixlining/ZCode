@@ -1,6 +1,7 @@
 name: Check
 
-# 只做静态检查，不产出任何可分发产物：每次 push 与 PR 并行跑四项仓库根已有的检查命令。
+# 只做静态检查，不产出任何可分发产物：每次 push 与 PR 并行跑四项仓库根已有的检查命令；
+# Desktop Main 的无输出检查跟随根 Typecheck，复用其上游声明。
 # 与 build-desktop-windows.yml（tag 触发、出 Windows 安装包）互不依赖，打 tag 不触发本工作流。
 on:
   push:
@@ -62,3 +63,7 @@ jobs:
 
       - name: Run check
         run: ${{ matrix.command }}
+
+      - name: Typecheck Desktop Main (no emit)
+        if: matrix.name == 'Typecheck'
+        run: pnpm exec tsc -p packages/desktop/tsconfig.main.json --noEmit --pretty false

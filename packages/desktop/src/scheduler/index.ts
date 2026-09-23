@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- cron 与保留的闲时任务实现共用调度入口；硬禁用只切断闲时运行链路。 */
 // 常驻 cron scheduler 进程：由 desktop main 通过 electronUtilityProcess.fork 拉起。
 // 职责（tasks-index 属主方案）：
 //   - 轮询 tasks-index 的 automations，事务认领到期任务（AutomationRepo.claimDue：BEGIN IMMEDIATE + running 0→1）
@@ -15,6 +16,7 @@ import {
   OffPeakTaskRepo,
 } from "@zcode/services/node";
 import {
+  CODING_PLAN_DISABLED,
   resolveWorkspaceKey,
   type ZCodeAutomation,
   type ZCodeAutomationTrigger,
@@ -50,12 +52,16 @@ const repo = new AutomationRepo();
 const inFlight = new Map<string, InFlight>();
 
 // ---- 闲时任务（off-peak）----
-const offPeakRepo = new OffPeakTaskRepo();
-/** 进程内退避表：offPeakTaskId → 下次允许派发时间/已失败次数。scheduler 重启即重置，无害。 */
-const offPeakRetryAt = new Map<string, number>();
-const offPeakRetryAttempts = new Map<string, number>();
-/** 在途派发集合：仅用于退出时释放认领；迟到结果凭 offPeakTaskId 即可结算，不依赖它。 */
-const offPeakInFlight = new Set<string>();
+// 历史闲时任务行不能让共用 cron 进程常驻；禁用时连 Repo/退避表也不分配。
+const offPeakState = CODING_PLAN_DISABLED
+  ? null
+  : {
+      repo: new OffPeakTaskRepo(),
+      retryAt: new Map<string, number>(),
+      retryAttempts: new Map<string, number>(),
+      inFlight: new Set<string>(),
+      lastActiveCount: -1,
+    };
 
 let ticking = false;
 let tickRequested = false;
@@ -100,12 +106,13 @@ async function tick(): Promise<void> {
         for (const manualRun of manualRuns) {
           await handleClaimedManual(manualRun.automation, manualRun.run);
         }
-        const offPeakClaimed = await offPeakRepo.claimDue(now);
-        for (const task of offPeakClaimed) {
-          await handleOffPeakClaimed(task, now);
+        if (offPeakState) {
+          const offPeakClaimed = await offPeakState.repo.claimDue(now);
+          for (const task of offPeakClaimed) {
+            await handleOffPeakClaimed(task, now);
+          }
+          await reportOffPeakActiveCount();
         }
-        // keep-awake：上报执行中计数，main 据此 + 设置决定 powerSaveBlocker。
-        await reportOffPeakActiveCount();
         await exitWhenNoPendingWork();
       } catch (error) {
         log("error", `tick failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -216,12 +223,12 @@ async function handleClaimedManual(
 }
 
 /** 执行中计数上报（keep-awake）：仅在值变化时发消息，减噪。 */
-let lastOffPeakActiveCount = -1;
 async function reportOffPeakActiveCount(): Promise<void> {
+  if (!offPeakState) return;
   try {
-    const count = await offPeakRepo.countActive();
-    if (count === lastOffPeakActiveCount) return;
-    lastOffPeakActiveCount = count;
+    const count = await offPeakState.repo.countActive();
+    if (count === offPeakState.lastActiveCount) return;
+    offPeakState.lastActiveCount = count;
     const msg: SchedulerToMainMessage = { type: "offpeak-active-count", count };
     parentPort?.postMessage(msg);
   } catch (error) {
@@ -239,12 +246,18 @@ async function reportOffPeakActiveCount(): Promise<void> {
  * 两次写，任务数小、WAL 下开销可忽略——若退避任务成规模再把退避下沉进 claimDue）。
  */
 async function handleOffPeakClaimed(task: ZCodeOffPeakTask, now: number): Promise<void> {
-  const retryAt = offPeakRetryAt.get(task.offPeakTaskId) ?? 0;
-  if (retryAt > now) {
-    await offPeakRepo.releaseClaim(task.offPeakTaskId, { now });
+  if (!offPeakState) return;
+  // Repo 只认领有完整模型身份的行；防止认领后快照异常进入 Host 派发。
+  if (!task.modelSelection) {
+    await offPeakState.repo.releaseClaim(task.offPeakTaskId, { now });
     return;
   }
-  offPeakInFlight.add(task.offPeakTaskId);
+  const retryAt = offPeakState.retryAt.get(task.offPeakTaskId) ?? 0;
+  if (retryAt > now) {
+    await offPeakState.repo.releaseClaim(task.offPeakTaskId, { now });
+    return;
+  }
+  offPeakState.inFlight.add(task.offPeakTaskId);
   const request: SchedulerToMainMessage = {
     type: "offpeak-dispatch-request",
     offPeakTaskId: task.offPeakTaskId,
@@ -331,12 +344,14 @@ async function settleDispatchResult(
  * 之后 create/update/runNow 等写入会经 host 的 wake 重新拉起进程。
  */
 async function exitWhenNoPendingWork(): Promise<void> {
-  if (disposed || inFlight.size > 0 || offPeakInFlight.size > 0) {
+  if (disposed || inFlight.size > 0 || (offPeakState?.inFlight.size ?? 0) > 0) {
     return;
   }
   let hasWork = true;
   try {
-    hasWork = (await repo.hasPendingWork()) || (await offPeakRepo.hasPendingWork());
+    hasWork =
+      (await repo.hasPendingWork()) ||
+      (offPeakState ? await offPeakState.repo.hasPendingWork() : false);
   } catch (error) {
     // 判定失败时保持常驻：漏退只多占一份内存，误退会让已排定的任务不再触发。
     log(
@@ -372,21 +387,23 @@ async function dispose(): Promise<void> {
     }
   }
   inFlight.clear();
-  for (const offPeakTaskId of offPeakInFlight) {
+  if (offPeakState) {
+    for (const offPeakTaskId of offPeakState.inFlight) {
+      try {
+        await offPeakState.repo.releaseClaim(offPeakTaskId);
+      } catch {
+        // 忽略：退出路径尽力而为。
+      }
+    }
+    offPeakState.inFlight.clear();
     try {
-      await offPeakRepo.releaseClaim(offPeakTaskId);
+      offPeakState.repo.close();
     } catch {
       // 忽略：退出路径尽力而为。
     }
   }
-  offPeakInFlight.clear();
   try {
     repo.close();
-  } catch {
-    // 忽略。
-  }
-  try {
-    offPeakRepo.close();
   } catch {
     // 忽略。
   }
@@ -416,12 +433,13 @@ parentPort?.on("message", (event: Electron.MessageEvent) => {
     return;
   }
   if (msg.type === "offpeak-dispatch-result") {
-    offPeakInFlight.delete(msg.offPeakTaskId);
+    if (!offPeakState) return;
+    offPeakState.inFlight.delete(msg.offPeakTaskId);
     void settleOffPeakDispatchResult(
       {
-        repo: offPeakRepo,
-        retryAt: offPeakRetryAt,
-        retryAttempts: offPeakRetryAttempts,
+        repo: offPeakState.repo,
+        retryAt: offPeakState.retryAt,
+        retryAttempts: offPeakState.retryAttempts,
         now: Date.now,
         log,
       },
@@ -444,16 +462,18 @@ async function main(): Promise<void> {
   await repo.ensureReady();
   // 闲时任务中断恢复：scheduler 是 app 单例、先于任何派发启动——此刻 DB 里的
   // running 必属上一个 app 实例残留，安全置回 queued（session 保留供 resume 续跑）。
-  try {
-    const recovered = await offPeakRepo.recoverInterrupted(Date.now());
-    if (recovered > 0) {
-      log("info", `off-peak recovered ${recovered} interrupted task(s) back to queued`);
+  if (offPeakState) {
+    try {
+      const recovered = await offPeakState.repo.recoverInterrupted(Date.now());
+      if (recovered > 0) {
+        log("info", `off-peak recovered ${recovered} interrupted task(s) back to queued`);
+      }
+    } catch (error) {
+      log(
+        "error",
+        `off-peak recoverInterrupted failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
-  } catch (error) {
-    log(
-      "error",
-      `off-peak recoverInterrupted failed: ${error instanceof Error ? error.message : String(error)}`,
-    );
   }
   schedulerReady = true;
   log("info", "cron scheduler started");

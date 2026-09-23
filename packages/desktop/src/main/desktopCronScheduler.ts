@@ -3,14 +3,15 @@
 // 把 host 回报的 CronRunResult 转回 scheduler 结算。scheduler 只碰 tasks-index，createTask 在 host 域执行。
 import { utilityProcess as electronUtilityProcess } from "electron";
 import type { UtilityProcess as ElectronUtilityProcess } from "electron";
-import { HostMessageTypes } from "@zcode/shared";
+import {
+  CODING_PLAN_DISABLED,
+  HostMessageTypes,
+  type MainToSchedulerMessage,
+  type SchedulerToMainMessage,
+} from "@zcode/shared";
 import { buildHostProcessEnv, schedulerModulePath } from "./desktopRuntimeEnv.js";
 import { ingestSchedulerSelfResourceSample } from "./processResourceSelfHeapSource.js";
 import { registerSchedulerProcess, unregisterSchedulerProcess } from "./resourceManagerWindow.js";
-import type {
-  MainToSchedulerMessage,
-  SchedulerToMainMessage,
-} from "../scheduler/schedulerProtocol.js";
 
 export interface CronRunResultPayload {
   runId: string;
@@ -156,6 +157,7 @@ export function spawnCronScheduler(deps: CronSchedulerDeps): CronSchedulerHandle
     }
 
     if (msg.type === "offpeak-dispatch-request") {
+      if (CODING_PLAN_DISABLED) return;
       const host = deps.resolveDispatchHost();
       if (!host) {
         // 无可用 host：transient 回执，scheduler 按 off-peak 独立退避重试（顺延不丢弃）。
@@ -205,6 +207,7 @@ export function spawnCronScheduler(deps: CronSchedulerDeps): CronSchedulerHandle
       postToScheduler({ type: "cron-dispatch-result", ...result });
     },
     handleOffPeakRunResult(result) {
+      if (CODING_PLAN_DISABLED) return;
       postToScheduler({ type: "offpeak-dispatch-result", ...result });
     },
     wake(automationId) {
