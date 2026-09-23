@@ -17,7 +17,8 @@ WebSocket 重连、跨进程锁心跳或空闲状态缓存。
 | `REMOTE_WORKSPACE_DISABLED` | `true` | 远程 workspace：连接注册表、远程服务集合、远程运行资产下载      |
 
 与 `CODING_PLAN_DISABLED` 等既有常量一致：组件、服务、协议与 i18n 文案**全部保留**，只加守卫，
-以便追踪与日后恢复。恢复时把常量改回 `false` 并确认三层守卫删干净，不需要重建实现。
+以便追踪与日后恢复。恢复时把常量改回 `false` 并确认三层守卫删干净，不需要重建实现；
+另有构建侧的 `REMOTE_ASSETS_DISABLED` 需要一起改回，见下文「构建侧的同名开关」。
 
 `packages/desktop/src/main/attachRemoteWorkspaceSessionHost` 在合并前已无任何调用方（手机
 relay 是本仓库之外的上游服务）。禁用后它必须**继续无调用方**：新增调用方即视为破坏本约束。
@@ -87,6 +88,11 @@ relay 是本仓库之外的上游服务）。禁用后它必须**继续无调用
 - 不执行 Bot 的三类 Provider `refresh()` 与 `ensureBotStorageMigrated()`：禁用时
   `createBotsService` 根本不构造，因此启动期不再读取 Bot 配置与状态 JSON。
 - 不恢复历史远程连接：不读取上次连接的 `RemoteTarget`、不重连、不重建远程会话。
+  具体由 `useRemoteWorkspaceHistory` 把 `allowRemoteWorkspaceRestore` 收敛为 `false`
+  （`canUseRemoteWorkspace && !REMOTE_WORKSPACE_DISABLED`），复用
+  `restorePersistedRemoteWorkspaceSessions` 既有的「入口被隐藏时不恢复远程 tab」分支。
+  `setting.json` 里的远程快照原样保留（与旧 `off_peak_tasks` 行同理，不删数据），
+  本地 workspace tab 的恢复不受影响。
 - 不触发远程资产下载与 `prepare-prebuilds` 的远程 bundle staging。
 
 ## 状态所有者
@@ -152,3 +158,35 @@ lockfile、`third-party/inventory.json` 与 `THIRD-PARTY-NOTICES.md` 记录保�
 - Bot 配置与远程连接入口可见但点击无反应，不弹窗、不发起连接。
 
 上述运行时场景只记录为人工验收清单，不在本项目修改流程中运行应用、单测或 E2E。
+
+## 构建侧的同名开关
+
+`scripts/prepare-prebuilds.mjs` 是纯 `.mjs`，无法 import `packages/shared/src/env.ts` 的
+`.ts` 常量，因此它保留自己的 `const REMOTE_ASSETS_DISABLED = true`，与
+`REMOTE_WORKSPACE_DISABLED` 表达同一决策。这是本仓库既有惯例（另有
+`MODEL_TELEMETRY_HARD_DISABLED`、`AUTO_ONBOARDING_DISABLED` 等独立硬禁用常量），
+不要为了「单一事实来源」把它改成运行时读文件解析——那只是把简单常量换成解析脆弱性。
+
+代价是**恢复远程 workspace 时两处都要改回**：`env.ts` 的 `REMOTE_WORKSPACE_DISABLED`
+与 `prepare-prebuilds.mjs` 的 `REMOTE_ASSETS_DISABLED`。漏改后者的表现是远端资产静默不生成，
+构建不报错但远端部署缺资产，排查成本高，因此此处与上游同步清单都记这条。
+
+不得把任一开关改写成读取运行时环境变量——硬禁用语义与 `spec/vendor-disable.md` 一致。
+
+## 上游同步复核清单
+
+每次把上游并入本分支后，除 `AGENTS.md` 的通用要求外，按此清单核对本 spec：
+
+1. 三个常量值未被回退；`IBotsService` 的注册仍留在
+   `createLocalServices` 与 `remoteWorkspaceServiceCollection` 的守卫内。
+2. 上游新增代码若引用 `IBotsService`，必须经 `getOptional` 并容忍 `undefined`；
+   经 `services.get(...)` 直取会在未注册时抛错。
+3. `scripts/prepare-prebuilds.mjs` 的 `REMOTE_ASSETS_DISABLED` 仍为 `true`；
+   上游若改写该文件，确认这一守卫没被合并冲掉。
+4. `attachRemoteWorkspaceSessionHost` 仍未新增调用方；`AttachServicePort` 的
+   `web-remote-replayable` 拒绝分支仍在。
+5. `packages/server` 的 `/api/connect-remote` 与 `/ws/remote/:id` 守卫仍在，
+   且普通 `/ws` 与 `entry-http.js` 未被一并关闭。
+6. UI 侧 `REMOTE_WORKSPACE_DISABLED` 的启动恢复分支（`allowRemoteWorkspaceRestore`）
+   仍在；否则断连态远程 tab 会被凭空拉回。
+7. 上游若新增远程/Bot 的构建产物入口，同样要在本 spec 记录保留或停用决定。

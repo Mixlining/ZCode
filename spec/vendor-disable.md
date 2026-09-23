@@ -162,3 +162,32 @@ Main 与 scheduler 的消息类型由 shared 统一声明，恢复历史协议�
 2. 恢复 `CODING_PLAN_DISABLED` 时，需同时确认三层守卫都能编译通过：入口层短路分支、
    服务边界短路分支、启动恢复早退分支都是「守卫 + 原逻辑」并列结构，删守卫即可复原。
 3. 套餐、OAuth 与闲时任务实现仍以守卫保留；ARMS 启动模块及其专用共享代码已按要求删除，恢复 ARMS 需单独设计，不得只翻转常量。
+
+## 已知的间接守卫（复核要点）
+
+以下出口**没有**自己的常量判断，只依赖调用方在 `ZCODE_TELEMETRY_ENABLED` 关断时不装配
+上报 context。当前不可出网，但新增调用方即可绕过，属复核时要盯住的薄弱点：
+
+- `packages/desktop/src/main/desktopResourceTelemetry.ts` 的 `reportResourceCustom`
+  与 `ingestToolExecResource`：只判断 `globalContext`，而该变量唯一写点是
+  `configureDesktopResourceTelemetry`，只在 `main/index.ts` 的
+  `if (ZCODE_TELEMETRY_ENABLED && ZCODE_ARMS_RUM_ENDPOINT)` 内调用。
+- `packages/desktop/src/main/desktopNetworkTelemetry.ts` 的 `reportNetworkCustom`
+  与 `ingestHostNetworkObservations`：同构，context 由
+  `configureDesktopNetworkTelemetry` 在同一守卫内装配。
+
+给这两处新增调用方前，必须确认它不在关断路径上；不要用「反正不会出网」代替判断。
+
+`packages/desktop/src/preload/index.ts` 仍保留 `scheduleArmsEventBridgePatch()` 调用，
+但构建已无 `appARMSBootstrap`，`window.ArmsEventBridge` 永不建立、也没有
+`arms:rum-bridge` IPC 处理器，因此不会上报；不要因为该调用仍在就认为 ARMS 已启用。
+
+## 上游同步复核清单
+
+每次把上游并入本分支后，除 `AGENTS.md` 的通用要求外，按此清单核对本 spec：
+
+1. `git diff <merge-base> <merged> -G'ZCODE_TELEMETRY|ARMS|RUM|telemetry'` 为空，
+   或新增命中项全部位于守卫内。
+2. 上表六个常量值未被回退，且 `spec/remote-disable.md` 的三个常量同样未被回退。
+3. 新代码没有为已禁用能力新增常驻子进程、定时器、长轮询、重连或采样器。
+4. `off_peak_tasks` 的表/列/索引/已发布迁移与校验值保持字节不变。

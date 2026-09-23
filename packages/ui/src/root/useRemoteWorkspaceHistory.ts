@@ -658,7 +658,10 @@ export function useRemoteWorkspaceHistory({
 }) {
   const showRemoteConnectionEntry = useRemoteConnectionEntryVisibility();
   const canUseRemoteWorkspace = allowRemoteWorkspace && showRemoteConnectionEntry;
-  const allowRemoteWorkspaceRestore = canUseRemoteWorkspace;
+  // 远程 workspace 硬禁用时，启动恢复不再从 settings 快照拉回“断连态远程 tab”。
+  // 否则本地会话看不出来，但标签栏会凭空多出无法连接的远程项。setting.json 里的快照原样保留，
+  // 恢复时删守卫即可复原（详见 spec/remote-disable.md）。
+  const allowRemoteWorkspaceRestore = canUseRemoteWorkspace && !REMOTE_WORKSPACE_DISABLED;
   const [remoteWorkspaceSessions, setRemoteWorkspaceSessions] = useState<
     RemoteWorkspaceSessionEntry[]
   >([]);
