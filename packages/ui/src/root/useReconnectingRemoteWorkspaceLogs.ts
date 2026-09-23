@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { IPlatformService } from "@zcode/shared";
+import { REMOTE_WORKSPACE_DISABLED } from "@zcode/shared";
 import {
   appendRemoteConnectionRuntimeLog,
   normalizeRemoteConnectionLogMessage,
@@ -42,6 +43,11 @@ export function useReconnectingRemoteWorkspaceLogs({
   }, [reconnectingWorkspaceKeys]);
 
   useEffect(() => {
+    // 远程 workspace 硬禁用：该事件的唯一发送方在远程 session manager 内，而 session
+    // 创建已被守卫挡住，订阅永不触发，因此不注册这条常驻监听。见 spec/remote-disable.md。
+    if (REMOTE_WORKSPACE_DISABLED) {
+      return;
+    }
     const unsubscribe = platform.onRemoteConnectionLog((entry) => {
       const normalizedMessage = normalizeRemoteConnectionLogMessage(entry.message);
       if (!normalizedMessage) {

@@ -557,7 +557,13 @@ export function registerRemoteIpcHandlers(options: {
     options.disposeRemoteWorkspaceSession(sessionId, `dispose-remote-session:${sessionId}`, 150);
   });
 
+  // 远程 workspace 硬禁用：以下四个探测入口会 spawn 子进程（wsl.exe / docker）或读取
+  // SSH 配置，禁用后一律返回中性值，保证即使有未知调用方也不会新增进程。
+  // 这些能力只被远程 workspace 使用，见 spec/remote-disable.md。
   ipcMain.handle(PlatformChannels.IsDockerAvailable, async () => {
+    if (REMOTE_WORKSPACE_DISABLED) {
+      return false;
+    }
     try {
       return await options.isDockerDaemonAvailable();
     } catch (error) {
@@ -567,6 +573,9 @@ export function registerRemoteIpcHandlers(options: {
   });
 
   ipcMain.handle(PlatformChannels.ListWSLDistros, async () => {
+    if (REMOTE_WORKSPACE_DISABLED) {
+      return [];
+    }
     try {
       return await options.listAvailableWSLDistros();
     } catch (error) {
@@ -576,6 +585,9 @@ export function registerRemoteIpcHandlers(options: {
   });
 
   ipcMain.handle(PlatformChannels.ListDockerContainers, async () => {
+    if (REMOTE_WORKSPACE_DISABLED) {
+      return [];
+    }
     try {
       return await options.listAvailableDockerContainers();
     } catch (error) {
@@ -585,6 +597,9 @@ export function registerRemoteIpcHandlers(options: {
   });
 
   ipcMain.handle(PlatformChannels.ListSSHConfigAliases, async () => {
+    if (REMOTE_WORKSPACE_DISABLED) {
+      return [];
+    }
     try {
       return await options.listSSHConfigAliases();
     } catch (error) {

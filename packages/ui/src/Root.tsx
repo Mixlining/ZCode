@@ -6,6 +6,7 @@ import {
   DesktopCommandIds,
   appRuntimePreferencesChangedBroadcastPayloadSchema,
   BOTS_DISABLED,
+  REMOTE_WORKSPACE_DISABLED,
   type RemoteTarget,
 } from "@zcode/shared";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
@@ -485,6 +486,13 @@ function RootInner({
   useBotBroadcastEffects(services, tabStoreApi);
 
   const handleOpenRemoteConnection = useCallback((preference?: RemoteConnectionOpenPreference) => {
+    // 远程 workspace 硬禁用：这里是打开连接弹窗的唯一收口（含工作区菜单与
+    // \\wsl$ UNC 确认路径）。弹窗一旦挂载就会触发 SSH/WSL/Docker 探测，而探测会
+    // spawn wsl.exe / docker 子进程；在源头拦住即可保证零进程、零探测。
+    // 入口本身保持可见，只是点击无反应。见 spec/remote-disable.md。
+    if (REMOTE_WORKSPACE_DISABLED) {
+      return;
+    }
     setRemoteConnectionOpenPreference(preference ?? null);
     setRemoteConnectionDialogOpen(true);
   }, []);

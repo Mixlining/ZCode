@@ -102,6 +102,27 @@ relay 是本仓库之外的上游服务）。禁用后它必须**继续无调用
   本地 workspace tab 的恢复不受影响。
 - 不触发远程资产下载与 `prepare-prebuilds` 的远程 bundle staging。
 
+### 资源零占用（不构造 / 不注册 / 不进入）
+
+按 `spec/vendor-disable.md` 的「功能与资源」两维度要求，本域的落点：
+
+- **不构造**：`IBotsService`、Bot 远端桥接、远程连接注册表、远程服务集合都不构造。
+- **不注册常驻监听**：以下订阅的事件发送方都随本域一起禁用，订阅永不触发，因此在注册处跳过
+  （判据即「发送方是否也存在」）：
+  `useRemoteWorkspaceHistory` 的 `onRemoteSessionClosed` 与 `onBotRemoteWorkspaceReconnected`、
+  `useReconnectingRemoteWorkspaceLogs` 的 `onRemoteConnectionLog`、
+  `useBotBroadcastEffects` 的 `BOT_TASK_*` 广播订阅。
+  这些事件的唯一发送方分别在 `desktopRemoteSessions.ts` 与 `botsService.ts` 内，都已不可达。
+- **不进入**：`handleOpenRemoteConnection` 是打开连接弹窗的唯一收口（含工作区菜单与
+  `\\wsl$` UNC 确认路径），在此 return 后弹窗永不挂载。弹窗挂载本身就会触发 SSH/WSL/Docker
+  探测，而探测会 spawn `wsl.exe` / `docker` 子进程，所以必须在打开动作处拦，而不是在弹窗内判断。
+- **纵深防御**：`IsDockerAvailable` / `ListWSLDistros` / `ListDockerContainers` /
+  `ListSSHConfigAliases` 四个 IPC 一律返回中性值（`false` / `[]`），保证即使有未知调用方
+  也不会 spawn 子进程或读取 SSH 配置；其余 `ConnectRemote` / `CancelPending` /
+  `BindRemoteWorkspaceSessionContext` / `DisposeRemoteSession` 同样在入口返回或只操作空状态。
+- **不空转**：禁用后不存在为远程/Bot 保留的定时器、轮询、重连或健康检查；上述订阅是唯一
+  与它们相关的常驻监听，均已关掉。
+
 ## 状态所有者
 
 | 状态                         | 唯一所有者                                           |
@@ -199,3 +220,7 @@ lockfile、`third-party/inventory.json` 与 `THIRD-PARTY-NOTICES.md` 记录保�
 6. UI 侧 `REMOTE_WORKSPACE_DISABLED` 的启动恢复分支（`allowRemoteWorkspaceRestore`）
    仍在；否则断连态远程 tab 会被凭空拉回。
 7. 上游若新增远程/Bot 的构建产物入口，同样要在本 spec 记录保留或停用决定。
+8. 资源零占用：上述四个事件订阅在对应禁用常量为真时不注册；四个探测 IPC 返回中性值；
+   `handleOpenRemoteConnection` 在 `REMOTE_WORKSPACE_DISABLED` 为真时不打开弹窗。
+9. 全仓库无「只做半路拦截、源头仍会构造或进入」的远程/Bot 路径：新增入口必须在源头收口，
+   否则视为违反 `spec/vendor-disable.md` 的两维度要求。

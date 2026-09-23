@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import type { IServiceAccessor } from "@zcode/services";
-import type { ZCodeConfigOption } from "@zcode/shared";
+import { BOTS_DISABLED, type ZCodeConfigOption } from "@zcode/shared";
 import {
   buildTaskContextUsageFromUsageUpdate,
   recordTaskContextUsageUpdate,
@@ -65,6 +65,11 @@ export function useBotBroadcastEffects(
   tabStoreApi: ReturnType<typeof useTabStoreApi>,
 ) {
   useEffect(() => {
+    // Bot 硬禁用：本 hook 只消费 BOT_TASK_* 广播，而没有 IBotsService 就不会有发送方，
+    // 因此不注册这条常驻监听，避免每条广播都空跑一次 bot 解析。见 spec/remote-disable.md。
+    if (BOTS_DISABLED) {
+      return;
+    }
     const disposable = services.broadcastService.onMessage((message) => {
       const stream = resolveBotTaskStreamBroadcast(message, tabStoreApi.getState().tabs);
       if (stream) {

@@ -9,6 +9,7 @@ import type {
   RemoteWorkspaceSessionEntry,
 } from "@zcode/shared";
 import {
+  BOTS_DISABLED,
   buildSshRemoteHostKey,
   createUuid,
   REMOTE_WORKSPACE_DISABLED,
@@ -1306,12 +1307,22 @@ export function useRemoteWorkspaceHistory({
   );
 
   useEffect(() => {
+    // 远程 workspace 硬禁用：Main 侧唯一发送方在远程 session manager 内，而 session 创建
+    // 已被守卫挡住，该订阅永不触发，因此不注册这条常驻监听。见 spec/remote-disable.md。
+    if (REMOTE_WORKSPACE_DISABLED) {
+      return;
+    }
     return platform.onRemoteSessionClosed((event) => {
       void handleRemoteWorkspaceSessionClosed(event);
     });
   }, [handleRemoteWorkspaceSessionClosed, platform]);
 
   useEffect(() => {
+    // Bot 硬禁用：该事件只由 Bot 远端重连链路发出，而该链路因不构造 IBotsService 而不存在，
+    // 订阅永不触发，因此不注册。
+    if (BOTS_DISABLED) {
+      return;
+    }
     return platform.onBotRemoteWorkspaceReconnected((event) => {
       void handleBotRemoteWorkspaceReconnected(event);
     });
