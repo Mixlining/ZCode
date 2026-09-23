@@ -22,7 +22,7 @@ import type { OnboardingRecordEntry } from "@zcode/shared";
 
 /**
  * 硬关闭：首次启动不再自动弹出引导页（设置页里的手动引导入口 `requested` 仍然生效）。
- * 组件与记录逻辑全部保留，恢复时把这个常量改回 false。
+ * 组件与记录逻辑全部保留，但自动弹出永久禁用；保留只为降低同步上游的成本。
  */
 const AUTO_ONBOARDING_DISABLED = true;
 

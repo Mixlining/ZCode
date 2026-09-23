@@ -76,7 +76,7 @@ export function buildZCodeSourceHeaders(
     normalizePrintableHeaderValue(options.clientTimezone) ?? resolveClientTimezone();
   const osVersion = normalizePrintableHeaderValue(options.osVersion ?? readOsVersion());
   // deviceMid 已按配置移除：不再向模型提供商请求头注入设备标识。
-  // 读取逻辑仍保留在 readExistingDeviceMid()，恢复时改回调用它即可。
+  // 读取逻辑仍保留在 readExistingDeviceMid()，但不再对外注入；该能力永久禁用。
   const deviceMid: string | undefined = undefined;
 
   return buildZCodeSourceHeadersFromContext({

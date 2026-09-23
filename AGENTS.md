@@ -8,6 +8,8 @@
 ## 项目背景与硬禁用边界
 
 - 本项目基于开源项目改造。厂商能力通过编译期硬编码关闭，保留原有实现以便追踪和维护；ARMS 启动模块及其专用代码已按用户要求移除。不得仅隐藏 UI、改用运行时环境变量或远端配置重新启用这些能力。具体产品规则和目录例外见 `spec/vendor-disable.md`。
+- **禁用是永久的**：被禁用的能力不会恢复。不要为「将来打开」预留入口、参数、分支、迁移或恢复说明，也不要写「恢复时改回」之类的注释。
+- **不要删除被禁用能力的实现文件、组件、协议或 i18n 文案。** 保留它们不是为了恢复，而是为了降低同步上游的成本：上游仍在改这些文件，删除会让每次合并都产生 modify/delete 冲突。守卫写成「常量 + 原逻辑并列」，原逻辑保持原本结构与顺序，也不要为此新增第二套「禁用版实现」。
 - 必须保持 `packages/shared/src/env.ts` 中的 `ZCODE_TELEMETRY_ENABLED = false`：不向厂商发送数仓事件、ARMS RUM 等远程遥测，也不启动无用途的上报队列和采样器。`MEMORY_DIAGNOSTICS_ENABLED = false` 保持内存诊断定时采样关闭。
 - Desktop Main 不得启动 ARMS SDK 或更新 ARMS 用户身份；本地崩溃记录可以保留，但不得因此恢复远端遥测或采样。
 - 必须保持 `CODING_PLAN_DISABLED = true`：官方 Coding Plan 的登录 OAuth、缓存会话恢复、权益与额度、套餐/支付查询及官方模型网关改写均不可恢复出网。入口、服务边界和启动恢复三层守卫应保持一致。
@@ -16,7 +18,7 @@
 - 不得为上述禁用能力重新引入调用方：`packages/desktop/src/main/desktopRemoteSessions.ts` 的 `attachRemoteWorkspaceSessionHost` 必须保持无调用方；`createLocalServices` 与 `remoteWorkspaceServiceCollection` 的 `IBotsService` 注册必须留在守卫内；`packages/server` 的 `/api/connect-remote` 与 `/ws/remote/:id` 必须留在守卫内。普通 `/ws` 通道与 Web 模式入口属于保留能力，不得一并关闭。
 - 上游同步（merge main）后必须复核：新增代码不得引用已被删除的厂商模块（ARMS 等），不得绕过上述硬禁用常量，也不得让 `packages/shared/src/env.ts` 中的常量值被回退。上游新功能常自带启动期后台工作（长轮询、锁心跳、常驻监听、预热），合并后必须确认这些能力要么在禁用域内、要么按 `spec/remote-disable.md` 的清单重新收口；只看着「服务被注册」不够，构造期的副作用（`parentPort.on("message")`、`setInterval`）同样要包进守卫。
 - 禁用域的服务可能未注册，两类消费方的处理方式不同：同进程（Host/Main）用 `getOptional` 判断后再调用，`get(...)` 会立刻抛 `Service not registered`；跨进程（renderer → Host）无法探测注册状态，必须在调用点用禁用常量守卫，否则会等满 `ChannelServer` 超时（Host 侧 1000ms）才 reject，并留下 `Unknown channel` 噪声。
-- 禁用能力的开关值以 `packages/shared/src/env.ts` 的编译期常量为准。纯 `.mjs` 构建脚本无法 import `.ts` 时，按仓库既有惯例保留自己的硬编码常量（如 `prepare-prebuilds.mjs` 的 `REMOTE_ASSETS_DISABLED`、CLI 的 `MODEL_TELEMETRY_HARD_DISABLED`），不要为此引入运行时读文件解析。代价是恢复能力时相关的几处常量都要一起改回，具体清单见对应 spec；任何一处都不得改读运行时环境变量。
+- 禁用能力的开关值以 `packages/shared/src/env.ts` 的编译期常量为准。纯 `.mjs` 构建脚本无法 import `.ts` 时，按仓库既有惯例保留自己的硬编码常量（如 `prepare-prebuilds.mjs` 的 `REMOTE_ASSETS_DISABLED`、CLI 的 `MODEL_TELEMETRY_HARD_DISABLED`），不要为此引入运行时读文件解析。同一决策落在多处常量时，改动一处必须核对其余各处，清单见对应 spec；任何一处都不得改读运行时环境变量。
 - 不为已禁用能力或空闲状态新增常驻子进程、定时器、轮询、采样器或无用途的缓存。保留 scheduler 无待触发工作时自退、需要时唤醒的机制；窗口托盘驻留由用户设置决定，不由 scheduler 是否运行推断。
 - 闲时任务属于官方 Coding Plan，必须在 Host、Desktop Main、scheduler 和 Agent CLI 全链路硬禁用：不装配服务、Repo、同步定时器或工具，不恢复、读取、轮询、派发、结算旧任务；旧 `off_peak_tasks` 行原样保留。普通 cron 自动化及共用 scheduler 的既有启动、自退机制继续可用。
 - 保留闲时任务数据库表、列、索引和所有已发布迁移及其校验内容，确保旧版数据库可直接升级；禁用时跳过会修改旧闲时任务行的业务初始化修复。详见 `spec/vendor-disable.md`。

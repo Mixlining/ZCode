@@ -33,7 +33,7 @@ export function WorkspaceWebRemoteControlTrigger({
           variant="ghost"
           onClick={() => {
             // 手机远控硬禁用：入口保持可见，点击后直接返回，不打开弹层、不启动其轮询。
-            // 该弹层渠道（微信/飞书/Telegram）同时依赖 Bot 实现。恢复时删守卫即可复原。
+            // 该弹层渠道（微信/飞书/Telegram）同时依赖 Bot 实现。禁用是永久的，见 spec/vendor-disable.md。
             if (PHONE_REMOTE_DISABLED || BOTS_DISABLED) {
               return;
             }

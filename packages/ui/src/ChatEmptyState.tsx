@@ -403,7 +403,6 @@ export function ChatEmptyWorkspacePreviewMenu({
               data-testid={TID_COMPOSER_REMOTE_CONNECTION}
               onSelect={() => {
                 // 远程 workspace 硬禁用：入口保持可见，点击后直接无反应，不打开连接弹窗。
-                // 恢复时删守卫即可复原（详见 spec/remote-disable.md）。
                 if (REMOTE_WORKSPACE_DISABLED) {
                   return;
                 }

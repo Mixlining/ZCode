@@ -327,7 +327,7 @@ function RootInner({
         logger.warn("[settings] 初始化运行时偏好失败", error);
       });
     // Bot 硬禁用时该 channel 未注册，调用会等满 ChannelServer 的超时（1s）后才 reject，
-    // 既拖慢启动又每次留一条失败 warn；直接跳过（恢复时删守卫即可复原）。
+    // 既拖慢启动又每次留一条失败 warn；直接跳过。
     if (!BOTS_DISABLED) {
       void services.botsService
         .syncAppRuntimePreferences({

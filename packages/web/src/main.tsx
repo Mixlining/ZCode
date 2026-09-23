@@ -372,7 +372,7 @@ function resolveDefaultWsOrigin(): string {
 async function resolveWebBootstrap(): Promise<WebBootstrapResult> {
   const params = new URLSearchParams(window.location.search);
   // 手机远控硬禁用：?remote= 会建立 web-remote-replayable 连接，直接忽略该参数并回落到
-  // 普通 /ws 通道。恢复时删守卫即可复原（详见 spec/remote-disable.md）。
+  // 普通 /ws 通道。禁用是永久的，见 spec/remote-disable.md。
   const remoteId = PHONE_REMOTE_DISABLED ? null : params.get("remote");
   const wsUrl = remoteId
     ? `${resolveDefaultWsOrigin()}/ws/remote/${remoteId}`

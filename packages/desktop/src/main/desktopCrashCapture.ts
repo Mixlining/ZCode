@@ -362,7 +362,7 @@ export function initializeCrashCapture(
 
   // 归档只为「远端 crash SDK 会上报并清理 live dmp」这条链路服务：本构建遥测硬关闭、
   // 本地 crashReporter 也没启动，不会有 dump 产生，所以归档扫描（同步 FS 遍历 + 保留策略）
-  // 整段不执行；崩溃本身的 gone 日志与分类不受影响，恢复遥测时改回开关即可。
+  // 整段不执行；崩溃本身的 gone 日志与分类不受影响。遥测永久禁用，不提供恢复入口。
   if (ZCODE_TELEMETRY_ENABLED) {
     const startupArchiveResult = archiveCrashDumps(paths);
     logCrashArchiveCleanup(logger, startupArchiveResult, "startup");

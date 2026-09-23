@@ -56,8 +56,8 @@ const isBootstrapWithRemote = process.env.ZCODE_BOOTSTRAP_WITH_REMOTE === "1";
 // 硬禁用：远程 workspace 已整体关闭，本脚本产出的 mock CDN 资产（node 运行时、server bundle、
 // node-pty、远端 agent bundle、native-search 工具）只服务 packages/server/src/remote/* 的部署
 // 与安装链路，此时没有任何消费者（详见 spec/remote-disable.md）。
-// 与 packages/shared/src/env.ts 的 REMOTE_WORKSPACE_DISABLED 是同一决策；恢复远程 workspace 时
-// 两处都要改回（本脚本是纯 .mjs，无法 import 该 .ts 常量）。
+// 与 packages/shared/src/env.ts 的 REMOTE_WORKSPACE_DISABLED 是同一决策（本脚本是纯 .mjs，
+// 无法 import 该 .ts 常量）；改动其中一处时必须核对其余各处。
 const REMOTE_ASSETS_DISABLED = true;
 
 /**

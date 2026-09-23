@@ -29,4 +29,4 @@
 
 - 81 条原有 Main 诊断中，窗口初始化消息、公开类型入口、下载地址与数据校验、浏览器动作与页面生命周期、存储 Worker 类型、Chrome helper 进程类型等均可按现有所有者修正；保持现有运行顺序和进程数量。
 - ARMS 是远程遥测。当前构建删除 Main 的 ARMS 启动模块与专用共享源文件，不等待 SDK 初始化，也不更新 ARMS 用户身份；其他遥测入口继续由编译期关闭开关约束。
-- 实时流的 `taskStreamMirrorableEventSchema` 只校验公共字段并允许额外字段，不能证明解码后的对象满足 `TaskStreamMirrorableEvent` 的全部分支。两个 Host 消息分发调用点沿用既有宽松运行时协议，按用户授权使用有原因的 `@ts-expect-error` 标记这项已知类型债务，不用 `as` 强制断言，也不改变消息内容或校验行为。后续类型契约对齐后，这两个标记必须因变成未使用而被移除；收紧协议时须保持 Desktop 实时流与手机恢复流的兼容性。
+- 实时流的 `taskStreamMirrorableEventSchema` 只校验公共字段并允许额外字段，不能证明解码后的对象满足 `TaskStreamMirrorableEvent` 的全部分支。两个 Host 消息分发调用点沿用既有宽松运行时协议，按用户授权使用有原因的 `@ts-expect-error` 标记这项已知类型债务，不用 `as` 强制断言，也不改变消息内容或校验行为。后续类型契约对齐后，这两个标记必须因变成未使用而被移除；收紧协议时只需覆盖 Desktop 实时流，手机恢复流（`PHONE_REMOTE_DISABLED`）已永久禁用、无需保留兼容。

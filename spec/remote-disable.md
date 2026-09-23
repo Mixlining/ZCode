@@ -16,9 +16,10 @@ WebSocket 重连、跨进程锁心跳或空闲状态缓存。
 | `PHONE_REMOTE_DISABLED`     | `true` | 手机远控链路：外部 relay 附件接管、`web-remote-replayable` 通道 |
 | `REMOTE_WORKSPACE_DISABLED` | `true` | 远程 workspace：连接注册表、远程服务集合、远程运行资产下载      |
 
-与 `CODING_PLAN_DISABLED` 等既有常量一致：组件、服务、协议与 i18n 文案**全部保留**，只加守卫，
-以便追踪与日后恢复。恢复时把常量改回 `false` 并确认三层守卫删干净，不需要重建实现；
-另有构建侧的 `REMOTE_ASSETS_DISABLED` 需要一起改回，见下文「构建侧的同名开关」。
+与 `CODING_PLAN_DISABLED` 等既有常量一致：组件、服务、协议与 i18n 文案**全部保留**，只加守卫。
+保留实现不是为了将来恢复（这些能力永不恢复），而是为了降低同步上游的成本：
+删除实现会让上游对这些文件的每次改动都变成 modify/delete 冲突。保留与修改的通用约束见
+`spec/vendor-disable.md` 的「禁用是永久的」一节。
 
 `packages/desktop/src/main/attachRemoteWorkspaceSessionHost` 在合并前已无任何调用方（手机
 relay 是本仓库之外的上游服务）。禁用后它必须**继续无调用方**：新增调用方即视为破坏本约束。
@@ -173,11 +174,12 @@ lockfile、`third-party/inventory.json` 与 `THIRD-PARTY-NOTICES.md` 记录保�
 `MODEL_TELEMETRY_HARD_DISABLED`、`AUTO_ONBOARDING_DISABLED` 等独立硬禁用常量），
 不要为了「单一事实来源」把它改成运行时读文件解析——那只是把简单常量换成解析脆弱性。
 
-代价是**恢复远程 workspace 时两处都要改回**：`env.ts` 的 `REMOTE_WORKSPACE_DISABLED`
-与 `prepare-prebuilds.mjs` 的 `REMOTE_ASSETS_DISABLED`。漏改后者的表现是远端资产静默不生成，
-构建不报错但远端部署缺资产，排查成本高，因此此处与上游同步清单都记这条。
+同一决策落在多处常量时，**改动其中一处必须核对另一处**：`env.ts` 的
+`REMOTE_WORKSPACE_DISABLED` 与 `prepare-prebuilds.mjs` 的 `REMOTE_ASSETS_DISABLED`。
+两者不一致的表现是远端资产静默不生成——构建不报错、但产物缺资产，排查成本高，
+因此此处与上游同步清单都记这条。
 
-不得把任一开关改写成读取运行时环境变量——硬禁用语义与 `spec/vendor-disable.md` 一致。
+不得把任一开关改写成读取运行时环境变量。
 
 ## 上游同步复核清单
 

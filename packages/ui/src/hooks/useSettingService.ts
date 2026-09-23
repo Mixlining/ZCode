@@ -159,7 +159,7 @@ export function useSettings() {
             settingsStore.snapshot.settings?.modelIoFullRetentionEnabled === true,
         };
         // Bot 硬禁用时不注册 IBotsService，该 channel 不存在，调用会 reject 并让下面
-        // 的 syncError 抛出、连带整个设置写入失败；这里按守卫跳过（恢复时删守卫即可复原）。
+        // 的 syncError 抛出、连带整个设置写入失败；这里按守卫跳过。
         const syncResults = await Promise.allSettled([
           zcodeAgentService.syncAppRuntimePreferences(preferences),
           ...(BOTS_DISABLED ? [] : [botsService.syncAppRuntimePreferences(preferences)]),

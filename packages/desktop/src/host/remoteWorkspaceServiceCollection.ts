@@ -367,7 +367,7 @@ export function createRemoteWorkspaceServiceCollection(params: {
       createSettingsSyncService({ settingService: localSettingService }),
     )
     .register(IPromptAttachmentTransferService, params.promptAttachmentTransferService);
-  // Bot 硬禁用时不注册 IBotsService（详见 spec/remote-disable.md），恢复时删守卫即可复原。
+  // Bot 硬禁用时不注册 IBotsService。禁用是永久的，见 spec/remote-disable.md。
   if (!BOTS_DISABLED)
     services.register(
       IBotsService,

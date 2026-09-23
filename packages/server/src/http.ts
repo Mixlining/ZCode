@@ -348,7 +348,7 @@ export function createHttpServer(
 
   // Web 模式下发起远程连接
   app.post("/api/connect-remote", async (c) => {
-    // 远程 workspace 硬禁用：不建立远程后端、不建连。恢复时删守卫即可复原。
+    // 远程 workspace 硬禁用：不建立远程后端、不建连。禁用是永久的，见 spec/remote-disable.md。
     if (REMOTE_WORKSPACE_DISABLED) {
       return c.json({ error: "远程工作区已禁用" }, 403);
     }
@@ -426,8 +426,7 @@ export function createHttpServer(
       const id = c.req.param("id");
       return {
         onOpen(_event, ws) {
-          // 远程 workspace 硬禁用：直接关闭该端点，不桥接远程 services。
-          // 恢复时删守卫即可复原（详见 spec/remote-disable.md）。
+          // 远程 workspace 硬禁用：直接关闭该端点，不桥接远程 services。见 spec/remote-disable.md。
           if (REMOTE_WORKSPACE_DISABLED) {
             ws.close(4003, "Remote workspace is disabled");
             return;

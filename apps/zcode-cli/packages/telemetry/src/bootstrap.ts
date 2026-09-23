@@ -117,7 +117,7 @@ export function parseOtlpHeaders(value: string | undefined): Record<string, stri
  * 遥测硬禁用开关：本仓库按配置关闭全部出网上报，且完全忽略环境变量——即使部署环境注入了
  * OTEL_EXPORTER_OTLP_* 或 ZCODE_MODEL_TELEMETRY_ENABLED，也不会准备 Owner、不会动态加载
  * OTel SDK。因此不建 Span/Metric 队列、不起定时导出、退出时也没有需要 flush 的等待
- * （原实现保留在下方，恢复时把这里改回 false）。
+ * （原实现保留在下方不是为留待恢复：遥测永久禁用，保留只为降低同步上游的成本）。
  */
 const MODEL_TELEMETRY_HARD_DISABLED = true;
 
