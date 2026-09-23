@@ -6,12 +6,12 @@
 
 ## 触发方式
 
-| 方式     | 行为                                                                                                                  |
-| -------- | --------------------------------------------------------------------------------------------------------------------- |
-| 手动触发 | Actions 页面选择 `Build Desktop (Windows)` → `Run workflow`。不需要填任何参数，产物作为 workflow artifact 上传。      |
-| 推送 tag | `git tag v3.14.0 && git push origin v3.14.0`。除 artifact 外，还会用该 tag 创建 **prerelease** 并附上安装包与校验和。 |
+| 方式     | 行为                                                                                                                                                                                   |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 手动触发 | Actions 页面选择 `Build Desktop (Windows)` → `Run workflow`。不需要填任何参数；选择 tag 时使用 tag 版本，选择分支时使用该分支根 `package.json` 版本。产物作为 workflow artifact 上传。 |
+| 推送 tag | `git tag v3.14.0 && git push origin v3.14.0`。tag 必须是稳定版 `vX.Y.Z`；除 artifact 外，还会用该 tag 创建 **prerelease** 并附上安装包与校验和。                                       |
 
-tag 名建议与根 `package.json` 的 `version` 保持一致：产物文件名里的版本号取自根 `package.json`（当前 `3.14.0`），tag 只决定 Release 的标题与地址。
+tag 是 tag 构建的产品版本来源。打包时 workflow 将去掉 `v` 前缀后的版本临时写入根 `package.json`，使应用 metadata 与安装包文件名使用 tag 版本；打包结束后恢复原文件，不提交版本改动。手动选择分支时保留该分支根 `package.json` 的版本。
 
 同一 ref 的新运行会取消尚未完成的旧运行（`concurrency`），单次运行上限 90 分钟。
 
@@ -76,7 +76,7 @@ ZCODE_ENV=production ZCODE_SKIP_REMOTE_ASSETS=1 pnpm run bundle:desktop -- --os 
 - **远程工作区依赖运行时的 CDN**：安装包不含远端运行时资产，部署到远端主机时按 `ZCODE_REMOTE_ASSET_CDN_BASE_URL` 拉取对应平台的运行时。若你要部署的版本在目标 CDN 上不存在，需要自备分发源（用 `ZCODE_REMOTE_ASSET_CDN_BASE_URL` 覆盖，或先跑 `bootstrap:with-remote` 生成 `mock-cdn` 自行分发）。
 - **不覆盖手机/浏览器远控链路**（`server` + `web`）：那是另一条分发通道（`pnpm build:zcode`），本工作流不涉及。
 - **远端资产、远端 Node 版本**：`prepare:remote-assets` 会下载各平台 Node 与 node-pty 预编译产物，本次已显式跳过；若将来要出内嵌远端资产的包，去掉 `ZCODE_SKIP_REMOTE_ASSETS` 并预留更长超时。
-- **不自动 bump 版本**：产物版本号来自根 `package.json`，发版前需自行改版本并提交；`.release-it.mjs` 的 `release` 流程与 CI 未打通（release-it 不创建 GitHub Release）。
+- **不自动提交版本 bump**：tag 构建只在打包期间临时把 tag 版本写入根 `package.json`，随后恢复原文件；分支手动构建继续使用仓库版本。`.release-it.mjs` 的 `release` 流程与 CI 未打通（release-it 不创建 GitHub Release）。
 
 ## 故障排查
 

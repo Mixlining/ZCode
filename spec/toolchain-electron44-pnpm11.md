@@ -66,6 +66,7 @@ Acceptance scenarios:
 ## Desktop ASAR repack after the pnpm 11 migration
 
 - Desktop packaging owns the staged `app.asar` rewrite in `afterPack`. Rewrite when runtime modules or the packaged target prebuild are missing. Before packing, the staging tree must contain the target platform's `node-pty/prebuilds/<platform>/pty.node`; its installed `node-pty` package is the source if the extracted archive omitted that directory. Copy the complete target prebuild directory so its runtime helper files stay together.
+- Every runtime module required by the final `bundle.mjs` archive check must also be an `afterPack` injection root. In particular, the Desktop manifest's `@babel/runtime` dependency must be copied from the installed package when electron-builder omits it from `app.asar`; a final verifier requirement alone cannot repair the archive.
 - Keep the candidate archive and `.unpacked` sidecar as one replacement unit. If the source target prebuild is unavailable, fail with a specific error before replacing the current archive. Preserve the existing native-resource and target-prebuild checks after repacking.
 - The package layout may differ between pnpm versions; the archive extraction is not the owner of native assets when the installed target prebuild is available.
 
@@ -76,6 +77,7 @@ Acceptance scenarios:
 3. A missing prebuild in both the extracted archive and installed package fails before the current `app.asar` and sidecar are replaced.
 4. The final package contains only the target platform's node-pty prebuild and passes the existing native-resource policy checks.
 5. Missing target native assets trigger the rewrite even when all runtime modules are present.
+6. When electron-builder omits `@babel/runtime`, `afterPack` injects its package before the installer is generated, and the final runtime-dependency check finds it in `app.asar`.
 
 ## Acceptance scenarios
 

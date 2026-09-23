@@ -120,6 +120,9 @@ const REQUIRED_ASAR_RUNTIME_MODULES = [
   "@opentelemetry/exporter-trace-otlp-proto",
   "@opentelemetry/exporter-metrics-otlp-proto",
   "pngjs",
+  // 修复：bundle 的最终校验要求 @babel/runtime，但原注入清单漏掉它；pnpm 11 的 hoisted
+  // 安装布局下 electron-builder 未将该包带入 app.asar，导致安装包生成后才校验失败。
+  "@babel/runtime",
   // @zcode/services 的代理连通性探测会动态 require("undici") 取 ProxyAgent。
   // tsup 虽然把 services 代码并进了主/host 产物，但不会把这个运行时 require 的包内联进去，
   // electron-builder 产物又可能漏掉 hoisted 的 undici，最终 mac 安装包启动即报 Cannot find module "undici"。

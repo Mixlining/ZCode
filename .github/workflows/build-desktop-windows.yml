@@ -105,7 +105,49 @@ jobs:
 
       - name: Build Windows desktop installer
         id: desktop-build
-        run: pnpm run bundle:desktop -- --os win --arch x64
+        shell: pwsh
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          $packagePath = Join-Path $env:GITHUB_WORKSPACE "package.json"
+          $originalPackageBytes = $null
+          $buildExitCode = 0
+
+          try {
+            if ($env:REF_TYPE -eq "tag") {
+              if ($env:REF_NAME -notmatch '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$') {
+                throw "Desktop release tag '$env:REF_NAME' must use stable vX.Y.Z format."
+              }
+
+              $originalPackageBytes = [System.IO.File]::ReadAllBytes($packagePath)
+              $package = [System.IO.File]::ReadAllText($packagePath) | ConvertFrom-Json
+              $package.version = $env:REF_NAME.Substring(1)
+              $updatedPackageJson = $package | ConvertTo-Json -Depth 100
+              [System.IO.File]::WriteAllText(
+                $packagePath,
+                "$updatedPackageJson`n",
+                [System.Text.UTF8Encoding]::new($false)
+              )
+              Write-Host "Using release tag version $($package.version) for the Desktop build."
+            } elseif ($env:REF_TYPE -eq "branch") {
+              Write-Host "Using the checked-out package.json version for this branch build."
+            } else {
+              throw "Unsupported Git ref type '$env:REF_TYPE'."
+            }
+
+            pnpm run bundle:desktop -- --os win --arch x64
+            $buildExitCode = $LASTEXITCODE
+          } finally {
+            if ($null -ne $originalPackageBytes) {
+              [System.IO.File]::WriteAllBytes($packagePath, $originalPackageBytes)
+              Write-Host "Restored the checked-out package.json after the Desktop build."
+            }
+          }
+
+          if ($buildExitCode -ne 0) {
+            exit $buildExitCode
+          }
 
       - name: Save Electron and electron-builder caches
         if: ${{ !cancelled() && steps.desktop-build.outcome != 'skipped' && steps.electron-cache.outputs.cache-hit != 'true' }}
