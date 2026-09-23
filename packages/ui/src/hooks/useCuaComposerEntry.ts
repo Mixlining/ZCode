@@ -4,7 +4,7 @@
  * 只做三件事：汇聚三路数据源、门控权限查询、把结果交给纯函数推导。
  * 判定规则本身全部在 lib/cuaComposerEntryState.ts，这里不复制任何一条分支。
  */
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useMemo } from "react";
 import { isRemoteWorkspaceIdentity, ZCODE_CUA_OFFICIAL_PLUGIN_ID } from "@zcode/shared";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { useServices } from "@/hooks/useServices.js";
@@ -73,35 +73,12 @@ export function useCuaComposerEntry({
   // 失败都写）。只有失败操作的目标是 zcode-cua 时才映射为本按钮的错误态，
   // 归属由 store 的 lastFailedPluginId 记录。
   const lastFailedPluginId = usePluginManagementStore((state) => state.lastFailedPluginId);
-  const initializePlugins = usePluginManagementStore((state) => state.initialize);
   const cuaPlugin = plugins.find((plugin) => plugin.id === ZCODE_CUA_OFFICIAL_PLUGIN_ID);
   const pluginEnabled = cuaPlugin?.enabled === true;
 
-  const pluginManagementService = services.pluginManagementService;
-  const platformSupported = (macLocalDesktop || windowsLocalDesktop) && isLocalWorkspace;
-  // 插件列表是按钮状态的必要输入。store 是全局单例且 initialize 内部按 workspaceKey 做了
-  // in-flight 去重 + 缓存复用，因此与设置页共用同一条初始化路径不会放大 plugins/list 请求。
-  const initializedKeyRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!platformSupported || hiddenBySettings || !workspacePath || !pluginManagementService) {
-      return;
-    }
-    const key = `${workspacePath}\0${workspaceIdentity ?? ""}`;
-    if (initializedKeyRef.current === key) return;
-    initializedKeyRef.current = key;
-    void initializePlugins({
-      workspacePath,
-      ...(workspaceIdentity ? { workspaceIdentity } : {}),
-      pluginService: pluginManagementService,
-    });
-  }, [
-    hiddenBySettings,
-    initializePlugins,
-    platformSupported,
-    pluginManagementService,
-    workspaceIdentity,
-    workspacePath,
-  ]);
+  // pluginEnabled 只读已有 store 快照，不要在这里初始化插件 store：挂载即 initialize 会用一次
+  // plugins/list 冷启动整个插件控制面 Agent 进程，而插件未启用时本入口根本不渲染。插件列表的
+  // 初始化归插件设置页与用户主动的插件操作。
 
   // 输入框入口不承载状态展示（无色点、固定跳设置页），因此**完全不再查询权限**——权限查询
   // 会按需启动 Helper（getStatus 拉起链），挂载即查等于「打开 app 就启动 Helper」，违背懒

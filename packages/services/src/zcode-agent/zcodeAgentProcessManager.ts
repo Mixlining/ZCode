@@ -71,8 +71,8 @@ export interface ZCodeAgentProcessManagerOptions {
   lane?: string;
   /**
    * 空闲回收阈值：连接上没有请求在飞持续超过该时长，就主动回收整棵进程树，
-   * 下次 getClient 透明重新拉起。只给 mcp-status 这类“按需探测、进程内挂着 MCP 子进程”
-   * 的控制面 lane 使用；chat / plugin 缺省不回收。
+   * 下次 getClient 透明重新拉起。只给按需冷启动的控制面 lane 使用（插件管理、mcp-status）；
+   * chat 缺省不回收，它的回收时机由 workspace 生命周期决定。
    */
   idleTimeoutMs?: number;
   /**

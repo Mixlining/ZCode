@@ -320,8 +320,9 @@ import { registerMemoryDiagnosticsProvider } from "#src/memoryDiagnostics.js";
 const logger = createServiceLogger("zcode-agent-service");
 const cuaOperationLogger = createServiceLogger("cua-operation-turn");
 const PLUGIN_MANAGEMENT_WORKSPACE_DIR_NAME = "plugin-workspace";
-// 状态探测完成后释放闲置的 MCP 子进程；只作用于控制面，不回收会话进程。
-const MCP_STATUS_LANE_IDLE_TIMEOUT_MS = 5 * 60_000;
+// 控制面泳道（插件管理、MCP 状态探测）的空闲回收阈值：都是「按需冷启动、用完即可回收」的
+// 控制面进程，长时间无请求就整棵回收，不该常驻内存。只作用于控制面，不回收会话进程。
+const CONTROL_PLANE_LANE_IDLE_TIMEOUT_MS = 60_000;
 // 官方 Claude marketplace 首次接入需要 clone/copy GitHub 仓库，30s 默认协议超时会杀掉健康 agent。
 // 插件市场管理属于低频网络 I/O 操作，单独放宽超时，不影响普通会话消息的实时失败边界。
 const PLUGIN_MANAGEMENT_REQUEST_TIMEOUT_MS = 5 * 60_000;
@@ -859,12 +860,11 @@ function createRuntimeUnavailableError(params: ZCodeAgentWorkspaceTarget): Error
   return error;
 }
 
+// 空闲回收只属于控制面泳道；idleTimeoutMs 在此被 Omit，从类型上禁止把它传给 chat。
 interface CreateZCodeAgentServiceOptions extends Omit<
   ZCodeAgentProcessManagerOptions,
   "idleTimeoutMs"
 > {
-  /** 仅供 MCP 状态探测进程使用，不能把空闲回收传给 chat。 */
-  mcpStatusIdleTimeoutMs?: number;
   accountProviderConfigSource?: ProviderSource<AccountProviderConfigSnapshot>;
   accountRequestAuthService?: IAccountRequestAuthService;
   /** Desktop Host 请求 Main 登记 Agent 已授权的精确本地视频路径。 */
@@ -1093,6 +1093,10 @@ export function createZCodeAgentService(
     requestTimeoutMs: options?.requestTimeoutMs,
     resolveSpawnEnv: options?.resolveSpawnEnv,
     waitForSpawnAdmission: options?.waitForSpawnAdmission,
+    // 插件更新/安装完成后没有任何东西会触发回收，缺这条阈值时进程会一直常驻到
+    // 应用退出（只剩 5 分钟请求超时兜底）。补齐后与 mcp-status 同语义：操作完即起算，
+    // 闲置满阈值回收整棵树，下次插件操作透明冷启动。
+    idleTimeoutMs: CONTROL_PLANE_LANE_IDLE_TIMEOUT_MS,
   });
   // 合并时误删了独立进程：mcp/list 的慢握手会堵住串行 stdio 队列，连带卡住插件卸载。
   // 恢复专用控制面进程及空闲回收；共享 workspace 路径，不共享请求队列或 watchdog。
@@ -1104,7 +1108,7 @@ export function createZCodeAgentService(
     resolveSpawnEnv: options?.resolveSpawnEnv,
     waitForSpawnAdmission: options?.waitForSpawnAdmission,
     lane: "mcp-status",
-    idleTimeoutMs: options?.mcpStatusIdleTimeoutMs ?? MCP_STATUS_LANE_IDLE_TIMEOUT_MS,
+    idleTimeoutMs: CONTROL_PLANE_LANE_IDLE_TIMEOUT_MS,
   });
   const sessionEmitters = new Map<string, Emitter<ZCodeAgentServiceEvent>>();
   /**
@@ -3157,8 +3161,9 @@ export function createZCodeAgentService(
   // （existing-only 语义：只看 activeClientsByWorkspaceKey，绝不为此拉起新进程），否则回落到
   // 管理面 workspace——照 getPluginManagementClient 先例用专用 pluginProcessManager 拉一个控制面
   // runtime。选它而非 getOrStartReadOnlyClient 的理由：workflows/* 是无会话、不依赖 provider/model
-  // 就绪的 workspace 级方法，管理面进程正是为这种「不寄居真实项目」的控制面能力准备的，且不会因
-  // 真实 workspace 生命周期被 watchdog 回收；getOrStartReadOnlyClient 反而会把这个合成 workspace
+  // 就绪的 workspace 级方法，管理面进程正是为这种「不寄居真实项目」的控制面能力准备的，且不随
+  // 真实 workspace 的销毁/重载被回收（disposeWorkspace 只作用于会话泳道）——只在自己的控制面
+  // 空闲超时后回收；getOrStartReadOnlyClient 反而会把这个合成 workspace
   // 塞进 activeClientsByWorkspaceKey 并跑一遍交互偏好同步，污染会话 client map。两条路径都在本机，
   // homedir() 即用户家目录，全局根 `~/.zcode/workflows/` 因此解析到真实目录。
   // 远程 runtime（SSH/WSL identity 或带 remoteSessionId）的 home 不是本机，绝不选它当载体。
