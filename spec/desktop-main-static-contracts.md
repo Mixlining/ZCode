@@ -20,6 +20,10 @@
 - `.github/workflows/check.yml` 的 Typecheck job 先运行现有根 `pnpm typecheck`，再在同一 job 运行 Desktop Main 的 `tsc --noEmit`。后一步依赖前一步生成的 shared/services 声明；两步必须顺序执行，不新增桌面制品构建。
 - Windows 发布工作流在现有根类型检查之后也执行 Main 的无输出检查，避免长时间打包之后才发现 Main 类型错误。
 - CLI bootstrap 的本地 `tsc --noEmit` 虽通过，但它依赖多个 CLI workspace 包的 `dist/*.d.ts`。这些声明不入库，干净的 CI 安装又跳过构建脚本；本次不能把该命令直接作为 PR 门禁。保持 CLI 构建/类型检查策略不变，待建立无产物的依赖解析入口后再加入。
+- 两个 workflow 都通过 `jdx/mise-action` 读取根目录 `mise.toml`，固定 Node `24.14.0` 和 pnpm `10.33.2`；这是项目工具链版本。GitHub Action 自身的 Node runtime 独立于项目 Node，应使用支持 Node 24 的 checkout、cache 和 artifact action。
+- pnpm store 按 runner OS 与 `pnpm-lock.yaml` 哈希恢复。恢复与保存分开：依赖安装成功后立即保存 store，使后续类型检查或桌面打包失败也不会丢失已下载依赖。矩阵 job 并发争用同一 key 时允许一个 job 保存，其他 job 复用已存在条目。
+- Electron 与 electron-builder 缓存按 runner OS 和桌面依赖恢复；安装器构建尝试结束后执行显式保存，使构建失败时已下载的文件仍能缓存。缓存 action 会跳过空目录。首次运行的 `Cache not found` 是冷缓存提示；已保存的相同 key 可在同一分支/ref 内恢复。
+- GitHub 将 tag 缓存按 tag 名隔离，两个不同 release tag 不能互相读取缓存；tag 可以读取默认分支缓存。要让首次 release tag 也命中 Windows 缓存，应先在默认分支运行现有 `workflow_dispatch` 编译工作流一次，此后各 tag 可复用默认分支缓存。
 
 ## 本次诊断处理
 

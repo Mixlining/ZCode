@@ -33,7 +33,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up toolchain from mise.toml
         uses: jdx/mise-action@v4
@@ -41,15 +41,17 @@ jobs:
       - name: Point pnpm store into the workspace
         run: pnpm config set store-dir "${{ github.workspace }}/.pnpm-store"
 
-      - name: Cache pnpm store
-        uses: actions/cache@v4
+      - name: Restore pnpm store
+        id: pnpm-cache
+        uses: actions/cache/restore@v6
         with:
           path: .pnpm-store
           key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: pnpm-${{ runner.os }}-
 
-      - name: Cache Electron and electron-builder binaries
-        uses: actions/cache@v4
+      - name: Restore Electron and electron-builder caches
+        id: electron-cache
+        uses: actions/cache/restore@v6
         with:
           path: |
             .electron-cache
@@ -58,7 +60,15 @@ jobs:
           restore-keys: electron-${{ runner.os }}-
 
       - name: Install dependencies
+        id: install
         run: pnpm install --frozen-lockfile
+
+      - name: Save pnpm store
+        if: ${{ !cancelled() && steps.install.outcome == 'success' && steps.pnpm-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v6
+        with:
+          path: .pnpm-store
+          key: ${{ steps.pnpm-cache.outputs.cache-primary-key }}
 
       - name: Typecheck (root)
         run: pnpm typecheck
@@ -94,7 +104,17 @@ jobs:
           }
 
       - name: Build Windows desktop installer
+        id: desktop-build
         run: pnpm run bundle:desktop -- --os win --arch x64
+
+      - name: Save Electron and electron-builder caches
+        if: ${{ !cancelled() && steps.desktop-build.outcome != 'skipped' && steps.electron-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            .electron-cache
+            .electron-builder-cache
+          key: ${{ steps.electron-cache.outputs.cache-primary-key }}
 
       - name: Collect installer and checksum
         shell: pwsh
@@ -108,7 +128,7 @@ jobs:
             Set-Content packages/desktop/dist/SHA256SUMS.txt -Encoding ascii
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: zcode-desktop-windows-x64
           path: |
