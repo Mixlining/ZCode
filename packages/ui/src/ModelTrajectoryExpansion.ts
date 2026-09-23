@@ -18,8 +18,10 @@ export const TRAJECTORY_EXPANSION_KINDS: readonly TrajectoryVisualRole[] = [
 ];
 
 export function createTrajectoryExpansionCommands(): TrajectoryExpansionCommands {
+  // 与 ExpandableTrajectoryMessage 的默认折叠态保持一致：表头「展开全部/收起全部」的图标
+  // 由 willExpandAll 从这里的 expanded 推出，两处默认值不一致会让图标与文案和实际状态相反。
   return Object.fromEntries(
-    TRAJECTORY_EXPANSION_KINDS.map((kind) => [kind, { expanded: true, version: 0 }]),
+    TRAJECTORY_EXPANSION_KINDS.map((kind) => [kind, { expanded: false, version: 0 }]),
   ) as TrajectoryExpansionCommands;
 }
 

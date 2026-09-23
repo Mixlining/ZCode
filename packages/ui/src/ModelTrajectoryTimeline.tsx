@@ -1,5 +1,5 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useEffect, type RefObject } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 import type { ZCodeModelTrajectoryRecord } from "@zcode/services";
 import {
   type TrajectorySearchMatch,
@@ -28,6 +28,8 @@ export function ModelTrajectoryTimeline({
   intl: IntlShape;
   scrollContainerRef: RefObject<HTMLDivElement | null>;
 }) {
+  // 上一次触发 measure() 的搜索条件与命中签名；用来把清空测高缓存限制在搜索语义真正变化时。
+  const measuredRevealSignatureRef = useRef<string | null>(null);
   const virtualizer = useVirtualizer({
     count: items.length,
     getScrollElement: () => scrollContainerRef.current,
@@ -37,7 +39,11 @@ export function ModelTrajectoryTimeline({
   });
   // 搜索切换会同时收起旧命中并展开新命中；此时禁止 virtualizer 根据每次测高回调连续
   // 修正滚动锚点，由下方文本级定位在布局稳定后一次完成滚动。
-  virtualizer.shouldAdjustScrollPositionOnItemSizeChange = () => !searchQuery;
+  // 判据必须与 @tanstack/react-virtual 的默认语义一致（只补偿视口上方的项）：轨迹卡片高度
+  // 远大于 estimateSize，屏外项测高同样会回调这里，无条件返回 true 会把滚动位置持续向前推，
+  // 触发滚动观察者清零 scrollAdjustments 后再次测高，形成自维持的挂载窗口前移。
+  virtualizer.shouldAdjustScrollPositionOnItemSizeChange = (item) =>
+    !searchQuery && item.start < (scrollContainerRef.current?.scrollTop ?? 0);
   const roleWidthLabels = ["system", "user", "assistant", "tool"].map((role) =>
     intl.formatMessage({ id: `modelTrajectory.role.${role}` }),
   );
@@ -67,12 +73,23 @@ export function ModelTrajectoryTimeline({
   useEffect(() => {
     const root = scrollContainerRef.current;
     if (!root || !searchQuery) {
+      measuredRevealSignatureRef.current = null;
       clearTrajectorySearchHighlights();
       return;
     }
+    // measure() 会清空整个 itemSizeCache。它只能由「搜索条件或当前命中变化」驱动：
+    // 若跟随 mountedRowsKey 每次挂载集合变化都执行，就会形成
+    // 清空缓存 → 重新测高 → 挂载集合变化 → 再次清空的自我维持循环。
+    // 纯滚动引起的挂载集合变化由各行挂载时的 measureElement 自行上报，无需清空缓存。
+    // 签名在真正执行 measure() 之后才记录：若本轮 rAF 被下一次依赖变化取消，签名保持未记录，
+    // 下一轮仍会补做一次清空，避免「标记已清空但实际从未清空」。
+    const revealSignature = `${searchQuery}\u0000${activeSearchMatch?.expansionKey ?? ""}`;
     let secondFrame = 0;
     const firstFrame = window.requestAnimationFrame(() => {
-      virtualizer.measure();
+      if (measuredRevealSignatureRef.current !== revealSignature) {
+        virtualizer.measure();
+        measuredRevealSignatureRef.current = revealSignature;
+      }
       secondFrame = window.requestAnimationFrame(() => {
         const activeRange = applyTrajectorySearchHighlights({
           root,

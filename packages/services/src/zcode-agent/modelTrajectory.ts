@@ -1,5 +1,7 @@
+/* eslint-disable max-lines -- 轨迹读取的尾部过滤、delta 链式展开、窗口选择与字节预算四段严格顺序耦合（展开依赖上一条完整上下文，窗口又必须在映射前确定），拆到多个文件会把同一读取契约摊开并放大链式语义漂移风险。 */
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
+import { utf8JsonByteLength } from "@zcode/shared/zcode-protocol-v4";
 import type {
   ZCodeModelTrajectory,
   ZCodeModelTrajectoryCallSource,
@@ -18,6 +20,12 @@ import type { TrajectoryFileTail } from "#src/zcode-agent/modelTrajectoryFileTai
 
 // model-io 默认最多返回的调用条数（保留最近 N 条），避免长 session 把 UI 压垮。
 const DEFAULT_TRAJECTORY_LIMIT = 200;
+// 轨迹结果的序列化字节上限。条数上限不封顶字节：单条记录携带完整上下文，长 session 下
+// 200 条窗口仍会产出数百 MB 的 RPC 载荷，极端时 JSON.stringify 直接抛 RangeError。
+// 因此条数与字节两个上限取小。取值与 PROTOCOL_V4_LIMITS.logicalFrameAssemblyMaxBytes 对齐：
+// 开启完整保留时单条上下文就是数 MB，本机实测「32 MiB 尾部」的常规结果为 4–12 条、
+// 6.8–8.0 MiB，预算低于此会让用户直接少看到调用记录，而 16 MiB 仍足以消除上述失控载荷。
+const MODEL_TRAJECTORY_MAX_RESULT_BYTES = 16 * 1024 * 1024;
 const SESSION_TITLE_PROMPT_PREFIX = "Generate a concise title for this coding session.";
 const logger = createServiceLogger("model-trajectory");
 
@@ -106,14 +114,58 @@ export async function readModelTrajectory(
     return (asString(left.requestId) ?? "").localeCompare(asString(right.requestId) ?? "");
   });
 
-  const records = expandModelIODeltaRecords(rawRecords).map((record) => mapRecord(record));
-  const truncated = inputTruncated || records.length > safeLimit;
-  const trimmedRecords = truncated ? records.slice(records.length - safeLimit) : records;
+  // 字节预算的窗口预判。展开后的上下文是各条记录自己消息切片的拼接，所以「累计切片字节」
+  // 是每条记录上下文的近似规模；用窗口内最小的那个乘以窗口长度就是真实序列化大小的下界。
+  // 先按下界定窗口，再逐条映射，可避免默认配置下「映射上千条 delta 只为丢弃」白占数秒 Host
+  // 时间；下界只会让窗口偏大，不会漏掉本可展示的记录，最终大小仍由下方逐条实测收口。
+  const estimatedContextBytes: number[] = [];
+  let cumulativeContextBytes = 0;
+  for (const record of rawRecords) {
+    const request = asObject(record.request);
+    const deltaBytes = utf8JsonByteLength(request?.messages ?? null);
+    // delta 是增量；full/tail 是自包含基线，与 expandMessageCollection 的重置语义保持一致。
+    cumulativeContextBytes =
+      asString(request?.messagesKind) === "delta"
+        ? cumulativeContextBytes + deltaBytes
+        : deltaBytes;
+    estimatedContextBytes.push(cumulativeContextBytes);
+  }
+
+  let startIndex = Math.max(0, rawRecords.length - safeLimit);
+  let smallestContextBytes = Number.POSITIVE_INFINITY;
+  for (let index = rawRecords.length - 1; index >= startIndex; index -= 1) {
+    smallestContextBytes = Math.min(smallestContextBytes, estimatedContextBytes[index] ?? 0);
+    if ((rawRecords.length - index) * smallestContextBytes > MODEL_TRAJECTORY_MAX_RESULT_BYTES) {
+      startIndex = index + 1;
+      break;
+    }
+  }
+
+  const windowSize = rawRecords.length - startIndex;
+  const mapped: ZCodeModelTrajectoryRecord[] = [];
+  let previousExpanded: Record<string, unknown> | undefined;
+  let retainedBytes = 0;
+
+  for (const [index, record] of rawRecords.entries()) {
+    // 窗口外的记录仍要参与展开以推进 delta 链，但不映射：这正是「先定窗口再物化」。
+    previousExpanded = expandModelIORecord(record, previousExpanded);
+    if (index < startIndex) continue;
+    // 预判用的是下界，这里按实际序列化字节复核，超预算就从头部出队（保留最近调用）；
+    // 至少留一条，让超过预算的单条上下文完整返回，不截断首条上下文。
+    const mappedRecord = mapRecord(previousExpanded);
+    retainedBytes += utf8JsonByteLength(mappedRecord);
+    mapped.push(mappedRecord);
+    while (mapped.length > 1 && retainedBytes > MODEL_TRAJECTORY_MAX_RESULT_BYTES) {
+      retainedBytes -= utf8JsonByteLength(mapped.shift()!);
+    }
+  }
+
+  const truncated = inputTruncated || rawRecords.length > safeLimit || mapped.length < windowSize;
 
   return {
     taskId,
     available: true,
-    records: trimmedRecords,
+    records: mapped,
     sourceFiles,
     truncated,
   };
@@ -215,17 +267,6 @@ function classifyCallSource(
     return { kind: "subagent" };
   }
   return { kind: "main" };
-}
-
-function expandModelIODeltaRecords(records: Record<string, unknown>[]): Record<string, unknown>[] {
-  const expanded: Record<string, unknown>[] = [];
-  let previous: Record<string, unknown> | undefined;
-  for (const record of records) {
-    const next = expandModelIORecord(record, previous);
-    expanded.push(next);
-    previous = next;
-  }
-  return expanded;
 }
 
 function expandModelIORecord(

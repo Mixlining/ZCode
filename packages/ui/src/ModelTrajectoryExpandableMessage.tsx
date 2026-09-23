@@ -53,7 +53,10 @@ export function ExpandableTrajectoryMessage({
   const expansionCommands = useContext(TrajectoryExpansionCommandContext);
   const expansionRegistry = useContext(TrajectoryExpansionRegistryContext);
   const searchRevealKey = useContext(TrajectorySearchRevealContext);
-  const [localExpansion, setLocalExpansion] = useState({ open: true, commandVersion: 0 });
+  // 默认折叠：展开态会把正文、逐条遮罩以及每条消息自己的 ResizeObserver/window resize
+  // 监听一起挂进 DOM。轨迹卡片高度远大于 virtualizer 的估算值，默认展开会让首屏一下子
+  // 挂载整份上下文，是渲染进程内存峰值的主要来源。展开入口保留在表头与按角色菜单。
+  const [localExpansion, setLocalExpansion] = useState({ open: false, commandVersion: 0 });
   const copyLabel = intl.formatMessage({ id: "chat.message.copy" });
   const copyText = messageClipboardText(message);
   const toolResultMeta = trajectoryToolMetadata(message);
