@@ -15,6 +15,8 @@ export function resolveDesktopProductionCleanPaths(cwd) {
   return [
     resolve(cwd, "out/main"),
     resolve(cwd, "out/host"),
+    // 修复：原列表漏掉 scheduler；旧 chunk 会随 out/**/* 进入新 app.asar 并干扰运行时导入校验。
+    resolve(cwd, "out/scheduler"),
     resolve(cwd, "out/preload"),
     resolve(cwd, "out/renderer"),
     resolve(cwd, "out/.main-build-ready"),

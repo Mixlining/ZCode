@@ -67,8 +67,26 @@ Acceptance scenarios:
 
 - Desktop packaging owns the staged `app.asar` rewrite in `afterPack`. Rewrite when runtime modules or the packaged target prebuild are missing. Before packing, the staging tree must contain the target platform's `node-pty/prebuilds/<platform>/pty.node`; its installed `node-pty` package is the source if the extracted archive omitted that directory. Copy the complete target prebuild directory so its runtime helper files stay together.
 - Every runtime module required by the final `bundle.mjs` archive check must also be an `afterPack` injection root. In particular, the Desktop manifest's `@babel/runtime` dependency must be copied from the installed package when electron-builder omits it from `app.asar`; a final verifier requirement alone cannot repair the archive.
+- The packaged `out/main`, `out/host`, `out/scheduler`, and `out/preload` JavaScript is the source of truth for external package imports. `afterPack` must inspect literal static imports, re-exports, dynamic imports, and CommonJS `require` calls in those files, then inject missing installed runtime packages and their dependency closure before replacing `app.asar`. Node built-ins and Electron are not package assets. A remaining `@zcode/*` import is a bundling error and must fail instead of copying workspace source into the release package.
+- Production build cleanup includes `out/scheduler` alongside the other Desktop Node outputs, so old scheduler chunks cannot be packaged or counted as current external imports.
+- `node-pty` remains a native special case: keep its target prebuild in `app.asar.unpacked`. If its package code is missing, restore the installed package without build output or other platform prebuilds; verify both its package metadata and target native file after repacking.
+- The final bundle gate must inspect the same packaged JavaScript and verify every discovered external package plus the explicit runtime dependency closure against the final `app.asar`. Report all missing packages in one failure. The common bundle command runs this gate for each target platform; the existing Windows GitHub release workflow also runs an explicit final packaged-import check before uploading the installer. No additional macOS/Linux workflow is introduced.
 - Keep the candidate archive and `.unpacked` sidecar as one replacement unit. If the source target prebuild is unavailable, fail with a specific error before replacing the current archive. Preserve the existing native-resource and target-prebuild checks after repacking.
 - The package layout may differ between pnpm versions; the archive extraction is not the owner of native assets when the installed target prebuild is available.
+
+```mermaid
+sequenceDiagram
+    participant Build as Desktop production build
+    participant Pack as electron-builder afterPack
+    participant Archive as app.asar and unpacked sidecar
+    participant Gate as bundle and workflow gate
+    Build->>Build: Remove old Node output including scheduler
+    Build->>Pack: Emit current main, host, scheduler, preload
+    Pack->>Archive: Read imports and restore missing runtime packages
+    Pack->>Archive: Replace archive and target native sidecar
+    Archive->>Gate: Inspect final imports and dependency closure
+    Gate-->>Build: Pass or report all missing package roots
+```
 
 Acceptance scenarios:
 
@@ -78,6 +96,10 @@ Acceptance scenarios:
 4. The final package contains only the target platform's node-pty prebuild and passes the existing native-resource policy checks.
 5. Missing target native assets trigger the rewrite even when all runtime modules are present.
 6. When electron-builder omits `@babel/runtime`, `afterPack` injects its package before the installer is generated, and the final runtime-dependency check finds it in `app.asar`.
+7. When the packaged main imports `yaml` but electron-builder omits that direct dependency, `afterPack` adds it; the final check detects any missing direct external imports from main, host, scheduler, or preload before publication.
+8. A missing package source, remaining `@zcode/*` bare import, or missing final package root fails with the complete set of affected imports where available. Built-in modules and `electron` do not require archive entries.
+9. A package that has the target `node-pty` native file but lacks the `node-pty` JavaScript package is repaired before replacing `app.asar`; other platform prebuilds stay out of the package.
+10. A previous scheduler build's stale chunk is removed before the next production bundle and does not affect packaged import verification.
 
 ## Acceptance scenarios
 

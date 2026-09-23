@@ -1,43 +1,66 @@
 import { cpSync, existsSync, mkdirSync } from "node:fs";
 import { access, cp, mkdir } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { dirname, resolve } from "node:path";
+import { dirname, relative, resolve } from "node:path";
 
 const require = createRequire(import.meta.url);
+
+async function pathExists(path) {
+  try {
+    await access(path);
+    return true;
+  } catch (error) {
+    if (error?.code === "ENOENT") return false;
+    throw error;
+  }
+}
 
 export async function ensureStagedTargetNodePtyPrebuild({
   desktopPackageRoot,
   stagingDir,
   targetPlatform,
 }) {
-  const stagedPrebuildDir = resolve(
-    stagingDir,
-    "node_modules",
-    "node-pty",
-    "prebuilds",
-    targetPlatform.key,
-  );
-  try {
-    await access(resolve(stagedPrebuildDir, "pty.node"));
-    return;
-  } catch (error) {
-    if (error?.code !== "ENOENT") throw error;
-  }
+  const stagedPackageRoot = resolve(stagingDir, "node_modules", "node-pty");
+  const stagedPrebuildDir = resolve(stagedPackageRoot, "prebuilds", targetPlatform.key);
+  const packagePresent = await pathExists(resolve(stagedPackageRoot, "package.json"));
+  const prebuildPresent = await pathExists(resolve(stagedPrebuildDir, "pty.node"));
+  if (packagePresent && prebuildPresent) return;
 
-  let sourcePrebuildDir;
+  let sourcePackageRoot;
   try {
-    const nodePtyPackageRoot = dirname(
+    sourcePackageRoot = dirname(
       require.resolve("node-pty/package.json", { paths: [desktopPackageRoot] }),
     );
-    sourcePrebuildDir = resolve(nodePtyPackageRoot, "prebuilds", targetPlatform.key);
-    await access(resolve(sourcePrebuildDir, "pty.node"));
+    if (!prebuildPresent) {
+      await access(resolve(sourcePackageRoot, "prebuilds", targetPlatform.key, "pty.node"));
+    }
   } catch (error) {
-    // 修复：pnpm 11 的 hoisted 布局可能让 builder 漏装目标 prebuild；源包也缺失时必须在替换 asar 前明确失败。
-    throw new Error(`重打包缺少 ${targetPlatform.key} 的 node-pty/pty.node`, { cause: error });
+    // 修复：pnpm 11 的 hoisted 布局可能让 builder 漏装 node-pty；源包缺失时必须在替换 asar 前明确失败。
+    throw new Error(`重打包缺少 ${targetPlatform.key} 的 node-pty 包或 pty.node`, {
+      cause: error,
+    });
   }
 
-  await mkdir(dirname(stagedPrebuildDir), { recursive: true });
-  await cp(sourcePrebuildDir, stagedPrebuildDir, { recursive: true });
+  if (!packagePresent) {
+    await mkdir(dirname(stagedPackageRoot), { recursive: true });
+    await cp(sourcePackageRoot, stagedPackageRoot, {
+      recursive: true,
+      filter: (sourcePath) => {
+        const firstSegment = relative(sourcePackageRoot, sourcePath)
+          .replaceAll("\\", "/")
+          .split("/")[0];
+        // 只恢复 JS 包本体；native 与构建缓存分别按目标平台处理，避免把其他平台资产带回 asar。
+        return !["prebuilds", "build", "bin", "node_modules"].includes(firstSegment);
+      },
+    });
+  }
+
+  if (!prebuildPresent) {
+    await mkdir(dirname(stagedPrebuildDir), { recursive: true });
+    await cp(resolve(sourcePackageRoot, "prebuilds", targetPlatform.key), stagedPrebuildDir, {
+      recursive: true,
+    });
+  }
 }
 
 export function restoreTargetNodePtyPrebuild({ desktopPackageRoot, targetPlatform }) {

@@ -40,16 +40,17 @@ tag 是 tag 构建的产品版本来源。打包时 workflow 将去掉 `v` 前�
 
 ## 工作流做了什么
 
-| 步骤     | 命令                                                       | 说明                                                                                                                                                               |
-| -------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 工具链   | `jdx/mise-action@v4`                                       | 读 `mise.toml` 安装 node `24.21.0` 与 pnpm `11.27.1`，与项目锁定版本一致（该 action 自 v2.1.0 起支持 Windows runner；如需供应链加固可把 tag 换成 commit SHA）。    |
-| 缓存     | `actions/cache/restore@v6` / `actions/cache/save@v6`       | 缓存 pnpm store、Electron 与 electron-builder 二进制；key 跟随根 `pnpm-lock.yaml` / `packages/desktop/package.json`。                                              |
-| 安装依赖 | `pnpm install --frozen-lockfile`                           | 一次安装即覆盖根 workspace 与 `apps/zcode-cli`；三个 `patches/*.patch` 在此生效。                                                                                  |
-| 门槛     | `pnpm typecheck`、Desktop Main `tsc --noEmit`、`pnpm lint` | 根类型检查、Desktop Main 无输出类型检查与仓库 Lint；静态检查工作流另外执行格式和架构检查。                                                                         |
-| 端点     | 写 `.env`                                                  | 见上一节的 variable 表。                                                                                                                                           |
-| 构建     | `pnpm run bundle:desktop -- --os win --arch x64`           | 唯一入口：内部依次执行 `prepare:runtime-assets` → 生产构建（`tsup` + `vite build`）→ `electron-builder --win --x64` → asar 运行时依赖闭包校验 → 500 MiB 体积审计。 |
-| 产物     | `Get-FileHash` + `upload-artifact`                         | 生成 `SHA256SUMS.txt` 并上传安装包。                                                                                                                               |
-| 发布     | `gh release create/upload`                                 | 仅 tag 触发：创建 prerelease（`--generate-notes`）或向已存在的 Release 追加资产。                                                                                  |
+| 步骤     | 命令                                                                         | 说明                                                                                                                                                               |
+| -------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 工具链   | `jdx/mise-action@v4`                                                         | 读 `mise.toml` 安装 node `24.21.0` 与 pnpm `11.27.1`，与项目锁定版本一致（该 action 自 v2.1.0 起支持 Windows runner；如需供应链加固可把 tag 换成 commit SHA）。    |
+| 缓存     | `actions/cache/restore@v6` / `actions/cache/save@v6`                         | 缓存 pnpm store、Electron 与 electron-builder 二进制；key 跟随根 `pnpm-lock.yaml` / `packages/desktop/package.json`。                                              |
+| 安装依赖 | `pnpm install --frozen-lockfile`                                             | 一次安装即覆盖根 workspace 与 `apps/zcode-cli`；三个 `patches/*.patch` 在此生效。                                                                                  |
+| 门槛     | `pnpm typecheck`、Desktop Main `tsc --noEmit`、`pnpm lint`                   | 根类型检查、Desktop Main 无输出类型检查与仓库 Lint；静态检查工作流另外执行格式和架构检查。                                                                         |
+| 端点     | 写 `.env`                                                                    | 见上一节的 variable 表。                                                                                                                                           |
+| 构建     | `pnpm run bundle:desktop -- --os win --arch x64`                             | 唯一入口：内部依次执行 `prepare:runtime-assets` → 生产构建（`tsup` + `vite build`）→ `electron-builder --win --x64` → asar 运行时依赖闭包校验 → 500 MiB 体积审计。 |
+| 包校验   | `node packages/desktop/scripts/bundle.mjs --verify-only --os win --arch x64` | 上传前再次核对最终 `app.asar` 中 Main、Host、scheduler 和 preload 的外置包导入及依赖闭包；缺包时阻止发布。                                                         |
+| 产物     | `Get-FileHash` + `upload-artifact`                                           | 生成 `SHA256SUMS.txt` 并上传安装包。                                                                                                                               |
+| 发布     | `gh release create/upload`                                                   | 仅 tag 触发：创建 prerelease（`--generate-notes`）或向已存在的 Release 追加资产。                                                                                  |
 
 ## 关键环境变量（工作流已设，改动前请先读这里）
 
@@ -66,6 +67,7 @@ tag 是 tag 构建的产品版本来源。打包时 workflow 将去掉 `v` 前�
 ```bash
 pnpm install --frozen-lockfile
 ZCODE_ENV=production ZCODE_SKIP_REMOTE_ASSETS=1 pnpm run bundle:desktop -- --os win --arch x64
+node packages/desktop/scripts/bundle.mjs --verify-only --os win --arch x64
 ```
 
 产出一致落在 `packages/desktop/dist/`。Windows 目标必须在 Windows 宿主上打包（`electron-builder.config.js` 的 `resolveElectronBuilderWindowsTarget` 有宿主断言），这也是工作流跑 `windows-latest` 的原因。

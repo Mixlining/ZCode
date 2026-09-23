@@ -149,6 +149,9 @@ jobs:
             exit $buildExitCode
           }
 
+      - name: Verify packaged Desktop runtime imports
+        run: node packages/desktop/scripts/bundle.mjs --verify-only --os win --arch x64
+
       - name: Save Electron and electron-builder caches
         if: ${{ !cancelled() && steps.desktop-build.outcome != 'skipped' && steps.electron-cache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v6

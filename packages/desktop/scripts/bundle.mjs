@@ -12,6 +12,7 @@ import process from "node:process";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { collectRuntimeModuleClosureEntries } from "./runtime-dependency-closure.mjs";
+import { collectPackagedRuntimeImports } from "./packaged-runtime-imports.mjs";
 import { resolveDesktopProductIdentity } from "./desktop-product-identity.mjs";
 import {
   findDesktopNativePackageViolations,
@@ -250,6 +251,7 @@ function printHelp() {
   --arch, -a <x64|arm64>       目标 CPU 架构，默认 arm64
   --skip-prepare               跳过 prepare:runtime-assets
   --skip-build                 跳过 pnpm build
+  --verify-only                只校验已生成的 app.asar，不重新打包
   --dry-run                    只打印最终命令，不执行打包
   -h, --help                   查看帮助
 
@@ -281,6 +283,7 @@ function parseArgs(argv) {
     arch: process.env.ZCODE_TARGET_ARCH ?? null,
     skipPrepare: process.env.ZCODE_SKIP_PREPARE === "1",
     skipBuild: process.env.ZCODE_SKIP_BUILD === "1",
+    verifyOnly: false,
     dryRun: false,
     positionals: [],
   };
@@ -309,6 +312,11 @@ function parseArgs(argv) {
 
     if (arg === "--skip-build") {
       options.skipBuild = true;
+      continue;
+    }
+
+    if (arg === "--verify-only") {
+      options.verifyOnly = true;
       continue;
     }
 
@@ -356,6 +364,7 @@ function parseArgs(argv) {
     arch: resolvedArch,
     skipPrepare: options.skipPrepare,
     skipBuild: options.skipBuild,
+    verifyOnly: options.verifyOnly,
     dryRun: options.dryRun,
   };
 }
@@ -661,12 +670,22 @@ function verifyPackagedRuntimeDependencies(os, arch) {
     throw new Error(`打包产物包含越界 native 资源:\n- ${nativePackageViolations.join("\n- ")}`);
   }
 
+  const packagedImports = collectPackagedRuntimeImports(appAsarPath);
+  const workspaceImports = [...packagedImports.keys()].filter((name) => name.startsWith("@zcode/"));
+  const importedPackageRoots = [...packagedImports.keys()].filter(
+    (name) => name !== "node-pty" && !name.startsWith("@zcode/"),
+  );
   const runtimeModules = collectRuntimeModuleClosureEntries(
-    requiredRuntimeModules,
+    [...new Set([...requiredRuntimeModules, ...importedPackageRoots])],
     runtimeModuleLookupRoots,
   );
+  const missingSources = [];
   const resolvableRuntimeModules = runtimeModules.filter((entry) => {
     if (!entry.sourceModulePath) {
+      if (packagedImports.has(entry.moduleName)) {
+        missingSources.push(entry.moduleName);
+        return false;
+      }
       // afterPack 会按当前平台实际可解析依赖注入；bundle 校验也需保持同口径。
       // 否则在某些 CI 安装布局中会出现“注入阶段已跳过，但校验阶段仍硬失败”的误报。
       console.warn(
@@ -679,6 +698,7 @@ function verifyPackagedRuntimeDependencies(os, arch) {
     return true;
   });
 
+  const missingPackageRoots = [];
   for (const { moduleName } of resolvableRuntimeModules) {
     const moduleRoot = `/node_modules/${moduleName}`;
     // @electron/asar 在 Windows 下列目录时会通过 path.join 产出反斜杠路径，
@@ -689,14 +709,27 @@ function verifyPackagedRuntimeDependencies(os, arch) {
     );
 
     if (!hasModule) {
-      // 校验也按依赖闭包展开，确保 afterPack 注入逻辑遗漏子依赖时能在 bundle 阶段直接失败。
-      throw new Error(`打包产物缺少运行时依赖 ${moduleName}: ${appAsarPath}`);
+      missingPackageRoots.push(moduleName);
     }
+  }
+  if (!asarEntries.includes("/node_modules/node-pty/package.json")) {
+    missingPackageRoots.push("node-pty");
+  }
+  if (workspaceImports.length > 0 || missingSources.length > 0 || missingPackageRoots.length > 0) {
+    // 修复：手写根清单漏掉 yaml 时，旧校验放过坏包；现在按实际导入补齐检查并一次报告所有缺项。
+    throw new Error(
+      `Desktop 运行时依赖校验失败: ${appAsarPath}\n` +
+        [
+          ...workspaceImports.map((name) => `未内联 workspace 包: ${name}`),
+          ...missingSources.map((name) => `构建环境缺少外置包: ${name}`),
+          ...missingPackageRoots.map((name) => `app.asar 缺少包: ${name}`),
+        ].join("\n"),
+    );
   }
 }
 
 async function main() {
-  const { os, arch, skipPrepare, skipBuild, dryRun } = parseArgs(process.argv.slice(2));
+  const { os, arch, skipPrepare, skipBuild, verifyOnly, dryRun } = parseArgs(process.argv.slice(2));
   const buildArgs = [
     "exec",
     "electron-builder",
@@ -708,6 +741,13 @@ async function main() {
 
   console.log(`[bundle] target=${os}/${arch}`);
   console.log(`[bundle] skipPrepare=${skipPrepare} skipBuild=${skipBuild}`);
+
+  if (verifyOnly) {
+    runTimedSync("bundle:verify-runtime-dependencies", () =>
+      verifyPackagedRuntimeDependencies(os, arch),
+    );
+    return;
+  }
 
   const buildEnv = {
     ZCODE_TARGET_OS: os,

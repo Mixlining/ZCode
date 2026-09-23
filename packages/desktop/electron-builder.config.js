@@ -10,6 +10,7 @@ import { noticesFileName, stageElectronNotices } from "../../scripts/third-party
 import { resolveNativeSearchReleasePlan } from "../../scripts/native-search-tools-config.mjs";
 import { getBuildMetadata } from "./scripts/build-metadata.mjs";
 import { collectRuntimeModuleClosureEntries } from "./scripts/runtime-dependency-closure.mjs";
+import { collectPackagedRuntimeImports } from "./scripts/packaged-runtime-imports.mjs";
 import {
   ensureStagedTargetNodePtyPrebuild,
   resolvePackagedNodePtyPrebuildPath,
@@ -309,12 +310,30 @@ function resolveMissingRuntimeModules(appAsarPath) {
     .filter(Boolean);
   const asarEntrySet = new Set(asarEntries);
 
+  // 修复：yaml 等外置导入未进入手写清单时，原 afterPack 无法补包，安装包直到启动才报 ERR_MODULE_NOT_FOUND。
+  // 以实际打入 archive 的 Desktop JS 为准收集外置包，避免与 tsup 的外置清单再次漂移。
+  const packagedImports = collectPackagedRuntimeImports(appAsarPath);
+  const unbundledWorkspacePackages = [...packagedImports.keys()].filter((name) =>
+    name.startsWith("@zcode/"),
+  );
+  if (unbundledWorkspacePackages.length > 0) {
+    throw new Error(
+      `Desktop 产物仍引用未内联的 workspace 包: ${unbundledWorkspacePackages.join(", ")}`,
+    );
+  }
+  const importedPackageRoots = [...packagedImports.keys()].filter((name) => name !== "node-pty");
+
   const runtimeModules = collectRuntimeModuleClosureEntries(
-    REQUIRED_ASAR_RUNTIME_MODULES,
+    [...new Set([...REQUIRED_ASAR_RUNTIME_MODULES, ...importedPackageRoots])],
     runtimeModuleLookupRoots,
   );
+  const missingImportedSources = [];
   const resolvableRuntimeModules = runtimeModules.filter((entry) => {
     if (!entry.sourceModulePath) {
+      if (packagedImports.has(entry.moduleName)) {
+        missingImportedSources.push(entry.moduleName);
+        return false;
+      }
       // 不同平台/安装布局下，部分运行时依赖可能被裁剪或未落到本次打包工作区。
       // 之前这里直接在 copy 阶段抛错会中断整个平台出包；改为记录告警并跳过该模块，
       // 让 afterPack 只处理当前环境确实可解析的依赖，避免 CI 因单个可选依赖缺失全量失败。
@@ -327,7 +346,10 @@ function resolveMissingRuntimeModules(appAsarPath) {
     }
     return true;
   });
-  return resolvableRuntimeModules.filter((entry) => {
+  if (missingImportedSources.length > 0) {
+    throw new Error(`Desktop 外置依赖未安装: ${missingImportedSources.join(", ")}`);
+  }
+  const missingRuntimeModules = resolvableRuntimeModules.filter((entry) => {
     const { moduleName } = entry;
     const moduleRoot = `/node_modules/${moduleName}`;
     if (asarEntrySet.has(moduleRoot)) {
@@ -340,6 +362,10 @@ function resolveMissingRuntimeModules(appAsarPath) {
     }
     return true;
   });
+  return {
+    missingRuntimeModules,
+    nodePtyCodeMissing: !asarEntrySet.has("/node_modules/node-pty/package.json"),
+  };
 }
 
 async function injectHoistedRuntimeModulesIntoAsar(context) {
@@ -348,15 +374,16 @@ async function injectHoistedRuntimeModulesIntoAsar(context) {
     throw new Error(`打包产物缺少 app.asar: ${appAsarPath}`);
   }
 
-  const missingRuntimeModules = runTimedSync("afterPack:scan-missing-runtime-modules", () =>
-    resolveMissingRuntimeModules(appAsarPath),
+  const { missingRuntimeModules, nodePtyCodeMissing } = runTimedSync(
+    "afterPack:scan-missing-runtime-modules",
+    () => resolveMissingRuntimeModules(appAsarPath),
   );
   const packagedTargetPrebuildPath = resolvePackagedNodePtyPrebuildPath({
     resourcesDir: resolvePackagedResourcesDir(context),
     platformKey: targetPlatform.key,
   });
   const targetPrebuildMissing = !existsSync(packagedTargetPrebuildPath);
-  if (missingRuntimeModules.length === 0 && !targetPrebuildMissing) {
+  if (missingRuntimeModules.length === 0 && !targetPrebuildMissing && !nodePtyCodeMissing) {
     // 之前 afterPack 每次都完整 extract/pack app.asar，即使运行时依赖已经齐全也会重复重写。
     // 这会把每次打包固定拉长十几秒到几十秒。先做缺失扫描，只有真的缺包才执行重写流程。
     console.log("[afterPack] runtime modules already complete, skip app.asar rewrite");
@@ -365,6 +392,9 @@ async function injectHoistedRuntimeModulesIntoAsar(context) {
   console.log(`[afterPack] missing runtime modules count=${missingRuntimeModules.length}`);
   if (targetPrebuildMissing) {
     console.log(`[afterPack] target node-pty prebuild missing: ${packagedTargetPrebuildPath}`);
+  }
+  if (nodePtyCodeMissing) {
+    console.log("[afterPack] node-pty package code missing from app.asar");
   }
 
   // CI 会把 TMPDIR 指到项目内 .tmp，GitLab get_sources/clean 可能在脚本启动前清掉该目录。
