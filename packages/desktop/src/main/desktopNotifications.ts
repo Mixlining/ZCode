@@ -125,11 +125,28 @@ export function dispatchTaskNotification(options: {
     body: notificationBody,
     silent: true,
   });
+  const notificationSender = options.event.sender;
 
   // Electron 原生 Notification 如果只存在于函数局部变量里，系统通知仍能显示，
   // 但主进程 JS 对象可能在用户点击前被回收，导致 click listener 丢失。
   // 这里显式持有对象，等点击/关闭后释放，保证“有通知”与“点击可唤起”属于同一生命周期。
   retainTaskNotification(notification);
+
+  // Electron 42 的 macOS 未签名通知会通过 failed 报告显示失败；这条路径必须释放持有对象。
+  notification.once("failed", (_event, error) => {
+    releaseTaskNotification(notification);
+    options.logger.warn("[show-task-notification] native notification failed:", {
+      taskId,
+      platform: process.platform,
+      error,
+    });
+  });
+  // 仅在系统确认通知已显示后给原 renderer 发提示音，避免失败的原生通知仍播放成功提示。
+  notification.once("show", () => {
+    if (!notificationSender.isDestroyed()) {
+      notificationSender.send(PlatformChannels.TaskNotificationSound);
+    }
+  });
 
   notification.once("click", () => {
     releaseTaskNotification(notification);
@@ -153,6 +170,5 @@ export function dispatchTaskNotification(options: {
   });
 
   notification.show();
-  options.event.sender.send(PlatformChannels.TaskNotificationSound);
   return true;
 }

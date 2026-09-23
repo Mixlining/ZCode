@@ -27,6 +27,42 @@
 - Electron 44 requires macOS 13 or later and publishes only x64/arm64 builds. Keep the repository's existing x64/arm64 platform scope and update any explicit macOS 12 compatibility claim if one exists.
 - Electron 44.4.4's release notes include fixes only; no additional app behavior is requested by this version bump.
 
+## Electron 42–44 runtime compatibility follow-up
+
+- `desktopNotifications.ts` owns each native task notification and its retained lifetime. Keep the object until activation/close, and release it on Electron's `failed` event as well.
+- Electron 42's macOS `UNNotification` backend requires a code-signed app. When native notification display fails, log the failure and release the retained object. Keep the existing fire-and-forget IPC contract; send the task notification sound only after Electron emits `show`.
+- The browser renderer uses `navigator.clipboard`; main-process code does not use Electron's reworked clipboard API. Electron 44's clipboard migration therefore requires no other clipboard adapter.
+- The Linux main window intentionally remains frameless and transparent around the renderer's rounded root surface. Accept Electron 43's native rounded-corner default; keep the update-status window's explicit square-corner choice separate.
+- Electron 43's download-folder default is compatible with the embedded browser's `will-download` handler, which uses the actual `DownloadItem` save path. Electron 43's `chrome.scripting` and `dialog.showHiddenFiles` changes have no matching application call sites. The app configures Window Controls Overlay on Windows only; the Linux-specific layout change does not apply.
+- Electron 44's client-certificate event, frame-navigation `net.request` restriction, Unity API removal, and dynamic ANGLE-library replacement behavior have no matching application call sites or packaged ANGLE overrides.
+- The packaged Desktop main process and `ELECTRON_RUN_AS_NODE` agent use Electron 44's embedded Node 24.18.1; development scripts and the standalone CLI use the pinned Node 24.21.0. The project uses the existing Node 24 API surface and has no use of the detached-`ArrayBuffer` Buffer validation behavior changed in 24.21.0.
+
+### Notification delivery and ownership
+
+```mermaid
+sequenceDiagram
+    participant Main as Desktop Main
+    participant OS as Native notification service
+    participant Renderer as Origin renderer
+    Main->>Main: Retain Notification and register listeners
+    Main->>OS: notification.show()
+    alt Native display succeeds
+        OS-->>Main: show
+        Main->>Renderer: TaskNotificationSound
+        OS-->>Main: click or close
+        Main->>Main: Release retained Notification
+    else Native display fails
+        OS-->>Main: failed(error)
+        Main->>Main: Warn and release retained Notification
+    end
+```
+
+Acceptance scenarios:
+
+1. On an unsigned macOS build, a task notification failure emits one warning, releases the retained object, and does not play the task notification sound.
+2. When a notification is shown, the originating live renderer receives one task notification sound; click still restores/focuses its window, and click/close releases the retained object.
+3. On Linux, the main window remains frameless with native rounded corners around the renderer's existing rounded root; the update-status window remains explicitly square-cornered.
+
 ## Acceptance scenarios
 
 1. A developer entering the repository can select Node `24.21.0` and pnpm `11.27.1` from project pins without changing machine-wide installations.
