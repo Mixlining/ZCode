@@ -93,7 +93,7 @@ const runtimeModuleLookupRoots = [
   resolve(workspaceRoot, "node_modules", ".pnpm", "node_modules"),
 ];
 const desktopDistDir = process.env.ZCODE_DESKTOP_DIST_DIR || "dist";
-const DEFAULT_ELECTRON_MIRROR = "https://npmmirror.com/mirrors/electron/";
+const DEFAULT_ELECTRON_MIRROR = "https://github.com/electron/electron/releases/download/";
 // `pnpm exec asar` 依赖 `.bin/asar`，但 @electron/asar 仅是 electron-builder 传递依赖时，
 // Linux CI（pnpm hoisted）往往解析不到该二进制，`asar list` 未运行即 exit 1。
 // 显式依赖 @electron/asar 并用 Node 直接执行 CLI，避免跨平台找不齐 shim。
@@ -466,10 +466,8 @@ export default {
   // 默认全量语言会产生大量 locale.pak 签名调用，显著拉长打包时长。
   // 这里仅保留当前产品必需语言，减少签名文件数并缩短 CI 总耗时。
   electronLanguages: ["en-US", "zh-CN"],
-  // pnpm workspace + semver range（如 ^41.0.3）下，electron-builder
-  // 有时无法从依赖树里稳定推导出 Electron 版本，导致 bundle 直接中断。
-  // 显式写死当前桌面端使用的 Electron 版本，避免打包阶段再做不可靠的猜测。
-  electronVersion: "41.0.3",
+  // 从 package.json 读取同一精确版本，避免维护重复版本常量。
+  electronVersion: desktopElectronVersion,
   electronDownload: {
     // ELECTRON_MIRROR 是 @electron/get 的全局环境变量，会覆盖 dmg-builder 等
     // generic artifact 自己传入的 mirrorOptions，导致 builder 辅助包被错误拼到 Electron runtime 镜像目录。

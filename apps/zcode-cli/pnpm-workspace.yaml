@@ -1,6 +1,14 @@
 packages:
   - "packages/*"
   - "tools/*"
+  - "../../packages/formal-proof"
+  - "../../packages/model-option-map"
+  - "../../packages/provider"
+  - "../../packages/provider-node"
+  - "../../packages/shared"
+  - "../../packages/zcode-cua"
+nodeLinker: hoisted
+minimumReleaseAge: 0
 
 supportedArchitectures:
   os:

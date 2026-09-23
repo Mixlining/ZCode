@@ -477,14 +477,6 @@
     "source": "https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.1.6/LICENSE"
   },
   {
-    "package": "keyv@4.5.4",
-    "file": "third-party/upstream/6f7e6eae2a2afbaa67b266650f7342e7bf8e82cb57f6ab98148b3d6e0fb4450a.txt",
-    "sha256": "6f7e6eae2a2afbaa67b266650f7342e7bf8e82cb57f6ab98148b3d6e0fb4450a",
-    "source": "https://registry.npmjs.org/keyv/4.5.4",
-    "evidenceKind": "publisher-license-identifier-and-standard-terms",
-    "license": "MIT"
-  },
-  {
     "package": "@arms/rum-browser@0.1.8",
     "file": "third-party/upstream/2c976d327b293bd74c257cd53e9b4ecef97a06b1651baa3b24327c97192cb3de.txt",
     "sha256": "2c976d327b293bd74c257cd53e9b4ecef97a06b1651baa3b24327c97192cb3de",
@@ -507,5 +499,12 @@
     "source": "https://registry.npmjs.org/%40arms%2frum-electron%400.0.3",
     "evidenceKind": "publisher-license-identifier-and-standard-terms",
     "license": "MIT"
+  },
+  {
+    "package": "@electron-internal/extract-zip@1.0.5",
+    "source": "https://registry.npmjs.org/@electron-internal/extract-zip/-/extract-zip-1.0.5.tgz",
+    "evidenceKind": "publisher-license-identifier-and-standard-terms",
+    "license": "BSD-2-Clause",
+    "acceptedMissingNotice": "Verified npm archive integrity sha512-+bqFCP98pLI0Tt0XQo1TmlXtwjWchISndDOxCkEcIuUgXWpBnLyRI+2DU+mesvnMMX6L1XDqYNA0lXNDHd/yiA==; package metadata and README declare BSD-2-Clause, but the published files contain no complete license grant or copyright notice. Preserve the publisher's identifier only; full upstream notice remains outstanding."
   }
 ]

@@ -25,8 +25,8 @@ jobs:
       ZCODE_SKIP_REMOTE_ASSETS: "1"
       ZCODE_TARGET_OS: win32
       ZCODE_TARGET_ARCH: x64
-      # 与 mise.toml 的 [env] 保持一致，避免 Electron 走默认源。
-      ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
+      # 与 mise.toml 的 [env] 保持一致，直接从 Electron 官方 GitHub Releases 下载二进制。
+      ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
       # 缓存目录收进工作区（仓库 .gitignore 已预留这三个目录名）。
       ELECTRON_CACHE: ${{ github.workspace }}/.electron-cache
       ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.electron-builder-cache

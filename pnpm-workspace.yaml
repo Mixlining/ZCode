@@ -3,6 +3,8 @@ packages:
   - apps/zcode-cli
   - apps/zcode-cli/packages/*
   - apps/zcode-cli/tools/*
+nodeLinker: hoisted
+minimumReleaseAge: 0
 supportedArchitectures:
   os:
     - current
@@ -29,3 +31,10 @@ allowBuilds:
   protobufjs: true
   ssh2: true
   unsafe-pointer: true
+overrides:
+  react: 19.2.7
+  react-dom: 19.2.7
+patchedDependencies:
+  "@arms/rum-electron@0.0.3": patches/@arms__rum-electron@0.0.3.patch
+  "@ai-sdk/openai-compatible@2.0.60": patches/@ai-sdk__openai-compatible@2.0.60.patch
+  "@ai-sdk/anthropic@3.0.81": patches/@ai-sdk__anthropic@3.0.81.patch

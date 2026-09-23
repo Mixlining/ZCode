@@ -21,7 +21,7 @@ ZCode is an AI coding workspace with desktop, browser, and terminal interfaces. 
 
 ## Setup
 
-Install Git, Node.js **24.14.0**, and pnpm **10.33.2**. [mise.toml](mise.toml) is the source of truth for tool versions. Run all development and packaging commands below from the repository root.
+Install Git, Node.js **24.21.0**, and pnpm **11.27.1**. [mise.toml](mise.toml) is the source of truth for tool versions. Run all development and packaging commands below from the repository root.
 
 ```bash
 pnpm bootstrap

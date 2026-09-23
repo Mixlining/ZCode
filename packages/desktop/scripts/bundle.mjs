@@ -118,9 +118,7 @@ const requiredRuntimeModules = [
 const electronBuilderRetryCount = 3;
 const electronBuilderRetryDelayMs = 5_000;
 const electronBuilderHeartbeatIntervalMs = 30_000;
-export const DEFAULT_ELECTRON_MIRROR = "https://npmmirror.com/mirrors/electron/";
-export const NPMMIRROR_ELECTRON_BUILDER_BINARIES_MIRROR =
-  "https://registry.npmmirror.com/-/binary/electron-builder-binaries/";
+export const DEFAULT_ELECTRON_MIRROR = "https://github.com/electron/electron/releases/download/";
 export const OFFICIAL_ELECTRON_BUILDER_BINARIES_MIRROR =
   "https://github.com/electron-userland/electron-builder-binaries/releases/download/";
 
@@ -160,7 +158,7 @@ export function createElectronRuntimeMirrorEnv(mirror) {
 function resolveDefaultElectronBuilderBinariesMirror(env = process.env) {
   return env.ZCODE_DEPS_BASE_URL?.trim() || env.INTRANET_MACHINE_HOST?.trim()
     ? `${resolveIntranetDepsBaseUrl(env)}/electron-builder-binaries/`
-    : NPMMIRROR_ELECTRON_BUILDER_BINARIES_MIRROR;
+    : OFFICIAL_ELECTRON_BUILDER_BINARIES_MIRROR;
 }
 
 export function resolveElectronBuilderBinariesMirror(env = process.env) {
@@ -172,8 +170,8 @@ export function resolveElectronBuilderBinariesMirror(env = process.env) {
   if (existingMirror?.trim()) {
     if (isMisconfiguredNpmMirrorElectronRuntimeMirror(existingMirror)) {
       // electron-builder binaries mirror 若被配成 Electron runtime 镜像，
-      // 两类资源目录结构不同，dmg-builder 会被拼到 runtime 目录下导致 404。
-      return NPMMIRROR_ELECTRON_BUILDER_BINARIES_MIRROR;
+      // 两类资源目录结构不同，dmg-builder 会被拼到 runtime 目录下导致 404；改用官方发布源。
+      return OFFICIAL_ELECTRON_BUILDER_BINARIES_MIRROR;
     }
 
     return existingMirror.trim();
@@ -224,10 +222,9 @@ export function resolveElectronBuilderBinariesFallbackMirror(output, mirror, env
     return null;
   }
 
-  // CI 曾把 ELECTRON_BUILDER_BINARIES_MIRROR 误配到 Electron runtime 镜像目录，
-  // 该目录缺 dmg-builder/appimage/nsis 等 builder 辅助包。registry.npmmirror 的 binary
-  // electron-builder-binaries 路径包含这些文件，优先用国内源避免 macOS 打包 cache miss。
-  return NPMMIRROR_ELECTRON_BUILDER_BINARIES_MIRROR;
+  // electron-builder binaries mirror 缺少 dmg-builder/appimage/nsis 等辅助包时，
+  // 回到 electron-builder-binaries 的官方 GitHub Releases。
+  return OFFICIAL_ELECTRON_BUILDER_BINARIES_MIRROR;
 }
 
 function escapeRegExp(value) {
@@ -564,14 +561,14 @@ async function runElectronBuilderWithRetry(args, envPatch) {
     ) {
       // 自建镜像源可能漏同步新架构资源，
       // 或 CI 把 builder mirror 误配到 Electron runtime 镜像目录。404 不是构建代码错误，
-      // 这里只对已知缺文件/误配镜像切到 registry.npmmirror，其他显式 mirror 仍保持用户配置。
+      // 这里只对已知缺文件/误配镜像切到官方 GitHub Releases，其他显式 mirror 仍保持用户配置。
       Object.assign(
         retryEnvPatch,
         createElectronBuilderBinariesMirrorEnv(fallbackElectronBuilderMirror),
       );
       didFallbackElectronBuilderMirror = true;
       console.warn(
-        `[bundle] electron-builder 二进制镜像缺文件，切换到 registry.npmmirror 后重试 (${attempt}/${electronBuilderRetryCount})`,
+        `[bundle] electron-builder 二进制镜像缺文件，切换到官方 GitHub Releases 后重试 (${attempt}/${electronBuilderRetryCount})`,
       );
       await sleep(electronBuilderRetryDelayMs);
       continue;

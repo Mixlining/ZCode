@@ -1,10 +1,10 @@
 [tools]
-node = "24.14.0"
-pnpm = "10.33.2"
+node = "24.21.0"
+pnpm = "11.27.1"
 
 [env]
 COREPACK_ENABLE_PROJECT_SPEC = "0"
-ELECTRON_MIRROR = "https://npmmirror.com/mirrors/electron/"
+ELECTRON_MIRROR = "https://github.com/electron/electron/releases/download/"
 
 [tasks.install]
 description = "Install root workspace dependencies with the pinned pnpm."

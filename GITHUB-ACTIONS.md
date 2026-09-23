@@ -40,26 +40,26 @@ tag 名建议与根 `package.json` 的 `version` 保持一致：产物文件名�
 
 ## 工作流做了什么
 
-| 步骤     | 命令                                             | 说明                                                                                                                                                               |
-| -------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 工具链   | `jdx/mise-action@v4`                             | 读 `mise.toml` 安装 node `24.14.0` 与 pnpm `10.33.2`，与本地环境一致（该 action 自 v2.1.0 起支持 Windows runner；如需供应链加固可把 tag 换成 commit SHA）。        |
-| 缓存     | `actions/cache@v4` ×2                            | 缓存 pnpm store、Electron 与 electron-builder 二进制；key 跟随 `pnpm-lock.yaml` / `packages/desktop/package.json`。                                                |
-| 安装依赖 | `pnpm install --frozen-lockfile`                 | 一次安装即覆盖根 workspace 与 `apps/zcode-cli`；三个 `patches/*.patch` 在此生效。                                                                                  |
-| 门槛     | `pnpm typecheck`、`pnpm lint`                    | 仓库根的两项检查（当前 0 错误）。CLI 各包自身的 lint 与 desktop main 的既有类型问题不纳入，否则永远红灯。                                                          |
-| 端点     | 写 `.env`                                        | 见上一节的 variable 表。                                                                                                                                           |
-| 构建     | `pnpm run bundle:desktop -- --os win --arch x64` | 唯一入口：内部依次执行 `prepare:runtime-assets` → 生产构建（`tsup` + `vite build`）→ `electron-builder --win --x64` → asar 运行时依赖闭包校验 → 500 MiB 体积审计。 |
-| 产物     | `Get-FileHash` + `upload-artifact`               | 生成 `SHA256SUMS.txt` 并上传安装包。                                                                                                                               |
-| 发布     | `gh release create/upload`                       | 仅 tag 触发：创建 prerelease（`--generate-notes`）或向已存在的 Release 追加资产。                                                                                  |
+| 步骤     | 命令                                                       | 说明                                                                                                                                                               |
+| -------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 工具链   | `jdx/mise-action@v4`                                       | 读 `mise.toml` 安装 node `24.21.0` 与 pnpm `11.27.1`，与项目锁定版本一致（该 action 自 v2.1.0 起支持 Windows runner；如需供应链加固可把 tag 换成 commit SHA）。    |
+| 缓存     | `actions/cache/restore@v6` / `actions/cache/save@v6`       | 缓存 pnpm store、Electron 与 electron-builder 二进制；key 跟随根 `pnpm-lock.yaml` / `packages/desktop/package.json`。                                              |
+| 安装依赖 | `pnpm install --frozen-lockfile`                           | 一次安装即覆盖根 workspace 与 `apps/zcode-cli`；三个 `patches/*.patch` 在此生效。                                                                                  |
+| 门槛     | `pnpm typecheck`、Desktop Main `tsc --noEmit`、`pnpm lint` | 根类型检查、Desktop Main 无输出类型检查与仓库 Lint；静态检查工作流另外执行格式和架构检查。                                                                         |
+| 端点     | 写 `.env`                                                  | 见上一节的 variable 表。                                                                                                                                           |
+| 构建     | `pnpm run bundle:desktop -- --os win --arch x64`           | 唯一入口：内部依次执行 `prepare:runtime-assets` → 生产构建（`tsup` + `vite build`）→ `electron-builder --win --x64` → asar 运行时依赖闭包校验 → 500 MiB 体积审计。 |
+| 产物     | `Get-FileHash` + `upload-artifact`                         | 生成 `SHA256SUMS.txt` 并上传安装包。                                                                                                                               |
+| 发布     | `gh release create/upload`                                 | 仅 tag 触发：创建 prerelease（`--generate-notes`）或向已存在的 Release 追加资产。                                                                                  |
 
 ## 关键环境变量（工作流已设，改动前请先读这里）
 
-| 变量                                        | 取值                                                    | 为什么                                                                                                                                                                              |
-| ------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ZCODE_ENV`                                 | `production`                                            | 只有 `production` 才得到 `ZCode` 身份与不带 `_TEST` 后缀的产物名；不设会退化为 `ZCode Preview` + `dev.zcode.app.preview`。                                                          |
-| `ZCODE_SKIP_REMOTE_ASSETS`                  | `1`                                                     | 打包后的桌面端**不嵌入** `mock-cdn` 远端资产（`electron-builder` 的 `extraResources` 里没有它）：开发态读仓库里的 `mock-cdn`，生产态统一走 CDN + 本地缓存。跳过可显著缩短构建时间。 |
-| `ZCODE_TARGET_OS` / `ZCODE_TARGET_ARCH`     | `win32` / `x64`                                         | 与 `--os win --arch x64` 一致，供各 prepare 脚本解析目标平台。                                                                                                                      |
-| `ELECTRON_MIRROR`                           | `mise.toml` 中的同名值                                  | Electron 二进制下载源，与本地保持一致。                                                                                                                                             |
-| `ELECTRON_CACHE` / `ELECTRON_BUILDER_CACHE` | 工作区内的 `.electron-cache`、`.electron-builder-cache` | 收进工作区才能被 `actions/cache` 命中；这两个目录名已在 `.gitignore` 中预留。                                                                                                       |
+| 变量                                        | 取值                                                      | 为什么                                                                                                                                                                              |
+| ------------------------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ZCODE_ENV`                                 | `production`                                              | 只有 `production` 才得到 `ZCode` 身份与不带 `_TEST` 后缀的产物名；不设会退化为 `ZCode Preview` + `dev.zcode.app.preview`。                                                          |
+| `ZCODE_SKIP_REMOTE_ASSETS`                  | `1`                                                       | 打包后的桌面端**不嵌入** `mock-cdn` 远端资产（`electron-builder` 的 `extraResources` 里没有它）：开发态读仓库里的 `mock-cdn`，生产态统一走 CDN + 本地缓存。跳过可显著缩短构建时间。 |
+| `ZCODE_TARGET_OS` / `ZCODE_TARGET_ARCH`     | `win32` / `x64`                                           | 与 `--os win --arch x64` 一致，供各 prepare 脚本解析目标平台。                                                                                                                      |
+| `ELECTRON_MIRROR`                           | `https://github.com/electron/electron/releases/download/` | Electron 平台二进制从官方 GitHub Releases 下载；npm 包仍由项目 `.npmrc` 指向官方 npm。                                                                                              |
+| `ELECTRON_CACHE` / `ELECTRON_BUILDER_CACHE` | 工作区内的 `.electron-cache`、`.electron-builder-cache`   | 收进工作区才能被 `actions/cache` 命中；这两个目录名已在 `.gitignore` 中预留。                                                                                                       |
 
 ## 本地复现同样的产物
 
