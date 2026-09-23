@@ -61,7 +61,13 @@ relay 是本仓库之外的上游服务）。禁用后它必须**继续无调用
 `BOTS_DISABLED` 为真时：
 
 - `createLocalServices` 不注册 `IBotsService`，因而不构造 `BotsRepo`、Provider 适配器
-  与其内部 Map 集合。下游一律用 `services.getOptional(IBotsService)`，跳过注册即可自然降级。
+  与其内部 Map 集合。同进程消费方（Host/Main）用 `services.getOptional(IBotsService)`，
+  取不到即跳过；跨进程消费方（renderer → Host）无法探测注册状态，必须在调用侧自行
+  用 `BOTS_DISABLED` 守卫，否则会等满 `ChannelServer` 超时（1000ms）才拿到 reject，
+  并在 Host 打一条 `Unknown channel`。本仓库里这类调用点是 `Root.tsx` 的两处
+  `syncAppRuntimePreferences` 与 `useSettingService` 的一处。
+- `BotsDialog` 全部 RPC 都在 `open` 之后触发，而入口 `WorkspaceWebRemoteControlTrigger`
+  已提前返回，因此禁用时该组件不会挂载到发请求的状态。
 - `remoteWorkspaceServiceCollection` 不注册 `IBotsService`。
 - Host 侧 `cronBotDelivery` 不订阅自动化投递；Bot 远端桥接（`botRemoteWorkspaceBridge`）
   不构造，`pendingRemoteReconnectsByKey` 等集合随之消失。
@@ -179,8 +185,9 @@ lockfile、`third-party/inventory.json` 与 `THIRD-PARTY-NOTICES.md` 记录保�
 
 1. 三个常量值未被回退；`IBotsService` 的注册仍留在
    `createLocalServices` 与 `remoteWorkspaceServiceCollection` 的守卫内。
-2. 上游新增代码若引用 `IBotsService`，必须经 `getOptional` 并容忍 `undefined`；
-   经 `services.get(...)` 直取会在未注册时抛错。
+2. 上游新增代码若引用 `IBotsService`：同进程（Host/Main）用 `getOptional` 并容忍
+   `undefined`（`get(...)` 会立刻抛 `Service not registered`）；跨进程（renderer 侧）
+   必须在调用点加 `BOTS_DISABLED` 守卫，否则等满 1s 超时并留下 `Unknown channel` 噪声。
 3. `scripts/prepare-prebuilds.mjs` 的 `REMOTE_ASSETS_DISABLED` 仍为 `true`；
    上游若改写该文件，确认这一守卫没被合并冲掉。
 4. `attachRemoteWorkspaceSessionHost` 仍未新增调用方；`AttachServicePort` 的

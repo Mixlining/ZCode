@@ -2477,8 +2477,9 @@ export function createLocalServices(options: {
     .register(IClientScenesService, createClientScenesService({ apiClient }));
   // Bot 硬禁用时不注册 IBotsService：不构造 Repo/Provider/远端桥接，启动期不读取 Bot
   // 配置、不启动三类 Provider 预热，其内部的重连状态与运行时端口集合也随之消失。
-  // 下游一律经 getOptional(IBotsService) 取用，跳过注册即可自然降级。
-  // 守卫+原逻辑并列，恢复时删守卫即可复原（详见 spec/remote-disable.md）。
+  // 同进程消费方经 getOptional(IBotsService) 取用，跳过注册即可自然降级；renderer 侧
+  // 无法探测注册状态，由各自的 BOTS_DISABLED 守卫兜住（见 spec/remote-disable.md）。
+  // 守卫+原逻辑并列，恢复时删守卫即可复原。
   if (!BOTS_DISABLED)
     services.register(
       IBotsService,

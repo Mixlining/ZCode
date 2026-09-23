@@ -2762,8 +2762,10 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
     }
     // 手机远控硬禁用：replayable 恢复链路即手机 attachment 的语义，直接关闭端口拒绝接管；
     // desktop-continuous 属远程 workspace，由 REMOTE_WORKSPACE_DISABLED 负责。恢复时删守卫即可复原。
+    // 用 rejectUnavailableAttachedServicePort 而非裸 port.close()：它自带 try/catch，
+    // close 异常不得外溢打断 Host 的消息分发（与 schema 校验失败的处理一致）。
     if (PHONE_REMOTE_DISABLED && msg.clientMode === "web-remote-replayable") {
-      port.close();
+      rejectUnavailableAttachedServicePort(port, false);
       logger.warn("phone remote attachment rejected: disabled by build configuration");
       return;
     }
