@@ -21,6 +21,10 @@
 远程 workspace、手机远控与消息平台 Bot 的硬禁用由 `spec/remote-disable.md` 单独约束，
 与上表是相互独立的轴。
 
+注意：`REMOTE_ROLLOUT_DISABLED` 关闭的是**远端灰度拉取通道**，不等于「灰度覆盖的功能全部
+关闭」。动态工作流本体的启用状态已改为按构建档位硬编码（见文末「变动历史」），不再是
+本地默认值 `disabled`。
+
 Desktop Main 不加载或等待 ARMS 初始化，也不在窗口聚焦、OAuth 回调或启动后更新 ARMS 用户身份。关闭遥测时不允许以诊断名义创建 ARMS SDK、周期采样或远端上报。崩溃本地记录属于稳定性日志，仍保留。
 
 Host 服务装配不创建没有注册或消费方的 commands、hooks、memory 服务对象；这些工厂与公开入口仍保留，真实请求路径按需调用。
@@ -244,3 +248,31 @@ Main 与 scheduler 的消息类型由 shared 统一声明，历史协议导入�
 2. 上表六个常量值未被回退，且 `spec/remote-disable.md` 的三个常量同样未被回退。
 3. 新代码没有为已禁用能力新增常驻子进程、定时器、长轮询、重连或采样器。
 4. `off_peak_tasks` 的表/列/索引/已发布迁移与校验值保持字节不变。
+
+## 变动历史
+
+### 2026-10-04 动态工作流在桌面打包档硬编码开启
+
+- **决策**：动态工作流（dynamic workflow）不再是「灰度默认关闭」的功能。Desktop main 在
+  fork Host 前对 `ZCODE_DYNAMIC_WORKFLOW_MODE` 的档位决策改为：未打包 dev 透传合法值
+  （不变）；**打包 preview 与 production 一律固定写入 `alwaysOn`**，忽略 shell 与用户系统
+  环境变量——本机环境变量既打不开也关不掉该功能。
+- **依据**：`REMOTE_ROLLOUT_DISABLED = true` 已永久关闭远端灰度拉取，桌面 production 档
+  原本永远落在 fail-closed 的 `disabled`，正式版用户无法使用该功能。本次把它从「灰度关闭」
+  改为「产品常开」，只改 main 注入层的档位决策（`desktopRuntimeEnv.ts` 的
+  `resolveDynamicWorkflowModeHostEnv`）；Host 快照、会话门、CLI 工具注册与 UI 可用性快照
+  整条链路沿用既有实现，不新增兜底或第二套开关。
+- **不变的部分**：`REMOTE_ROLLOUT_DISABLED` 仍为 `true`，远端灰度通道不出网；Web/server
+  Host 没有 main 注入层，仍由自身进程环境变量决定（未配置即 disabled）；shared 的
+  `DEFAULT_DYNAMIC_WORKFLOW_MODE` 仍为 `disabled`（dev 未覆盖与 server 未配置时的缺省）；
+  cron scheduler 派生的会话与 Host fork 走同一 `buildHostProcessEnv`，随打包档一并常开。
+- **涉及文件**：`packages/desktop/src/main/desktopRuntimeEnv.ts`（档位决策与注释）、
+  `packages/shared/src/dynamic-workflow-feature.ts` 与 `packages/shared/src/env.ts`（注释同步）。
+- **验收场景（人工；本流程只做静态检查，不运行应用）**：打包 production 产物冷启动后——
+  1. 设置「自动化」页出现「工作流」tab，saved workflows 列表可查看与管理；
+  2. 会话输入 `/` 的命令目录包含 `/workflow`，回车后展开 dynamic-workflows 技能；
+  3. 让模型创建一个多阶段工作流，CreateWorkflow 工具卡出现，run 时间线与产物区正常渲染；
+  4. 在系统层预设 `ZCODE_DYNAMIC_WORKFLOW_MODE=disabled` 后冷启动，功能仍然可用
+     （main 先删除继承值、再固定写 `alwaysOn`）。
+- **反路径**：dev（未打包）不设置该环境变量时功能默认关闭；server 部署未配置环境变量时
+  默认关闭——两处都维持 fail-closed 缺省，不随本次改动改变。
