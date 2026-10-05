@@ -850,7 +850,7 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 
 - buildcheck@0.0.7 — MIT
 
-- builder-util-runtime@9.5.1 — MIT
+- builder-util-runtime@9.7.0 — MIT
 
 - bun-ffi-structs@0.2.2 — MIT
 
@@ -1116,9 +1116,9 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 
 - electron-to-chromium@1.5.336 — ISC
 
-- electron-updater@6.8.3 — MIT
+- electron-updater@6.8.10 — MIT
 
-- electron@44.4.4 — MIT
+- electron@44.5.1 — MIT
 
 - embla-carousel-react@8.6.0 — MIT
 
@@ -8939,9 +8939,9 @@ IN THE SOFTWARE.
 
 ### Notice bed8d0ab3e6031817f775a641ff37313b0f5591bc8ba0ed79b978dafbd4231ce
 
-- builder-util-runtime@9.5.1: LICENSE
+- builder-util-runtime@9.7.0: LICENSE
 
-- electron-updater@6.8.3: LICENSE
+- electron-updater@6.8.10: LICENSE
 
 
 
@@ -14389,7 +14389,9 @@ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH RE
 
 ### Notice 5154e165bd6c2cc0cfbcd8916498c7abab0497923bafcd5cb07673fe8480087d
 
-- electron@44.4.4: LICENSE
+- electron@44.5.1: dist/LICENSE
+
+- electron@44.5.1: LICENSE
 
 
 
@@ -14420,7 +14422,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ### Notice 56a37896ff6edec2b75b41465b66dd768f2d294c315255164898ca3e685bbd30
 
-- electron@44.4.4: README.md (license section)
+- electron@44.5.1: README.md (license section)
 
 
 
