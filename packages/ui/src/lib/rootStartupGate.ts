@@ -1,3 +1,4 @@
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 interface RootStartupGateState {
   isResolvingStartupAuthState: boolean;
   isResolvingProviderStartupState: boolean;
@@ -20,7 +21,12 @@ interface ProviderStartupSyncState {
   modelSelectionViewHydrated: boolean;
 }
 
+interface ProviderAvailabilityLoginEntryGuardState {
+  isWebRemoteControlRoot: boolean;
+}
+
 interface ProviderStartupResolutionState {
+  isWebRemoteControlRoot: boolean;
   providerStartupSyncPending: boolean;
   providerAvailabilityStartupCheckCompleted: boolean;
 }
@@ -35,19 +41,27 @@ export function shouldBlockRootRender(state: RootStartupGateState): boolean {
 }
 
 export function shouldShowRootStartupLoading(state: RootStartupLoadingVisibilityState): boolean {
-  // 登录入口是启动门禁的结果，不是可继续被门禁遮挡的后台状态。
+  // 修复原因：登录入口是启动门禁的结果，不是可继续被门禁遮挡的后台状态。
   // 如果 WelcomeScreen 已经打开，继续返回启动 loading 会把未登录用户卡在黑屏 logo。
   return Boolean(state.isDesktop) && !state.welcomeScreenOpen && shouldBlockRootRender(state);
 }
 
-export function shouldEnableProviderAvailabilityLoginEntryGuard(): boolean {
-  // 硬关闭：本构建不再在启动时弹出账号/套餐登录页（Z.ai 与 BigModel 的登录入口已隐藏），
-  // 未配置供应商时直接进主界面，由模型设置里的「添加供应商」引导完成配置。
-  // 守卫实现保留，但该门禁永久禁用；保留只为降低同步上游的成本。
-  return false;
+export function shouldEnableProviderAvailabilityLoginEntryGuard(
+  state: ProviderAvailabilityLoginEntryGuardState,
+): boolean {
+  // 修复原因：手机 Web 远控只 attachment 到桌面已有 host，不能用本地空 provider
+  // 快照触发登录页，否则断连/home-only 首页会被 WelcomeScreen 覆盖。
+  // 套餐登录永久禁用：未配置模型时进入主界面添加供应商。
+  return !CODING_PLAN_DISABLED && !state.isWebRemoteControlRoot;
 }
 
 export function shouldResolveProviderStartupState(state: ProviderStartupResolutionState): boolean {
+  if (state.isWebRemoteControlRoot) {
+    // 修复原因：Web 远控的 workspace tab 由 shared-host bridge 注入；
+    // provider 可用性属于桌面 host 侧状态，不应阻断手机端 paired loading / workspace 注入。
+    return false;
+  }
+
   return state.providerStartupSyncPending || !state.providerAvailabilityStartupCheckCompleted;
 }
 

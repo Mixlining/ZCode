@@ -2,6 +2,8 @@
 
 ## 产品规则
 
+v3.15.1 新增的 Server 类型远程 workspace 同样受 `REMOTE_WORKSPACE_DISABLED` 约束：连接入口、服务集合、topic resource relay、工作流设置推送及其对象构造和监听注册均不可绕过守卫。普通本机 Web server `/ws` 保留。新增远控与 Bot 实现保留供同步上游，但不恢复装配、预热、轮询或附件接管。
+
 本构建只支持**本机桌面单机**形态：一个窗口对应一个 window-scoped Local Host，只服务本地
 workspace。不再提供手机远控、远程 workspace（SSH / WSL / Docker）与消息平台 Bot
 （Telegram / 微信 / 飞书 Lark）能力，也不为它们保留任何常驻进程、定时器、长轮询、

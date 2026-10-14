@@ -155,7 +155,9 @@ export class Emitter<T> implements IDisposable {
     if (this.disposed) {
       return;
     }
-    for (const listener of [...this.listeners]) {
+    // 固定本轮订阅快照，回调内增删监听不影响本轮遍历。
+    const listenerSnapshot = [...this.listeners];
+    for (const listener of listenerSnapshot) {
       listener(event);
     }
   }

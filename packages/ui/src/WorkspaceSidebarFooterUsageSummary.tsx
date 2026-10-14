@@ -426,7 +426,7 @@ export function useWorkspaceSidebarFooterUsageSummaryState({
   };
 }
 
-type WorkspaceSidebarFooterUsageSummaryState = ReturnType<
+export type WorkspaceSidebarFooterUsageSummaryState = ReturnType<
   typeof useWorkspaceSidebarFooterUsageSummaryState
 >;
 

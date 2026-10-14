@@ -2,6 +2,24 @@
 
 ## 产品规则
 
+### v3.15.1 同步约束
+
+- 整体接收上游本地 UI Plugin、MCP Apps、Gen UI 与工作流增强，再按本规范收口新增厂商能力。
+- 营销触达及营销资产归入 `ZCODE_VENDOR_ACTIONS_DISABLED`：不装配服务或资产 registry，不挂载营销 Provider，不启动轮询、online/visibility 监听或 MutationObserver，不请求营销内容及行为上报。
+- Highspeed 加速卡归入 `CODING_PLAN_DISABLED`：不装配服务，不进入 prepareTurn 自动领卡、健康检查、权益恢复及 UI 调用。
+- 历史 Highspeed metadata 不得重新打开分享入口；关闭该能力时，轨迹组件不注册加速卡 store 监听。官方端点路由在工厂入口返回，不创建配置读取器、HTTP adapter 或缓存；自配模型继续使用原始端点。
+- 打包新增的 OTLP endpoint/headers 注入不能绕过 `ZCODE_TELEMETRY_ENABLED = false`；Host 与 CLI 均不构造 exporter、采样器或队列。已删除的 ARMS 专用模块不恢复。
+- 打包 Desktop 固定提供动态工作流 `alwaysOn`；上游 `offeredMode` 表示开放状态，SettingService 持久化的 `userMode` 决定最终模式，允许用户选择 disabled/onDemand/alwaysOn。开发模式保持现有环境覆盖语义，远端灰度始终禁用。
+- 保留上游测试源码，但安装、pre-push 与验证流程只执行静态检查，不隐式运行单测、E2E 或应用构建。
+
+```text
+Desktop 固定 offer(alwaysOn) → Host 配置 owner ← SettingService 用户模式
+                                  ↓
+                         会话 / CLI 生效模式 → UI 投影
+```
+
+验收：打包版无远端灰度请求时仍默认常开；切换模式并重新读取设置后结果一致。营销、Highspeed、遥测的新旧入口均不可生效且不持有后台资源；自配模型、普通 cron 与手动插件能力保持。保留已发布数据库迁移、校验与旧闲时任务行，不执行业务修复或恢复。
+
 本构建只支持**自带 API Key 接入**：用户自行配置供应商与模型端点，应用不再提供 ZCode 官方套餐
 （Z.ai / BigModel Coding Plan）的任何能力，也不再主动请求厂商账号、套餐、额度、支付、社区、
 反馈工单与厂商外链。
@@ -235,9 +253,10 @@ Main 与 scheduler 的消息类型由 shared 统一声明，历史协议导入�
 
 给这两处新增调用方前，必须确认它不在关断路径上；不要用「反正不会出网」代替判断。
 
-`packages/desktop/src/preload/index.ts` 仍保留 `scheduleArmsEventBridgePatch()` 调用，
-但构建已无 `appARMSBootstrap`，`window.ArmsEventBridge` 永不建立、也没有
-`arms:rum-bridge` IPC 处理器，因此不会上报；不要因为该调用仍在就认为 ARMS 已启用。
+`packages/desktop/src/preload/index.ts` 不安装 ARMS bridge 转发或调度补丁。v3.15.1 新增的
+ARMS browser bootstrap/init 与已删除启动模块相同，均不纳入本构建；仅针对这些模块的
+测试一并移除。保留的 bridge 实现以遥测常量守卫，不注册监听或定时器。CLI 的 MCP
+遥测 tracker 也不构造，避免为无消费者的事件维护统计缓存。
 
 ## 上游同步复核清单
 

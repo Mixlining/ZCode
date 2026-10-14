@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+
+# 本个人版只执行静态检查，不在推送时运行单测、E2E 或构建。
+# 清理 Git 注入的仓库变量，避免检查脚本误用推送进程的仓库上下文。
+# shellcheck disable=SC2046
+unset $(git rev-parse --local-env-vars)
+pnpm run verify:pre-push

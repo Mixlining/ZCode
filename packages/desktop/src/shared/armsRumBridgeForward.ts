@@ -1,7 +1,8 @@
+import { ZCODE_TELEMETRY_ENABLED } from "@zcode/shared";
 import type { IpcRenderer } from "electron";
 
 /** 与 @arms/rum-electron 内置 preload 一致 */
-const ARMS_RUM_BRIDGE_CHANNEL = "arms:rum-bridge";
+export const ARMS_RUM_BRIDGE_CHANNEL = "arms:rum-bridge";
 
 type PatchedIpcRenderer = IpcRenderer & { __zcodeArmsIpcPatched?: boolean };
 
@@ -9,7 +10,7 @@ type PatchedIpcRenderer = IpcRenderer & { __zcodeArmsIpcPatched?: boolean };
  * SDK browser-reporter 发送 JSON.stringify(events[])，主进程 IPC 拒绝 Array。
  * 在 preload 顶层拦截 ipcRenderer.send，不依赖 ArmsEventBridge 创建时机（autoInject 可能晚于 scheduleArmsBridgePatch）。
  */
-function expandArmsRumBridgePayloads(payload: string): string[] {
+export function expandArmsRumBridgePayloads(payload: string): string[] {
   try {
     const parsed: unknown = JSON.parse(payload);
     if (Array.isArray(parsed)) {
@@ -36,7 +37,7 @@ type ArmsEventBridgeLike = {
  * ARMS frame preload 先于本 preload 执行时，Bridge.send 闭包已绑定未 patch 的 ipc.send；
  * 必须包装 Bridge.send 本身，在调用内层 send 前把 events[] 拆条。
  */
-function patchArmsEventBridgeSend(bridge: ArmsEventBridgeLike): void {
+export function patchArmsEventBridgeSend(bridge: ArmsEventBridgeLike): void {
   if (bridge.__zcodeArmsBridgeForwardPatched) {
     return;
   }
@@ -50,7 +51,7 @@ function patchArmsEventBridgeSend(bridge: ArmsEventBridgeLike): void {
   bridge.__zcodeArmsBridgeForwardPatched = true;
 }
 
-function patchArmsEventBridgeIfPresent(): boolean {
+export function patchArmsEventBridgeIfPresent(): boolean {
   const bridge =
     (globalThis as { ArmsEventBridge?: ArmsEventBridgeLike }).ArmsEventBridge ??
     (typeof window !== "undefined"
@@ -64,6 +65,8 @@ function patchArmsEventBridgeIfPresent(): boolean {
 }
 
 export function scheduleArmsEventBridgePatch(maxAttempts = 100): void {
+  // ARMS 不会初始化，禁止为等待 Bridge 创建重试计时器。
+  if (!ZCODE_TELEMETRY_ENABLED) return;
   if (patchArmsEventBridgeIfPresent()) {
     return;
   }
@@ -81,6 +84,7 @@ export function scheduleArmsEventBridgePatch(maxAttempts = 100): void {
 }
 
 export function installArmsRumBridgeIpcForward(ipc: IpcRenderer): void {
+  if (!ZCODE_TELEMETRY_ENABLED) return;
   const patched = ipc as PatchedIpcRenderer;
   if (patched.__zcodeArmsIpcPatched) {
     return;

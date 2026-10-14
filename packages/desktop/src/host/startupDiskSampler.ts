@@ -104,7 +104,9 @@ export class StartupDiskSampler {
     if (this.busy || this.stopped) return;
     this.busy = true;
     try {
-      for (const scope of [...this.scopes.values()]) {
+      // 固定本轮订阅快照，回调内增删监听不影响本轮遍历。
+      const listenerSnapshot = [...this.scopes.values()];
+      for (const scope of listenerSnapshot) {
         if (this.stopped) break;
         try {
           const result = await this.probe(scope.path);

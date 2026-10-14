@@ -18,7 +18,7 @@ import {
   markTasksStoragePrepared,
 } from "#src/session/tasksDatabase/prepared.js";
 
-type TasksStoragePhase =
+export type TasksStoragePhase =
   | "checking"
   | "waiting_for_lock"
   | "migrating"
@@ -38,7 +38,7 @@ export async function prepareTasksIndexStorage(
   report("checking");
   await mkdir(dirname(path), { recursive: true });
   const db = new DatabaseSync(path);
-  let failure: unknown;
+  let failure: { error: unknown } | undefined;
   let migration: DatabaseMigrationFacts | undefined;
   try {
     db.exec("PRAGMA busy_timeout = 25");
@@ -78,7 +78,7 @@ export async function prepareTasksIndexStorage(
     // COMMIT 已成功，先发布事实；后续 close 失败不能把已提交误报为未提交。
     report("maintaining", migration);
   } catch (error) {
-    failure = error;
+    failure = { error };
     // 失败事实随原异常交给 Worker，不倒退发布 checking/migrating，也不覆盖首因。
     if (migration && error && typeof error === "object") {
       try {
@@ -87,14 +87,14 @@ export async function prepareTasksIndexStorage(
         /* 不可扩展异常仍保留原错误。 */
       }
     }
-    throw error;
-  } finally {
-    try {
-      db.close();
-    } catch (error) {
-      if (!failure) throw error;
-    }
   }
+  // 先关闭句柄，再传播首个错误；清理异常不能覆盖迁移失败。
+  try {
+    db.close();
+  } catch (error) {
+    failure ??= { error };
+  }
+  if (failure) throw failure.error;
   markTasksStorageMigrated(path);
   const repos = [
     new TaskIndexRepo(path, LOCK_WAIT_MS),
@@ -102,24 +102,21 @@ export async function prepareTasksIndexStorage(
     // 共享迁移仍保留 off_peak schema；禁用时不运行会改写旧行的业务修复。
     ...(!CODING_PLAN_DISABLED ? [new OffPeakTaskRepo(path, LOCK_WAIT_MS)] : []),
   ];
-  let preparationFailure: unknown;
+  let preparationFailure: { error: unknown } | undefined;
   try {
     // 这些是原本就在初始化时执行的修复，不创建新的迁移或改变已有事务边界。
     for (const repo of repos) await repo.ensureReady();
   } catch (error) {
-    preparationFailure = error;
-    throw error;
-  } finally {
-    let closeFailure: unknown;
-    for (const repo of repos) {
-      try {
-        repo.close({ throwOnError: true });
-      } catch (error) {
-        closeFailure ??= error;
-      }
-    }
-    if (!preparationFailure && closeFailure) throw closeFailure;
+    preparationFailure = { error };
   }
+  for (const repo of repos) {
+    try {
+      repo.close({ throwOnError: true });
+    } catch (error) {
+      preparationFailure ??= { error };
+    }
+  }
+  if (preparationFailure) throw preparationFailure.error;
   markTasksStoragePrepared(path);
   report("ready", migration);
 }

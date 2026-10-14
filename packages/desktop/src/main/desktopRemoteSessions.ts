@@ -16,6 +16,7 @@ import {
   type RemoteTarget,
   type ProviderProvisioningTrigger,
   type WindowHostRemoteWorkspaceDescriptor,
+  type WebRemoteControlFailure,
 } from "@zcode/shared";
 import type {
   RemoteConnectionStats,
@@ -67,10 +68,23 @@ interface PendingProviderProvisioningExecution {
   readonly reject: (error: Error) => void;
 }
 
-// 合并上游时保留 isSameRemoteTarget，但不引入 server 分支：
-// RemoteTarget 仅包含 ssh/wsl/docker（packages/shared/src/remoteTarget.ts），
-// 上游的 "server" 分支引用了不存在的类型成员，会报 TS2678/TS2367/TS2339。
-// dev 此前已从 buildRemoteTargetTelemetryKey 移除同样的死分支，此处沿用该先例。
+function normalizeServerRemoteUrlForComparison(url: string): string {
+  try {
+    const parsed = new URL(url.trim());
+    if (parsed.protocol === "ws:") parsed.protocol = "http:";
+    if (parsed.protocol === "wss:") parsed.protocol = "https:";
+    parsed.hash = "";
+    parsed.search = "";
+    const normalizedPath = parsed.pathname.replace(/\/+$/g, "");
+    parsed.pathname = normalizedPath.endsWith("/ws")
+      ? normalizedPath.slice(0, -"/ws".length) || "/"
+      : normalizedPath || "/";
+    return parsed.toString().replace(/\/$/g, "");
+  } catch {
+    return url.trim().replace(/\/+$/g, "");
+  }
+}
+
 function isSameRemoteTarget(left: RemoteTarget, right: RemoteTarget): boolean {
   if (left.kind !== right.kind) return false;
   switch (left.kind) {
@@ -90,6 +104,12 @@ function isSameRemoteTarget(left: RemoteTarget, right: RemoteTarget): boolean {
       );
     case "docker":
       return right.kind === "docker" && left.container === right.container;
+    case "server":
+      return (
+        right.kind === "server" &&
+        normalizeServerRemoteUrlForComparison(left.url) ===
+          normalizeServerRemoteUrlForComparison(right.url)
+      );
   }
 }
 
@@ -101,6 +121,8 @@ function buildRemoteTargetTelemetryKey(target: RemoteTarget): string {
       return `wsl:${target.distro?.trim() || "default"}\0${target.user?.trim() ?? ""}`;
     case "docker":
       return `docker:${target.container}`;
+    case "server":
+      return `server:${normalizeServerRemoteUrlForComparison(target.url)}`;
   }
 }
 
@@ -138,6 +160,11 @@ export function createRemoteWorkspaceSessionManager(options: {
     durationMs: number;
   }) => void;
   monotonicNowMs?: () => number;
+  webRemoteControlManagerRef: {
+    current: {
+      failRemoteSession(sessionId: string, reason: string, failure: WebRemoteControlFailure): void;
+    } | null;
+  };
   providerProvisioningCoordinator?: ProviderProvisioningEnvironmentCoordinator;
 }) {
   const pendingByRequestKey = new Map<string, PendingConnect>();
@@ -414,6 +441,12 @@ export function createRemoteWorkspaceSessionManager(options: {
           requestId: randomUUID(),
           remoteSessionId: descriptor.remoteSessionId,
         });
+        emitConnectionLog(pending.win, {
+          requestId,
+          sessionId: descriptor.remoteSessionId,
+          level: "error",
+          message: error instanceof Error ? error.message : String(error),
+        });
         pending.reject(error instanceof Error ? error : new Error(String(error)));
       });
   }
@@ -538,6 +571,14 @@ export function createRemoteWorkspaceSessionManager(options: {
     const win = BrowserWindow.getAllWindows().find(
       (candidate) => candidate.webContents.id === webContentsId,
     );
+    options.webRemoteControlManagerRef.current?.failRemoteSession(
+      event.remoteSessionId,
+      "window-host:connection-closed",
+      {
+        reason: "workspace-closed",
+        message: "远程工作区连接已结束，请在桌面端重新连接。",
+      },
+    );
     if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) {
       win.webContents.send(PlatformChannels.RemoteSessionClosed, {
         sessionId: event.remoteSessionId,
@@ -586,13 +627,23 @@ export function createRemoteWorkspaceSessionManager(options: {
           durationMs: Math.max(0, monotonicNowMs() - pending.startedAtMonotonicMs),
         };
         if (parsed.data.status !== "applied" && parsed.data.status !== "already-applied") {
+          const errorCode =
+            parsed.data.errorCode ??
+            (parsed.data.status === "unsupported"
+              ? "capability-unavailable"
+              : "target-apply-failed");
+          // 首次失败以前在 warning 前返回，连接面板也只剩开始日志，无法区分本地与远端故障。
+          // 仅记录经过 schema 校验的阶段码；远端 error 自由文本仍不进入日志或反馈。
+          options.logger.warn("[provider-provisioning] Environment sync did not apply", {
+            ...logContext,
+            errorCode,
+          });
           if (pending.trigger === "environment-online") {
-            pending.reject(new Error(`Provider Provisioning 首次同步失败 (${parsed.data.status})`));
+            pending.reject(
+              new Error(`Provider Provisioning 首次同步失败 (${parsed.data.status}; ${errorCode})`),
+            );
             return;
           }
-          // Target 错误可能来自任意远端实现并携带请求材料；过渡期只记录可定位的状态事实，
-          // 不转抄不可证明已脱敏的自由文本，避免 Provisioning 日志成为凭据泄露入口。
-          options.logger.warn("[provider-provisioning] Environment sync did not apply", logContext);
         } else {
           options.logger.info("[provider-provisioning] Environment sync completed", logContext);
         }

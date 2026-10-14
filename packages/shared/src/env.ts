@@ -113,6 +113,9 @@ export const ZCODE_TELEMETRY_REPORT_ENDPOINT =
 export const ZCODE_ARMS_RUM_ENDPOINT =
   typeof process !== "undefined" ? (process.env.ZCODE_ARMS_RUM_ENDPOINT ?? "") : "";
 
+/** 厂商自动更新永久禁用。 */
+export const ZCODE_AUTO_UPDATE_ENABLED: boolean = false;
+
 /** 将本地运行态与编译期 ZCODE_ENV 映射为 ARMS 控制台识别的上报环境标签 */
 export function mapZCodeEnvToArmsRumEnv(runtimeEnv: ZCodeRuntimeEnv): ArmsRumEnv {
   return runtimeEnv !== "development" && ZCODE_ENV === "production" ? "prod" : "local";

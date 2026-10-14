@@ -1,4 +1,4 @@
-interface DesktopTelemetryFetchSource {
+export interface DesktopTelemetryFetchSource {
   fetch: (input: string | Request, init?: RequestInit) => Promise<Response>;
 }
 

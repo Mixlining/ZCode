@@ -8,6 +8,7 @@
   - **mcp-status**：MCP 状态探测控制面。`mcp/list` 的慢握手会占住串行 stdio 队列，必须与插件命令隔离。
 - **控制面泳道（plugin、mcp-status）共用 1 分钟空闲回收阈值**：连接上无在飞请求持续 1 分钟，就回收整棵进程树（含其下 MCP 子进程），下次操作透明冷启动。理由是这两条泳道都是「按需冷启动、用完即可回收」的控制面，不应长期常驻内存。
 - **chat 泳道不做空闲回收**：它承载会话状态与预热，回收时机由 workspace 生命周期决定（切走 workspace 的预热回收、workspace 重载、应用退出），不由空闲计时决定。
+- v3.15.1 UI Plugin / MCP Apps 的实例、资源订阅、工具与 sampling 沿 workspace `getReadOnlyClient` 使用 chat 泳道；`listPluginUiSurfaces` 同样读取 workspace 清单。它们不借用 plugin/mcp-status 控制面，不增加第二份 lease 或保活计时。sampling 的 existing-only 规则保持，失败不重新启动 runtime。
 - 插件能力**只支持手动触发**，没有手动操作就不启动插件控制面进程。不存在自动更新、自动检查更新或挂载即初始化的调用路径。用户主动打开插件页/执行插件操作时按需冷启动。
 - 插件目录自动刷新由 `MARKETPLACE_AUTO_REFRESH_DISABLED` 硬禁用（见 `spec/vendor-disable.md`），进入商店页不自动发目录请求。
 - **不落盘插件列表快照**：插件事实源是 CLI 进程，Host 不保存第二份可展示副本，避免与 CLI 漂移。因此应用重启后插件页需要一次用户主动操作才能拿到列表。
@@ -66,5 +67,6 @@ chat 泳道：不参与上面的计时
 6. MCP 设置页手动刷新后，mcp-status 泳道进程在 1 分钟内自行退出。
 7. 保存在全局范围的已存工作流仍可用（首次触发时冷启动一次控制面进程，之后按 1 分钟空闲回收）。
 8. 应用退出时三条泳道均随 `disposeAllAndWait` 收口，不遗留孤儿进程。
+9. 打开本地 UI Plugin / MCP App 并保持资源订阅：控制面空闲回收不关闭该实例；关闭 workspace 时由既有实例 owner 释放。仅挂载插件入口不得触发控制面冷启动。
 
 本次按项目约定只执行静态检查；上述场景作为人工验收清单记录，不运行应用、单测或 E2E。

@@ -10,19 +10,21 @@ const listeners = new Set<() => void>();
 /** task row 或 membership mutation 后调用：通知所有 sessions-index 派生列表重新拉取左表。 */
 export function bumpTaskListMembershipVersion(): void {
   version += 1;
-  for (const listener of [...listeners]) {
+  // 固定本轮订阅快照，回调内增删监听不影响本轮遍历。
+  const listenerSnapshot = [...listeners];
+  for (const listener of listenerSnapshot) {
     listener();
   }
 }
 
-function subscribeTaskListMembershipVersion(listener: () => void): () => void {
+export function subscribeTaskListMembershipVersion(listener: () => void): () => void {
   listeners.add(listener);
   return () => {
     listeners.delete(listener);
   };
 }
 
-function getTaskListMembershipVersion(): number {
+export function getTaskListMembershipVersion(): number {
   return version;
 }
 
