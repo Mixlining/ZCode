@@ -14,3 +14,7 @@ third-party/runtime/*.txt -text -whitespace
 docs/knip/docs/LICENSE -text -whitespace
 docs/knip/docs/licenses/** -text -whitespace
 third-party/inventory.json linguist-generated=true
+
+# Gen UI 离线快照的 manifest 固定 SHA-256；Windows checkout 不得把 LF 改成 CRLF。
+apps/zcode-cli/packages/visualize-plugin/skills/visualize/assets/** -text
+packages/desktop/src/renderer/src/plugin-sandbox/genUiTweakRuntime.js -text
