@@ -796,7 +796,7 @@ importers:
     dependencies:
       '@arms/rum-electron':
         specifier: ^0.0.3
-        version: 0.0.3(patch_hash=36855354851ea495bc47a03340b0484ff62836b739cad56904b8a69f18e2ae97)(@babel/runtime@7.29.7)(electron@44.5.1(supports-color@8.1.1))
+        version: 0.0.3(patch_hash=36855354851ea495bc47a03340b0484ff62836b739cad56904b8a69f18e2ae97)(@babel/runtime@7.29.7)(electron@44.7.2(supports-color@8.1.1))
       '@babel/runtime':
         specifier: ^7.24.5
         version: 7.29.7
@@ -916,8 +916,8 @@ importers:
         specifier: ^3.4.1
         version: 3.4.1
       '@electron/rebuild':
-        specifier: ^4.2.0
-        version: 4.2.0(supports-color@8.1.1)
+        specifier: ^4.2.1
+        version: 4.2.1(supports-color@8.1.1)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.9.0))
@@ -967,8 +967,8 @@ importers:
         specifier: ^17.4.2
         version: 17.4.2
       electron:
-        specifier: 44.5.1
-        version: 44.5.1(supports-color@8.1.1)
+        specifier: 44.7.2
+        version: 44.7.2(supports-color@8.1.1)
       electron-builder:
         specifier: ^26.17.0
         version: 26.17.0(electron-builder-squirrel-windows@26.17.0)(supports-color@8.1.1)
@@ -1001,7 +1001,7 @@ importers:
         version: 8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.9.0)
       wdio-electron-service:
         specifier: ^9.2.1
-        version: 9.2.1(patch_hash=52481dae5e76772fcb8c2a9ff42feb3d0e1478e28815a4b975c81b9287e3385f)(electron@44.5.1(supports-color@8.1.1))(expect-webdriverio@5.6.5)(supports-color@8.1.1)(webdriverio@9.27.0(puppeteer-core@22.15.0(supports-color@8.1.1))(supports-color@8.1.1))
+        version: 9.2.1(patch_hash=52481dae5e76772fcb8c2a9ff42feb3d0e1478e28815a4b975c81b9287e3385f)(electron@44.7.2(supports-color@8.1.1))(expect-webdriverio@5.6.5)(supports-color@8.1.1)(webdriverio@9.27.0(puppeteer-core@22.15.0(supports-color@8.1.1))(supports-color@8.1.1))
       webdriverio:
         specifier: ^9.27.0
         version: 9.27.0(puppeteer-core@22.15.0(supports-color@8.1.1))(supports-color@8.1.1)
@@ -2366,6 +2366,11 @@ packages:
 
   '@electron/rebuild@4.2.0':
     resolution: {integrity: sha512-RKL/O+jGoXJMxrx/5771y1n0xTKmFuOYGO3gMmwypBM6rsH0kou0mswwdXA2JrhIkE4xyC7v9vGk0n6NPzgOxQ==}
+    engines: {node: '>=22.12.0'}
+    hasBin: true
+
+  '@electron/rebuild@4.2.1':
+    resolution: {integrity: sha512-IS4pG3BysRrCLJ8xTAfvg+IQDbiUoAzdJy2SfjcYKnLDy5DpCdjnPdhS5Zf5UMfrkB24xu0KC+TqcOxg+eG+6w==}
     engines: {node: '>=22.12.0'}
     hasBin: true
 
@@ -7428,8 +7433,8 @@ packages:
     resolution: {integrity: sha512-bO3y10YikuUwUuDUQRM4KfwNkKhnpVO7IPdbsrejwN9/AABJzzTQ4GeHwyzNSrVO+tEH3/Np255a3sVZpZDjvg==}
     engines: {node: '>=8.0.0'}
 
-  electron@44.5.1:
-    resolution: {integrity: sha512-lx7AYoFIiyvEvgvpyWO9kOC60xtNPpiPZAth6Fmg9NutzpCAMLwpUlaBY2EXfZyIgUdzEmLMj9KvK0Vrokl1yQ==}
+  electron@44.7.2:
+    resolution: {integrity: sha512-u3Pbz0Hi1sSSwBMz2v8LiagsfUG4QURPUe/qphM+g4THKP8o4BYdnuboyhlLO8HIC/KfV5rvltyacbP4jEq9yw==}
     engines: {node: '>= 22.12.0'}
     hasBin: true
 
@@ -11927,12 +11932,12 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.29.7
 
-  '@arms/rum-electron@0.0.3(patch_hash=36855354851ea495bc47a03340b0484ff62836b739cad56904b8a69f18e2ae97)(@babel/runtime@7.29.7)(electron@44.5.1(supports-color@8.1.1))':
+  '@arms/rum-electron@0.0.3(patch_hash=36855354851ea495bc47a03340b0484ff62836b739cad56904b8a69f18e2ae97)(@babel/runtime@7.29.7)(electron@44.7.2(supports-color@8.1.1))':
     dependencies:
       '@arms/rum-browser': 0.1.8(@babel/runtime@7.29.7)
       '@arms/rum-core': 0.1.4(@babel/runtime@7.29.7)
     optionalDependencies:
-      electron: 44.5.1(supports-color@8.1.1)
+      electron: 44.7.2(supports-color@8.1.1)
     transitivePeerDependencies:
       - '@babel/runtime'
 
@@ -12399,6 +12404,17 @@ snapshots:
       - supports-color
 
   '@electron/rebuild@4.2.0(supports-color@8.1.1)':
+    dependencies:
+      '@malept/cross-spawn-promise': 2.0.0
+      debug: 4.4.3(supports-color@8.1.1)
+      node-abi: 4.28.0
+      node-api-version: 0.2.1
+      node-gyp: 12.4.0
+      read-binary-file-arch: 1.0.6(supports-color@8.1.1)
+    transitivePeerDependencies:
+      - supports-color
+
+  '@electron/rebuild@4.2.1(supports-color@8.1.1)':
     dependencies:
       '@malept/cross-spawn-promise': 2.0.0
       debug: 4.4.3(supports-color@8.1.1)
@@ -17569,7 +17585,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  electron@44.5.1(supports-color@8.1.1):
+  electron@44.7.2(supports-color@8.1.1):
     dependencies:
       '@electron-internal/extract-zip': 1.0.5
       '@electron/get': 5.1.0(supports-color@8.1.1)
@@ -22596,7 +22612,7 @@ snapshots:
       defaults: 1.0.4
     optional: true
 
-  wdio-electron-service@9.2.1(patch_hash=52481dae5e76772fcb8c2a9ff42feb3d0e1478e28815a4b975c81b9287e3385f)(electron@44.5.1(supports-color@8.1.1))(expect-webdriverio@5.6.5)(supports-color@8.1.1)(webdriverio@9.27.0(puppeteer-core@22.15.0(supports-color@8.1.1))(supports-color@8.1.1)):
+  wdio-electron-service@9.2.1(patch_hash=52481dae5e76772fcb8c2a9ff42feb3d0e1478e28815a4b975c81b9287e3385f)(electron@44.7.2(supports-color@8.1.1))(expect-webdriverio@5.6.5)(supports-color@8.1.1)(webdriverio@9.27.0(puppeteer-core@22.15.0(supports-color@8.1.1))(supports-color@8.1.1)):
     dependencies:
       '@babel/parser': 7.29.2
       '@electron/fuses': 2.1.1
@@ -22617,7 +22633,7 @@ snapshots:
       tinyspy: 4.0.4
       webdriverio: 9.27.0(puppeteer-core@22.15.0(supports-color@8.1.1))(supports-color@8.1.1)
     optionalDependencies:
-      electron: 44.5.1(supports-color@8.1.1)
+      electron: 44.7.2(supports-color@8.1.1)
     transitivePeerDependencies:
       - bare-abort-controller
       - bare-buffer

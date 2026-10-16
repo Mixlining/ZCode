@@ -2,7 +2,7 @@
 
 ## 背景
 
-ZCode 桌面端内置 Browser 使用标准 Electron 41 `<webview>`。网页调用 `alert()` / `confirm()` 时，Chromium 原生对话框只展示消息正文，不展示来源站点，用户无法区分“网页内容”和“ZCode 自身提示”。期望形态是对话框带类似 `www.runoob.com says` 的来源标题。
+ZCode 桌面端内置 Browser 使用标准 Electron 44 `<webview>`。网页调用 `alert()` / `confirm()` 时，Chromium 原生对话框只展示消息正文，不展示来源站点，用户无法区分“网页内容”和“ZCode 自身提示”。期望形态是对话框带类似 `www.runoob.com says` 的来源标题。
 
 标准 Electron 没有为 `<webview>` 原生对话框添加来源标题的开关，因此为 guest 安装固定的隔离 preload，在网页调用原生 `alert` / `confirm` 之前同步请求 main 展示系统 MessageBox。
 

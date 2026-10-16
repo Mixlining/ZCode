@@ -264,7 +264,7 @@ R2 Server CLI 不使用 Electron 内置 Node，也不要求目标服务器预装
 
 当前事实：
 
-- Desktop Host/Agent 使用 Electron 41 内置 Node 24.x；
+- Desktop Host/Agent 使用 Electron 44 内置 Node 24.x；
 - SSH/WSL/Docker 远端资产使用独立 Node `v22.16.0`；
 - CLI bundle 当前以 `node22` 为最低运行目标。
 

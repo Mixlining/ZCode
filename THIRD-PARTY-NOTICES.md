@@ -1132,7 +1132,7 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 
 - electron-updater@6.8.10 — MIT
 
-- electron@44.5.1 — MIT
+- electron@44.7.2 — MIT
 
 - elkjs@0.12.0 — EPL-2.0 OR GPL-3.0-or-later
 
@@ -14753,9 +14753,9 @@ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH RE
 
 ### Notice 5154e165bd6c2cc0cfbcd8916498c7abab0497923bafcd5cb07673fe8480087d
 
-- electron@44.5.1: dist/LICENSE
+- electron@44.7.2: dist/LICENSE
 
-- electron@44.5.1: LICENSE
+- electron@44.7.2: LICENSE
 
 
 
@@ -14786,7 +14786,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ### Notice 56a37896ff6edec2b75b41465b66dd768f2d294c315255164898ca3e685bbd30
 
-- electron@44.5.1: README.md (license section)
+- electron@44.7.2: README.md (license section)
 
 
 

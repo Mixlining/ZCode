@@ -15,9 +15,9 @@
 
 ## 约定
 
-- Node 固定为 `24.14.0`，与 `apps/zcode-cli/.node-version` 保持一致。
-- pnpm 固定为 `10.33.2`，与 `apps/zcode-cli/package.json` 的 `packageManager` 保持一致。
-- Electron 安装阶段通过 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/` 下载，避免首次安装依赖时直连 GitHub release 超时。
+- Node 固定为 `24.21.0`，与 `apps/zcode-cli/.node-version` 保持一致。
+- pnpm 固定为 `11.27.1`，与 `apps/zcode-cli/package.json` 的 `packageManager` 保持一致。
+- Electron 安装阶段通过 `ELECTRON_MIRROR=https://github.com/electron/electron/releases/download/` 从官方 GitHub Releases 下载。
 - 任务入口仍调用根目录 `package.json` 中已有脚本，避免 desktop / web / agent 的启动语义分叉。
 - `dev` 任务调用 `pnpm dev:desktop:test`，并注入 `ZCODE_DATA_BASE_DIR=$HOME/.zcode-dev-home`；实际应用数据落到 `$HOME/.zcode-dev-home/.zcode/`。
 - Dev 数据目录不会从正式环境自动复制凭据、设置、任务历史或插件状态；首次启动需要重新登录和配置。

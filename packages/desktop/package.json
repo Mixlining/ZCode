@@ -90,7 +90,7 @@
   },
   "devDependencies": {
     "@electron/asar": "^3.4.1",
-    "@electron/rebuild": "^4.2.0",
+    "@electron/rebuild": "^4.2.1",
     "@tailwindcss/vite": "^4.2.2",
     "@types/mocha": "^10.0.10",
     "@types/react": "^19.2.14",
@@ -107,7 +107,7 @@
     "@wdio/mocha-framework": "^9.27.0",
     "@wdio/spec-reporter": "^9.27.0",
     "dotenv": "^17.4.2",
-    "electron": "44.5.1",
+    "electron": "44.7.2",
     "electron-builder": "^26.17.0",
     "http-mitm-proxy": "^1.1.0",
     "istanbul-lib-coverage": "^3.2.2",
