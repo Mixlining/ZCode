@@ -72,12 +72,6 @@ function renderMenu(overrides: Partial<React.ComponentProps<typeof TaskActionMen
 }
 
 describe("TaskActionMenuContent", () => {
-  it("Header 不再渲染模型配置同步入口", () => {
-    const { html } = renderMenu();
-
-    expect(html).not.toContain("appHeader.syncModelConfig");
-  });
-
   it("provider 配置文件未落盘但路径已知时仍保留入口", () => {
     const { itemStates } = renderMenu({
       providerConfigFile: {

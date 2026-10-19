@@ -190,8 +190,9 @@ export function registerDesktopSaveFileIpcHandler(logger: { warn: (...args: unkn
       }
       const suggestedName = basename(payload.suggestedName.trim()).slice(0, 120);
       const sourceUrl = parseRemoteImageUrl(payload.sourceUrl);
-      const data = payload.data instanceof ArrayBuffer ? payload.data : null;
-      if (!suggestedName || (sourceUrl === null && !data)) {
+      const hasData = payload.data instanceof ArrayBuffer;
+      const data = hasData ? payload.data : undefined;
+      if (!suggestedName || (sourceUrl === null && !hasData)) {
         return { success: false, error: "invalid_file_payload" };
       }
       if (data && data.byteLength === 0) {

@@ -3,12 +3,11 @@
 // 把 host 回报的 CronRunResult 转回 scheduler 结算。scheduler 只碰 tasks-index，createTask 在 host 域执行。
 import { utilityProcess as electronUtilityProcess } from "electron";
 import type { UtilityProcess as ElectronUtilityProcess } from "electron";
-import {
-  CODING_PLAN_DISABLED,
-  HostMessageTypes,
-  type MainToSchedulerMessage,
-  type SchedulerToMainMessage,
-} from "@zcode/shared";
+import { CODING_PLAN_DISABLED, HostMessageTypes } from "@zcode/shared";
+import type {
+  MainToSchedulerMessage,
+  SchedulerToMainMessage,
+} from "../scheduler/schedulerProtocol.js";
 import { buildHostProcessEnv, schedulerModulePath } from "./desktopRuntimeEnv.js";
 import { ingestSchedulerSelfResourceSample } from "./processResourceSelfHeapSource.js";
 import { registerSchedulerProcess, unregisterSchedulerProcess } from "./resourceManagerWindow.js";
@@ -26,6 +25,7 @@ export interface CronRunResultPayload {
 export interface OffPeakRunResultPayload {
   offPeakTaskId: string;
   ok: boolean;
+  lifecycleManaged?: true;
   conversationId?: string;
   sessionId?: string;
   error?: string;
@@ -142,6 +142,9 @@ export function spawnCronScheduler(deps: CronSchedulerDeps): CronSchedulerHandle
           mode: msg.mode,
           workspacePath: msg.workspacePath,
           workspaceIdentity: msg.workspaceIdentity,
+          projectId: msg.projectId,
+          hostId: msg.hostId,
+          additionalDirectories: msg.additionalDirectories,
         });
       } catch (error) {
         deps.logger.warn("[cron-scheduler] forward CronRun to host failed:", error);
@@ -182,6 +185,9 @@ export function spawnCronScheduler(deps: CronSchedulerDeps): CronSchedulerHandle
           serverTicketId: msg.serverTicketId,
           workspacePath: msg.workspacePath,
           workspaceIdentity: msg.workspaceIdentity,
+          projectId: msg.projectId,
+          hostId: msg.hostId,
+          additionalDirectories: msg.additionalDirectories,
         });
       } catch (error) {
         deps.logger.warn("[cron-scheduler] forward OffPeakRun to host failed:", error);

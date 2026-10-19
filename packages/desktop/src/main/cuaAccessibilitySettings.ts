@@ -211,10 +211,12 @@ function toInstallerLogger(
 ): CuaHelperInstallerLogger | undefined {
   if (!logger) return undefined;
   return {
-    debug: (_traceId: string, ...args: unknown[]) => logger.debug?.(...args),
-    info: (_traceId: string, ...args: unknown[]) => (logger.info ?? logger.warn)(...args),
-    warn: (_traceId: string, ...args: unknown[]) => logger.warn(...args),
-    error: (_traceId: string, ...args: unknown[]) => (logger.error ?? logger.warn)(...args),
+    debug: (_traceId: string | undefined, ...args: unknown[]) => logger.debug?.(...args),
+    info: (_traceId: string | undefined, ...args: unknown[]) =>
+      (logger.info ?? logger.warn)(...args),
+    warn: (_traceId: string | undefined, ...args: unknown[]) => logger.warn(...args),
+    error: (_traceId: string | undefined, ...args: unknown[]) =>
+      (logger.error ?? logger.warn)(...args),
   };
 }
 

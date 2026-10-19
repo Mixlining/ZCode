@@ -1,4 +1,8 @@
 import { createConfig, type ConfigResult } from "@zcode/adapters/config";
+import {
+  createSharedZCodeCredentialStore,
+  SHARED_ZCODE_CREDENTIAL_KEYS,
+} from "@zcode/adapters/auth";
 import { createNodeHttpClientAdapter } from "@zcode/adapters/http";
 import { createProviderEndpointRoutingPort } from "@zcode/adapters/model";
 import { createNodeLoggerFactory } from "@zcode/adapters/logging";
@@ -43,6 +47,8 @@ export function resolveProcessProviderEndpointRoutingPort(
     return existing;
   }
 
+  const credentialStore = createSharedZCodeCredentialStore({ env });
+
   const port = createProviderEndpointRoutingPort({
     appVersion: options.appVersion,
     endpointOrigin,
@@ -55,6 +61,7 @@ export function resolveProcessProviderEndpointRoutingPort(
     logger: options.logger.child({
       module: "adapters.model.provider_endpoint_routing",
     }),
+    readZCodeJwt: () => credentialStore.load(SHARED_ZCODE_CREDENTIAL_KEYS.zcodeJwtToken),
     sourceHeaders: () =>
       createProviderEndpointRoutingSourceHeaders({
         appVersion: options.appVersion,

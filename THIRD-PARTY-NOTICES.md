@@ -2420,6 +2420,8 @@ Electron/Chromium target-specific notices are shipped separately under Resources
 
 ## Modified npm packages
 
+- @radix-ui/react-collapsible@1.1.12: modified by ZCode; the changes are recorded in patches/@radix-ui__react-collapsible@1.1.12.patch in the source repository.
+
 - @arms/rum-electron@0.0.3: modified by ZCode; the changes are recorded in patches/@arms__rum-electron@0.0.3.patch in the source repository.
 
 - @ai-sdk/openai-compatible@2.0.60: modified by ZCode; the changes are recorded in patches/@ai-sdk__openai-compatible@2.0.60.patch in the source repository.

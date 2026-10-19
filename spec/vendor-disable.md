@@ -2,6 +2,22 @@
 
 ## 产品规则
 
+### v3.16.1 同步约束
+
+- 上游新增插件生命周期遥测管道（Host → Main → TelemetryCore 的 `PluginTelemetry`、
+  `plugin_lifecycle` / `plugin_usage` / `plugin_discovery` / `plugin_runtime_error` 事件）：
+  事件类型与 schema 保留，但整条管道处于 `ZCODE_TELEMETRY_ENABLED = false` 之下——
+  `telemetryCore.reportEvent` 早返回，Main 的 `desktopHostProcess.ts` 转发分支与 Host 的
+  `reportPluginTelemetryEvent` 注入点同样有开关守卫，关闭时不构造跨进程载荷。
+- 上游新增 `remoteDevices`（远程设备）设置页与 Source Server 更新通知订阅：归入远程域
+  硬禁用，见 `spec/remote-disable.md` 与 `spec/upstream-3.16.1-merge.md`。
+- 上游新增自动归档扫描器：按需运行（开启才启动定时器，间隔 1 小时），不做常驻空转，
+  见 `spec/upstream-3.16.1-merge.md`。
+- 上游新增引导「本机使用证据」读取（CLI 配置与会话库）：不接入，启动不读盘；
+  `localUsageEvidence.ts` 代码保留但证据源不挂接。
+- CLI 新增 off-peak runtime 模块保留源码，端口不注入，链路仍被既有工具策略与 host 拒绝
+  路径挡住；不恢复、不读取、不派发旧任务。
+
 ### v3.15.1 同步约束
 
 - 整体接收上游本地 UI Plugin、MCP Apps、Gen UI 与工作流增强，再按本规范收口新增厂商能力。
@@ -267,6 +283,8 @@ ARMS browser bootstrap/init 与已删除启动模块相同，均不纳入本构�
 2. 上表六个常量值未被回退，且 `spec/remote-disable.md` 的三个常量同样未被回退。
 3. 新代码没有为已禁用能力新增常驻子进程、定时器、长轮询、重连或采样器。
 4. `off_peak_tasks` 的表/列/索引/已发布迁移与校验值保持字节不变。
+5. 新增遥测事件类型（如 v3.16.1 的插件生命周期事件）只允许落在守卫后的管道里；
+   检查每个新事件的 Host/Main 转发分支都有开关守卫，不允许「无守卫转发 + 仅核心兜底」。
 
 ## 变动历史
 

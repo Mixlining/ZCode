@@ -4,6 +4,8 @@
 
 v3.15.1 新增的 Server 类型远程 workspace 同样受 `REMOTE_WORKSPACE_DISABLED` 约束：连接入口、服务集合、topic resource relay、工作流设置推送及其对象构造和监听注册均不可绕过守卫。普通本机 Web server `/ws` 保留。新增远控与 Bot 实现保留供同步上游，但不恢复装配、预热、轮询或附件接管。
 
+v3.16.1 新增的 Source Server 启动重连批次、`SourceServerConnectionManager` / `SourceServerDirectory`、`remoteDevices` 设置页、`useSourceServerUpdateNotifications` 订阅与 Web `/remote/*` 路由全部属于远程域：不构造、不订阅、不显示、404，详见 `spec/upstream-3.16.1-merge.md`。
+
 本构建只支持**本机桌面单机**形态：一个窗口对应一个 window-scoped Local Host，只服务本地
 workspace。不再提供手机远控、远程 workspace（SSH / WSL / Docker）与消息平台 Bot
 （Telegram / 微信 / 飞书 Lark）能力，也不为它们保留任何常驻进程、定时器、长轮询、
@@ -102,7 +104,7 @@ relay 是本仓库之外的上游服务）。禁用后它必须**继续无调用
   `restorePersistedRemoteWorkspaceSessions` 既有的「入口被隐藏时不恢复远程 tab」分支。
   `setting.json` 里的远程快照原样保留（与旧 `off_peak_tasks` 行同理，不删数据），
   本地 workspace tab 的恢复不受影响。
-- 不触发远程资产下载与 `prepare-prebuilds` 的远程 bundle staging。
+- 不触发远程资产下载与远程 bundle staging（见「构建产物」一节的新入口）。
 
 ### 资源零占用（不构造 / 不注册 / 不进入）
 
@@ -138,11 +140,14 @@ relay 是本仓库之外的上游服务）。禁用后它必须**继续无调用
 
 运行时禁用必须同时停掉只服务远端/手机的构建产物：
 
-- 不再 stage 远程 agent bundle：`scripts/prepare-prebuilds.mjs` 的 `main()` 在
-  `REMOTE_ASSETS_DISABLED` 为真时整轮跳过（该脚本只产出远端部署用的 mock CDN 资产：
-  node 运行时、server bundle、node-pty、远端 agent bundle 与 native-search 工具，
-  仅由 `packages/server/src/remote/*` 的部署与安装链路消费）。本地桌面运行时不依赖该脚本，
-  `mock-cdn` 也只是开发态可选离线缓存，缺失时正常运行。
+- 不再 stage 远程 agent bundle。v3.16.1 上游删除了 `scripts/prepare-prebuilds.mjs`
+  （连同其 `REMOTE_ASSETS_DISABLED` 早返回），远程资产 staging 的唯一入口变为
+  `pnpm prepare:remote-assets` → `@zcode/server-cli stage:remote-assets`
+  （`packages/zcode-server-cli/src/packaging/`：从镜像下载 Node 运行时、构建 server
+  bundle、写入 mock CDN）。该入口按本域禁用整轮跳过（见「构建侧的同名开关」）；
+  `scripts/bootstrap.mjs` 默认不再 stage 远程资产（仅 `--with-remote` 显式触发，
+  该分支同样跳过）。本地桌面运行时不依赖远程 staging，`mock-cdn` 只是开发态可选
+  离线缓存，缺失时正常运行。
 
 **有意保留**（不可一并停掉，停掉会破坏保留能力）：
 
@@ -171,8 +176,9 @@ lockfile、`third-party/inventory.json` 与 `THIRD-PARTY-NOTICES.md` 记录保�
 5. 远程连接动作入口在 `REMOTE_WORKSPACE_DISABLED` 为真时直接 return
    （`ChatEmptyState` 的菜单项与 `useRemoteWorkspaceHistory.connectRemoteWorkspaceTarget`）；
    `useRemoteConnectionEntryVisibility` 仍按自身可用性策略返回，不用于隐藏入口。
-6. `scripts/prepare-prebuilds.mjs` 在禁用时不执行远程 bundle staging 与 mock CDN 产出；
-   而 `scripts/build-zcode.mjs` 仍断言 `entry-http.js`（Web 模式入口）。
+6. 远程资产 staging 入口（v3.16.1 起为 `@zcode/server-cli` 的 `stage:remote-assets`）在
+   禁用时整轮跳过，不下载 Node 运行时、不产出 mock CDN；而 `scripts/build-zcode.mjs`
+   仍断言 `entry-http.js`（Web 模式入口）。
 7. 远程运行资产下载不可达：`resolveRemoteAssetDirs`（唯一触发 `cdn-zcode.z.ai` 的路径）
    只被 `createRemoteWorkspaceSession` 调用，而后者只经上述守卫过的入口到达；
    窗口重载触发的 `reattachRemoteWorkspaceSessionsForWindow` 只遍历空的
@@ -191,14 +197,16 @@ lockfile、`third-party/inventory.json` 与 `THIRD-PARTY-NOTICES.md` 记录保�
 
 ## 构建侧的同名开关
 
-`scripts/prepare-prebuilds.mjs` 是纯 `.mjs`，无法 import `packages/shared/src/env.ts` 的
-`.ts` 常量，因此它保留自己的 `const REMOTE_ASSETS_DISABLED = true`，与
-`REMOTE_WORKSPACE_DISABLED` 表达同一决策。这是本仓库既有惯例（另有
+远程资产 staging 入口是纯 `.mjs`，无法 import `packages/shared/src/env.ts` 的
+`.ts` 常量。v3.15.1 起该守卫由 `scripts/prepare-prebuilds.mjs` 自己的
+`const REMOTE_ASSETS_DISABLED = true` 表达；v3.16.1 上游删除该脚本后，守卫迁移到
+新 staging 入口（`packages/zcode-server-cli` 的 `stage:remote-assets` 调用链），
+以同样的硬编码常量整轮跳过。这是本仓库既有惯例（另有
 `MODEL_TELEMETRY_HARD_DISABLED`、`AUTO_ONBOARDING_DISABLED` 等独立硬禁用常量），
 不要为了「单一事实来源」把它改成运行时读文件解析——那只是把简单常量换成解析脆弱性。
 
 同一决策落在多处常量时，**改动其中一处必须核对另一处**：`env.ts` 的
-`REMOTE_WORKSPACE_DISABLED` 与 `prepare-prebuilds.mjs` 的 `REMOTE_ASSETS_DISABLED`。
+`REMOTE_WORKSPACE_DISABLED` 与 staging 入口的 `REMOTE_ASSETS_DISABLED`。
 两者不一致的表现是远端资产静默不生成——构建不报错、但产物缺资产，排查成本高，
 因此此处与上游同步清单都记这条。
 
@@ -213,8 +221,8 @@ lockfile、`third-party/inventory.json` 与 `THIRD-PARTY-NOTICES.md` 记录保�
 2. 上游新增代码若引用 `IBotsService`：同进程（Host/Main）用 `getOptional` 并容忍
    `undefined`（`get(...)` 会立刻抛 `Service not registered`）；跨进程（renderer 侧）
    必须在调用点加 `BOTS_DISABLED` 守卫，否则等满 1s 超时并留下 `Unknown channel` 噪声。
-3. `scripts/prepare-prebuilds.mjs` 的 `REMOTE_ASSETS_DISABLED` 仍为 `true`；
-   上游若改写该文件，确认这一守卫没被合并冲掉。
+3. 远程资产 staging 入口（v3.16.1 起为 `stage:remote-assets` 调用链）的
+   `REMOTE_ASSETS_DISABLED` 仍为 `true`；上游若改写该入口，确认这一守卫没被合并冲掉。
 4. `attachRemoteWorkspaceSessionHost` 仍未新增调用方；`AttachServicePort` 的
    `web-remote-replayable` 拒绝分支仍在。
 5. `packages/server` 的 `/api/connect-remote` 与 `/ws/remote/:id` 守卫仍在，
