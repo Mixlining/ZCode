@@ -73,7 +73,8 @@ relay 是本仓库之外的上游服务）。禁用后它必须**继续无调用
   `syncAppRuntimePreferences` 与 `useSettingService` 的一处。
 - `BotsDialog` 全部 RPC 都在 `open` 之后触发，而入口 `WorkspaceWebRemoteControlTrigger`
   已提前返回，因此禁用时该组件不会挂载到发请求的状态。
-- `remoteWorkspaceServiceCollection` 不注册 `IBotsService`。
+- `remoteWorkspaceServiceCollection` 不注册 `IBotsService`；该集合末尾的 RPC 一致性
+  校验按同一常量跳过 `botsService` 这一项，其余通道仍逐项校验，避免守卫掩盖真正的漏注册。
 - Host 侧 `cronBotDelivery` 不订阅自动化投递；Bot 远端桥接（`botRemoteWorkspaceBridge`）
   不构造，`pendingRemoteReconnectsByKey` 等集合随之消失。
 - Bot 远端桥接在构造时就会 `parentPort.on("message", onMessage)` 挂上一条常驻监听，

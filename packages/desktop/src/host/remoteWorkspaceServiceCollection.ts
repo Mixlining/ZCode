@@ -55,6 +55,7 @@ import {
   createRemoteProjectService,
 } from "@zcode/services/node";
 import {
+  BOTS_DISABLED,
   buildServerRemoteWorkspaceIdentity,
   remoteHostIdFromWorkspaceIdentity,
 } from "@zcode/shared";
@@ -214,7 +215,6 @@ export function createServerRemoteWorkspaceServiceCollection(params: {
         ? createUnsupportedRemoteConversationShareService()
         : params.connectionServices.conversationShareService,
     )
-    .register(IBotsService, params.connectionServices.botsService)
     .register(IFileWatcherService, params.connectionServices.fileWatcherService)
     .register(IOAuthService, params.connectionServices.oauthService)
     .register(IProviderSettingsService, params.connectionServices.providerSettingsService)
@@ -245,6 +245,11 @@ export function createServerRemoteWorkspaceServiceCollection(params: {
       IPromptAttachmentTransferService,
       params.connectionServices.promptAttachmentTransferService,
     );
+  // Bot 硬禁用时不注册 IBotsService：远端集合同样不暴露该 channel。
+  // 禁用是永久的，见 spec/remote-disable.md 与 spec/vendor-disable.md。
+  if (!BOTS_DISABLED) {
+    services.register(IBotsService, params.connectionServices.botsService);
+  }
   // 新频道必须以握手能力为准；客户端总能生成 proxy，不能用对象存在性判断旧 Server 支持。
   if (params.virtualProjects) {
     if (
@@ -300,10 +305,14 @@ export function createServerRemoteWorkspaceServiceCollection(params: {
     });
   }
   const registrationKeys = new Set(REMOTE_WORKSPACE_RPC_REGISTRATIONS.map(([key]) => key));
+  // Bot 硬禁用时 botsService 按设计不注册，一致性校验必须同步跳过该项；
+  // 其余条目仍逐项校验，守卫不能让别的通道漏注册被掩盖。
+  const skippedByGuard = new Set<string>(BOTS_DISABLED ? ["botsService"] : []);
   const missing = [
     ...REMOTE_WORKSPACE_RPC_CHANNELS.filter((key) => !registrationKeys.has(key)),
     ...REMOTE_WORKSPACE_RPC_REGISTRATIONS.filter(
-      ([, descriptor]) =>
+      ([key, descriptor]) =>
+        !skippedByGuard.has(key) &&
         services.getOptional(descriptor as ServiceDescriptor<unknown>) === undefined,
     ).map(([key]) => key),
   ];
