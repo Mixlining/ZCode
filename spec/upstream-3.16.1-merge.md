@@ -65,13 +65,13 @@ telemetryCore/转发分支 ──ZCODE_TELEMETRY_ENABLED──▶ 全链路早�
 
 ### 后台资源
 
-| 位置                                                    | 动作                                                                                                                                                                      |
-| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/services/src/project/autoArchiveScheduler.ts` | `taskAutoArchiveEnabled=false`（默认）时不调用 `start()`；设置开启时启动（间隔 1 小时），关闭时 `dispose()`；上游的设置变更补扫监听保留为「变更触发扫描」语义并入动态启停 |
-| `packages/ui/src/App.tsx`                               | 不挂载闲时任务 30 秒轮询                                                                                                                                                  |
-| `Root.tsx`                                              | 不挂载 `useSourceServerUpdateNotifications`                                                                                                                               |
-| 市场自动刷新                                            | `officialMarketplaceAutoRefresh` 守卫保持                                                                                                                                 |
-| 远控中继心跳/看门狗                                     | 随管理器不构造而不可达，代码保留                                                                                                                                          |
+| 位置                                                    | 动作                                                                                                                                                                                      |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/services/src/project/autoArchiveScheduler.ts` | `taskAutoArchiveEnabled=false`（默认）时不创建定时器（只做一次策略探测）；设置开启时启动（间隔 1 小时），关闭时 `stop()` 释放定时器并保留实例供再次开启；Host 退出时 `dispose()` 终态释放 |
+| `packages/ui/src/App.tsx`                               | 不挂载闲时任务 30 秒轮询                                                                                                                                                                  |
+| `Root.tsx`                                              | 不挂载 `useSourceServerUpdateNotifications`                                                                                                                                               |
+| 市场自动刷新                                            | `officialMarketplaceAutoRefresh` 守卫保持                                                                                                                                                 |
+| 远控中继心跳/看门狗                                     | 随管理器不构造而不可达，代码保留                                                                                                                                                          |
 
 ### Web 路由
 
