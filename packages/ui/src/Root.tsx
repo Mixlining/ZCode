@@ -21,6 +21,7 @@ import {
   APP_RUNTIME_PREFERENCES_CHANGED_BROADCAST_CHANNEL,
   BOTS_DISABLED,
   DesktopCommandIds,
+  REMOTE_WORKSPACE_DISABLED,
   ZCODE_VENDOR_ACTIONS_DISABLED,
   appRuntimePreferencesChangedBroadcastPayloadSchema,
 } from "@zcode/shared";
@@ -256,7 +257,10 @@ function RootInner({
 
   const { intl, locale } = useZCodeIntl();
   const handleRemoteConnectionTargetChange = useSourceServerUpdateNotifications({
-    enabled: isDesktop === true,
+    // 远程 workspace 硬禁用：Host 不注册 ISourceServerManagementService，而 renderer 侧的
+    // accessor 是惰性代理（恒为 truthy）。这里必须在调用点用编译期常量关断，否则挂载即订阅
+    // 未注册 channel，等满 ChannelServer 超时并留下 Unknown channel 噪声。
+    enabled: isDesktop === true && !REMOTE_WORKSPACE_DISABLED,
     management: services.sourceServerManagementService,
   });
   const theme = useZCodeStore((state) => state.theme);

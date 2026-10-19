@@ -12,7 +12,7 @@
 
 1. **启用项目模型**：侧边栏按项目组织会话，分组视图移除（分组视图代码与分组数据保留，不再提供入口）；旧 `task_groups` 数据在首次启动按上游迁移静默转为项目，不弹窗。
 2. **归档按需运行**：自动归档关闭（默认）时不启动任何扫描定时器；开启后启动扫描，间隔由上游 5 分钟改为 1 小时；设置变更动态启停。手动归档不受影响。
-3. **远程/Bot/手机入口保持「入口可见、点击无效」**：入口照常显示，点击在触发处直接 return，不打开设置页、不挂载弹窗（含新增的 `remoteDevices` 设置页，从导航隐藏且跳转入口返回）。
+3. **远程/Bot/手机入口保持「入口可见、点击无效」**：上游已有的入口照常显示，点击在触发处直接 return，不打开设置页、不挂载弹窗。上游本轮新增的 `remoteDevices`（远程设备）设置页属新入口，不进导航（`HIDDEN_SETTINGS_SECTIONS`），任何跳转由 `resolveSettingsSection` 回落到 `general`；页面实现与文案保留。
 4. **会话分享按钮为死按钮**：点击在触发处返回，不进入选择流程；HTTP 客户端守卫保留作纵深防御。
 5. **首次引导不读本机证据**：启动不读取 CLI 配置、会话数据库与旧版快照目录；引导仅经帮助菜单手动打开。
 6. **文档预览与上游一致**：四个文档插件升级为共享运行时（office-runtime），含中文字体兜底。
@@ -35,7 +35,7 @@ telemetryCore/转发分支 ──ZCODE_TELEMETRY_ENABLED──▶ 全链路早�
 
 - 状态所有者不变：产品开关仍全部在 `packages/shared/src/env.ts`；归档定时器的启停唯一所有者是 Host 服务装配处的设置订阅；Web 路由收口所有者是 `packages/web/src/main.tsx` 路由判定。
 - 数据库启动沿用原迁移与修复顺序；`off_peak_tasks` 表、列、索引、已发布迁移及校验内容字节不变；分组→项目迁移执行上游迁移，迁移语义与数据由 `project-storage` 的既有契约测试资产覆盖（本轮不运行）。
-- 上游新增的 `useSourceServerUpdateNotifications`（Root 挂载、订阅远端状态变化）随远程域禁用：不挂载、不订阅。
+- 上游新增的 `useSourceServerUpdateNotifications` 在 Root 的调用点以 `REMOTE_WORKSPACE_DISABLED` 关闭 `enabled`：hook 保留挂载，但不建 controller、不订阅远端状态变化、不发请求。必须在调用点判常量而不是依赖 hook 内部的 `management` 判空——renderer 侧的 service accessor 是惰性代理，未注册时仍为 truthy。
 - 上游 CLI 新增的 off-peak runtime 模块（`apps/zcode-cli/packages/core/src/runtime/off-peak/*`）代码保留，但 CLI 不注入 OffPeakPort、不恢复旧任务，运行链路仍被上游既有 `off-peak-tool-policy` 与 host 拒绝路径挡住。
 
 ## 守卫恢复与补齐清单（收尾提交）
@@ -53,15 +53,15 @@ telemetryCore/转发分支 ──ZCODE_TELEMETRY_ENABLED──▶ 全链路早�
 
 ### 弃用域
 
-| 域                      | 动作                                                                                                                                                                                                                                   |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Bots                    | `createLocalServices` / `remoteWorkspaceServiceCollection` 不注册 `IBotsService`、不构造 `BotsRepo`，启动不执行 Provider `refresh()`；Host 侧消费方用 `getOptional`                                                                    |
-| 闲时任务                | `IOffPeakTaskService` 不注册、`startSync()` 不调用；`App.tsx` 不挂载 `useOffPeakTaskNotifications`；CLI off-peak runtime 不注入端口                                                                                                    |
-| 手机远控                | Main 不创建 Web 远控管理器、不执行 `restorePreviouslyEnabled`；Web `/remote` 路由 404；`createWebRemoteControlFeatureGate` 默认参数改 false                                                                                            |
-| 远程 workspace          | 不构造 `SourceServerConnectionManager` / `SourceServerDirectory`，不执行 `runStartupReconnectBatch`；`remoteDevices` 设置页从导航隐藏（`HIDDEN_SETTINGS_SECTIONS`），任何 `sourceServerId` 跳转入口在触发处返回；`remoteAssets` 不下发 |
-| 会话分享                | `ConversationShareMenu` 点击在触发处返回；`conversationShareHttpClient` / `feedbackHttpClient` / `marketingTouchService` 守卫保留；Web `/share` 路由 404                                                                               |
-| 首次引导                | `createHasExistingLocalTask` 的会话库/CLI 配置证据源不接入（返回 false 语义下不读盘），自动弹窗路径不启用，引导仅手动打开                                                                                                              |
-| Highspeed / Coding Plan | `node.ts` 套餐/高速/权益注册保持守卫内；模型网关不改写；`SettingsUsageTabTarget` 的 codingPlan tab 不出现                                                                                                                              |
+| 域                      | 动作                                                                                                                                                                                                                                                         |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Bots                    | `createLocalServices` / `remoteWorkspaceServiceCollection` 不注册 `IBotsService`、不构造 `BotsRepo`，启动不执行 Provider `refresh()`；Host 侧消费方用 `getOptional`                                                                                          |
+| 闲时任务                | `IOffPeakTaskService` 不注册、`startSync()` 不调用；`App.tsx` 不挂载 `useOffPeakTaskNotifications`；CLI off-peak runtime 不注入端口                                                                                                                          |
+| 手机远控                | Main 不创建 Web 远控管理器、不执行 `restorePreviouslyEnabled`；Web `/remote` 路由 404；`createWebRemoteControlFeatureGate` 默认参数改 false                                                                                                                  |
+| 远程 workspace          | 不构造 `SourceServerConnectionManager` / `SourceServerDirectory`，不执行 `runStartupReconnectBatch`；新入口 `remoteDevices` 不进导航（`HIDDEN_SETTINGS_SECTIONS`），`sourceServerId` 跳转由 `resolveSettingsSection` 回落到 `general`；`remoteAssets` 不下发 |
+| 会话分享                | `ConversationShareMenu` 点击在触发处返回；`conversationShareHttpClient` / `feedbackHttpClient` / `marketingTouchService` 守卫保留；Web `/share` 路由 404                                                                                                     |
+| 首次引导                | `createHasExistingLocalTask` 的会话库/CLI 配置证据源不接入（返回 false 语义下不读盘），自动弹窗路径不启用，引导仅手动打开                                                                                                                                    |
+| Highspeed / Coding Plan | `node.ts` 套餐/高速/权益注册保持守卫内；模型网关不改写；`SettingsUsageTabTarget` 的 codingPlan tab 不出现                                                                                                                                                    |
 
 ### 后台资源
 
@@ -69,7 +69,7 @@ telemetryCore/转发分支 ──ZCODE_TELEMETRY_ENABLED──▶ 全链路早�
 | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `packages/services/src/project/autoArchiveScheduler.ts` | `taskAutoArchiveEnabled=false`（默认）时不创建定时器（只做一次策略探测）；设置开启时启动（间隔 1 小时），关闭时 `stop()` 释放定时器并保留实例供再次开启；Host 退出时 `dispose()` 终态释放 |
 | `packages/ui/src/App.tsx`                               | 不挂载闲时任务 30 秒轮询                                                                                                                                                                  |
-| `Root.tsx`                                              | 不挂载 `useSourceServerUpdateNotifications`                                                                                                                                               |
+| `Root.tsx`                                              | `useSourceServerUpdateNotifications` 调用点传 `enabled: isDesktop === true && !REMOTE_WORKSPACE_DISABLED`，不建 controller、不订阅远端状态变化                                            |
 | 市场自动刷新                                            | `officialMarketplaceAutoRefresh` 守卫保持                                                                                                                                                 |
 | 远控中继心跳/看门狗                                     | 随管理器不构造而不可达，代码保留                                                                                                                                                          |
 
