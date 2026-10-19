@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { REMOTE_WORKSPACE_DISABLED } from "@zcode/shared";
 import {
   SOURCE_SERVER_REMOTE_RELEASE_TARGETS,
   beginSourceServerRemoteReleaseGeneration,
@@ -25,6 +26,13 @@ async function run(
 }
 
 async function main(): Promise<void> {
+  // 远程 workspace 硬禁用：不产出远端部署资产（node 运行时下载、server bundle、mock CDN）。
+  // 原守卫在 v3.15.1 的 prepare-prebuilds.mjs；上游删除该脚本后迁移到此唯一入口，
+  // 见 spec/remote-disable.md 的「构建侧的同名开关」。
+  if (REMOTE_WORKSPACE_DISABLED) {
+    console.log("[source-server-release] skipped: remote workspace disabled in this build");
+    return;
+  }
   const linuxOnly = process.argv.slice(2).includes("--linux");
   const targets = linuxOnly
     ? SOURCE_SERVER_REMOTE_RELEASE_TARGETS.filter((target) => target.startsWith("linux-"))

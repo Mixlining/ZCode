@@ -1,3 +1,4 @@
+import { ZCODE_VENDOR_ACTIONS_DISABLED } from "@zcode/shared";
 import { ShareIcon } from "lucide-react";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { cn } from "@/components/lib/utils.js";
@@ -21,6 +22,8 @@ export function ConversationShareMenu({
   );
   const active = useConversationShareSelectionStore((state) => state.drafts[taskId]?.open ?? false);
   const handleClick = () => {
+    // 厂商动作硬禁用：分享链路不出网，入口保留为死按钮（见 spec/vendor-disable.md）。
+    if (ZCODE_VENDOR_ACTIONS_DISABLED) return;
     if (publishing) return;
     if (active) closeShare(taskId);
     else openShare(taskId);

@@ -370,6 +370,8 @@ export function spawnHostProcess(
     }
 
     if (result.data.type === HostResponseTypes.PluginTelemetry) {
+      // 遥测硬关闭：插件生命周期事件不出网；关闭转发同时省掉每条事件的跨进程构造与派发。
+      if (!ZCODE_TELEMETRY_ENABLED) return;
       dependencies.onPluginTelemetry?.(result.data);
       return;
     }

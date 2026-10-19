@@ -144,8 +144,11 @@ export async function hasAnyAgentSessionRow(dbPath: string): Promise<boolean> {
 export interface CreateHasExistingLocalTaskOptions {
   /** 设备全局任务索引查询；装配层须传 includeDeleted: true（tombstone 也是使用证据）。 */
   listIndexTasks: () => Promise<unknown[]>;
-  /** agent 会话库行查询（组合 resolveAgentSessionDbPath + hasAnyAgentSessionRow）；惰性调用。 */
-  hasAgentSessionRow: () => Promise<boolean>;
+  /**
+   * agent 会话库行查询（组合 resolveAgentSessionDbPath + hasAnyAgentSessionRow）；惰性调用。
+   * 传 null 表示本构建不读取该证据源（不访问应用数据目录之外的会话库）。
+   */
+  hasAgentSessionRow: (() => Promise<boolean>) | null;
   /** 旧版任务快照目录（{dataBaseDir}/.zcode/v2/sessions，含 .deleted.json）；惰性解析。 */
   resolveLegacyTaskSessionsDir: () => string;
 }
@@ -157,7 +160,7 @@ export function createHasExistingLocalTask(
 ): HasExistingLocalTask {
   return async () => {
     if ((await options.listIndexTasks()).length > 0) return true;
-    if (await options.hasAgentSessionRow()) return true;
+    if (options.hasAgentSessionRow && (await options.hasAgentSessionRow())) return true;
     return hasDirEntry(options.resolveLegacyTaskSessionsDir());
   };
 }

@@ -41,7 +41,9 @@ import {
   resolveAgentSessionDbPath,
 } from "./onboarding/localUsageEvidence.js";
 import {
+  BOTS_DISABLED,
   buildLocalMediaPreviewUrl,
+  CODING_PLAN_DISABLED,
   type DynamicWorkflowMode,
   type ProviderProvisioningTrigger,
 } from "@zcode/shared";
@@ -1396,18 +1398,9 @@ export function createLocalServices(options: {
       // 继续旧版快照检查；不得猜默认路径，否则自定义会话库的存量用户被漏判。
       // 跳过/命中各留一条 debug（评审 SG-02）：判定每登录一次至多一条，线上复核
       // "走了哪个证据源"有据可依；不记录完整路径，避免 home 路径进日志。
-      hasAgentSessionRow: async () => {
-        const sessionDbPath = await resolveAgentSessionDbPath();
-        if (sessionDbPath === null) {
-          onboardingEvidenceLogger.debug(
-            "onboarding 会话证据源跳过：会话库路径不可镜像（相对路径或 project 级覆盖）",
-          );
-          return false;
-        }
-        const hasRow = await hasAnyAgentSessionRow(sessionDbPath);
-        onboardingEvidenceLogger.debug("onboarding 会话证据源已查询", { hasRow });
-        return hasRow;
-      },
+      // 本构建不自动弹引导（见 spec/upstream-3.16.1-merge.md）：不读取 CLI 配置与会话库，
+      // 启动期不触及应用数据目录之外的本机文件；引导只经帮助菜单手动打开。
+      hasAgentSessionRow: null,
       resolveLegacyTaskSessionsDir: () => join(resolveAppConfigDir(), "sessions"),
     }),
   });
@@ -2520,39 +2513,48 @@ export function createLocalServices(options: {
     settingService,
     cuaProductMcpServerResolver,
   });
-  const botsRepo = new BotsRepo();
-  const botLog = createServiceLogger("bots");
-  const botRemoteWorkspaceService = options.resolveBotProjectConnection
-    ? createBotProjectRuntime({
-        remoteProjectService,
-        resolveOnline: options.resolveBotProjectConnection,
-        onConnectionsChanged: (listener) =>
-          broadcastService.onMessage((event) => {
-            if (event.channel === "state:projects") listener();
-          }),
-        readBoundTargets: async () =>
-          Object.values((await botsRepo.readState()).bots).flatMap((context) =>
-            context.workspaceIdentity
-              ? [
-                  {
-                    workspacePath: context.workspacePath,
-                    workspaceIdentity: context.workspaceIdentity,
-                    hostId: context.hostId,
-                  },
-                ]
-              : [],
-          ),
-        readRuntimePreferences: async () => {
-          const settings = await settingService.get();
-          return {
-            askUserQuestionAutoResolutionEnabled:
-              settings.askUserQuestionAutoResolutionEnabled !== false,
-            modelIoFullRetentionEnabled: settings.modelIoFullRetentionEnabled === true,
-          };
-        },
-        warn: (message) => botLog.warn(message),
-      })
-    : undefined;
+  // Bot 硬禁用时不构造 BotsRepo、Provider 适配器与远端桥接：构造即挂监听，启动期还会读
+  // Bot 配置与状态。实现全部保留，仅跳过构造（见 spec/remote-disable.md）。
+  const botRuntime = BOTS_DISABLED
+    ? null
+    : (() => {
+        const botsRepo = new BotsRepo();
+        const botLog = createServiceLogger("bots");
+        const botRemoteWorkspaceService = options.resolveBotProjectConnection
+          ? createBotProjectRuntime({
+              remoteProjectService,
+              resolveOnline: options.resolveBotProjectConnection,
+              onConnectionsChanged: (listener) =>
+                broadcastService.onMessage((event) => {
+                  if (event.channel === "state:projects") listener();
+                }),
+              readBoundTargets: async () =>
+                Object.values((await botsRepo.readState()).bots).flatMap((context) =>
+                  context.workspaceIdentity
+                    ? [
+                        {
+                          workspacePath: context.workspacePath,
+                          workspaceIdentity: context.workspaceIdentity,
+                          hostId: context.hostId,
+                        },
+                      ]
+                    : [],
+                ),
+              readRuntimePreferences: async () => {
+                const settings = await settingService.get();
+                return {
+                  askUserQuestionAutoResolutionEnabled:
+                    settings.askUserQuestionAutoResolutionEnabled !== false,
+                  modelIoFullRetentionEnabled: settings.modelIoFullRetentionEnabled === true,
+                };
+              },
+              warn: (message) => botLog.warn(message),
+            })
+          : undefined;
+        return { botsRepo, botRemoteWorkspaceService };
+      })();
+  const botsRepo = botRuntime?.botsRepo;
+  const botRemoteWorkspaceService = botRuntime?.botRemoteWorkspaceService;
   const oauthService = createOAuthService(credentialService, {
     apiClient,
     onProviderLogout: handleOAuthProviderLogout,
@@ -2578,37 +2580,42 @@ export function createLocalServices(options: {
   // Desktop Host 曾从 Settings View 再扫描一次 Account Provider，既绕开
   // Registry 的 entitlement/executable 事实，也在多个套餐同时可见时无法唯一选择。
   // 闲时服务与 Host 派发必须共享同一个 Registry-backed 凭据解析闭包。
-  const offPeakCredentialResolverDeps = {
-    credentialService,
-    accountRequestAuthService,
-    resolveAccountProvider: async () => {
-      await providerRuntime.start();
-      // start 缓存的是首次就绪；账号后到或切换后必须读 Registry 最近完成的快照。
-      const snapshot = providerRuntime.registryService.getSnapshot()!;
-      const providers = snapshot.resolution.registryProviders.filter(
-        (candidate) =>
-          candidate.config.access.type === "zhipu-account" &&
-          (candidate.config.access.mode === "individual-coding-plan" ||
-            candidate.config.access.mode === "team-coding-plan"),
-      );
-      if (providers.length !== 1) return null;
-      const provider = providers[0]!;
-      const config = provider.config;
-      const staticAccess = zcodeProviderAccountAccessSchema.parse(config.access.toJSON());
-      const access = await accountRequestAuthService.resolveAccessCurrent(staticAccess);
-      if (!access) return null;
-      return {
-        providerId: provider.providerId,
-        access: zcodeAccountAccessSchema.parse(access),
-        ...(config.api?.baseUrl ? { baseURL: config.api.baseUrl } : {}),
+  const offPeakCredentialResolverDeps = CODING_PLAN_DISABLED
+    ? null
+    : {
+        credentialService,
+        accountRequestAuthService,
+        resolveAccountProvider: async () => {
+          await providerRuntime.start();
+          // start 缓存的是首次就绪；账号后到或切换后必须读 Registry 最近完成的快照。
+          const snapshot = providerRuntime.registryService.getSnapshot()!;
+          const providers = snapshot.resolution.registryProviders.filter(
+            (candidate) =>
+              candidate.config.access.type === "zhipu-account" &&
+              (candidate.config.access.mode === "individual-coding-plan" ||
+                candidate.config.access.mode === "team-coding-plan"),
+          );
+          if (providers.length !== 1) return null;
+          const provider = providers[0]!;
+          const config = provider.config;
+          const staticAccess = zcodeProviderAccountAccessSchema.parse(config.access.toJSON());
+          const access = await accountRequestAuthService.resolveAccessCurrent(staticAccess);
+          if (!access) return null;
+          return {
+            providerId: provider.providerId,
+            access: zcodeAccountAccessSchema.parse(access),
+            ...(config.api?.baseUrl ? { baseURL: config.api.baseUrl } : {}),
+          };
+        },
       };
-    },
-  };
-  const buildOffPeakRequestAuthForTicket: OffPeakRequestAuthBuilder = async (ticketId) =>
-    buildOffPeakRequestAuth({
-      credentials: await resolveOffPeakCredentials(offPeakCredentialResolverDeps),
-      ticketId,
-    });
+  const buildOffPeakRequestAuthForTicket: OffPeakRequestAuthBuilder | null =
+    offPeakCredentialResolverDeps
+      ? async (ticketId) =>
+          buildOffPeakRequestAuth({
+            credentials: await resolveOffPeakCredentials(offPeakCredentialResolverDeps),
+            ticketId,
+          })
+      : null;
   const fileService = createFileService({
     workspaceFileSearchFilter: options?.workspaceFileSearchFilter,
   });
@@ -2685,26 +2692,7 @@ export function createLocalServices(options: {
     .register(ICuaPermissionService, cuaPermissionService)
     .register(ICuaPipSessionService, cuaPipSessionService)
     .register(IConversationShareService, conversationShareService)
-    .register(
-      IBotsService,
-      createBotsService({
-        repo: botsRepo,
-        projectService,
-        remoteProjectService,
-        ownerHostId: options?.projectStorageHostId ?? "local",
-        credentialService,
-        zcodeTaskService,
-        broadcastService,
-        settingService,
-        modelSelectionService: providerRuntime.modelSelection,
-        remoteWorkspaceService: botRemoteWorkspaceService
-          ? { ...botRemoteWorkspaceService, resolveWorkspace: options?.resolveBotRemoteWorkspace }
-          : undefined,
-        // 远端与本地 Bot 都读取所属 Environment 的 Model Selection View。
-        // 远端启动期不再轮询旧 Preset，避免重新制造一套模型候选事实。
-        runStartupBackgroundTasks: !isDesktopAttachedRemote,
-      }),
-    )
+
     .register(IFileWatcherService, createFileWatcherService())
     .register(IOAuthService, oauthService)
     .register(ISourceServerWorkspaceService, sourceServerWorkspaceService)
@@ -2731,16 +2719,87 @@ export function createLocalServices(options: {
       }),
     )
     .register(IClientScenesService, createClientScenesService({ apiClient }))
+
+    .register(ISkillsService, skillsService)
+    .register(ISkillSyncService, createSkillSyncService())
+    .register(IMcpSyncService, mcpSyncService)
     .register(
+      IGenUiService,
+      createGenUiService({ registerSandbox: options?.registerPluginSandbox }),
+    )
+    .register(IPluginUiBridgeService, pluginUiBridgeService)
+    .register(IPluginUiSamplingService, pluginUiSamplingService)
+    .register(IPluginUiAppToolsService, pluginUiAppToolsService)
+    // 合并 MCP/Plugin Management 服务装配时误删了 plugin-sync 注册，
+    // RemoteServiceAccess 仍会请求该频道，导致本地候选枚举超时、远端同步无法开始。
+    .register(IPluginSyncService, pluginSyncService)
+    .register(IPluginsService, createPluginsService({ isDesktopRuntime: true }))
+    // 设置页插件管理薄服务——plugins/* 旧协议词的 host 侧唯一消费点。
+    .register(
+      IPluginManagementService,
+      createPluginManagementService({
+        zcodeAgentService,
+        reportTelemetryEvent: options?.reportPluginTelemetryEvent,
+      }),
+    )
+    .register(ISubagentsService, subagentsService)
+    .register(ICommandsService, createCommandsService({ isDesktopRuntime: true }))
+    .register(
+      IHooksService,
+      createHooksService({
+        grantWorkspaceHookTrust: (params) => zcodeAgentService.grantWorkspaceHookTrust(params),
+      }),
+    )
+    .register(IMemoryService, createMemoryService())
+    .register(IOutputStyleService, createOutputStyleService())
+    .register(ISettingsSyncService, createSettingsSyncService({ settingService }))
+    .register(
+      IFeedbackService,
+      createFeedbackService({
+        ...options?.feedback,
+        apiClient,
+        credentialService,
+        oauthService,
+      }),
+    )
+    .register(IPromptAttachmentTransferService, createLocalPromptAttachmentTransferService());
+  // Bot 硬禁用时不注册 IBotsService：同进程消费方经 getOptional 自然降级，
+  // renderer 侧由各自的 BOTS_DISABLED 守卫兜住（见 spec/remote-disable.md）。
+  if (!BOTS_DISABLED) {
+    services.register(
+      IBotsService,
+      createBotsService({
+        repo: botsRepo,
+        projectService,
+        remoteProjectService,
+        ownerHostId: options?.projectStorageHostId ?? "local",
+        credentialService,
+        zcodeTaskService,
+        broadcastService,
+        settingService,
+        modelSelectionService: providerRuntime.modelSelection,
+        remoteWorkspaceService: botRemoteWorkspaceService
+          ? { ...botRemoteWorkspaceService, resolveWorkspace: options?.resolveBotRemoteWorkspace }
+          : undefined,
+        // 远端与本地 Bot 都读取所属 Environment 的 Model Selection View。
+        // 远端启动期不再轮询旧 Preset，避免重新制造一套模型候选事实。
+        runStartupBackgroundTasks: !isDesktopAttachedRemote,
+      }),
+    );
+  }
+  // 闲时任务硬禁用时不注册 IOffPeakTaskService：不构造 Repo/client，也不启动同步轮询。
+  if (!CODING_PLAN_DISABLED && offPeakCredentialResolverDeps) {
+    const resolverDeps = offPeakCredentialResolverDeps;
+    services.register(
       IOffPeakTaskService,
       (() => {
         // 闲时任务编排服务（与 automation 服务面独立）：
         // 单例属主在本集合，renderer 经 ProxyChannel 直连，host 派发经 getOptional 取同一实例。
         const offPeakLogger = createServiceLogger("off-peak");
-        const resolveCredentials = () => resolveOffPeakCredentials(offPeakCredentialResolverDeps);
+        const resolveCredentials = () => resolveOffPeakCredentials(resolverDeps);
         const originResolver = createOffPeakOriginResolver({
           logger: offPeakLogger,
-          resolveUpstream: () => resolveOffPeakMockUpstream(offPeakCredentialResolverDeps),
+          resolveUpstream: () => resolveOffPeakMockUpstream(resolverDeps),
         });
         const offPeakTaskRepo = new OffPeakTaskRepo();
         // OffPeakTaskRepo 也持有 tasks-index.sqlite 连接；收集到链前数组，services 建好后统一登记
@@ -2754,13 +2813,12 @@ export function createLocalServices(options: {
             resolveCredentials,
             logger: offPeakLogger,
           }),
-          resolveCodingPlanSupport: () =>
-            resolveOffPeakCodingPlanSupport(offPeakCredentialResolverDeps),
+          resolveCodingPlanSupport: () => resolveOffPeakCodingPlanSupport(resolverDeps),
           resolveTelemetryProviderName: async () =>
             resolveSafeTelemetryHostname(await originResolver.resolveOrigin()),
           resolveModelSelection: async (input) => {
             await providerRuntime.start();
-            const support = await resolveOffPeakCodingPlanSupport(offPeakCredentialResolverDeps);
+            const support = await resolveOffPeakCodingPlanSupport(resolverDeps);
             const providerId = support.supported
               ? OFF_PEAK_PROVIDER_IDS[support.providerFamily]
               : undefined;
@@ -2812,8 +2870,12 @@ export function createLocalServices(options: {
         offPeakTaskServiceForAgent = offPeakTaskService;
         return offPeakTaskService;
       })(),
-    )
-    .register(
+    );
+  }
+
+  // Highspeed 属 Coding Plan 域：硬禁用时不装配 transport、不构造服务。
+  if (!CODING_PLAN_DISABLED && offPeakCredentialResolverDeps) {
+    services.register(
       IHighspeedCardService,
       (() => {
         const origin = resolveRuntimeZCodeEndpointOrigin(process.env);
@@ -2909,50 +2971,8 @@ export function createLocalServices(options: {
           },
         });
       })(),
-    )
-    .register(ISkillsService, skillsService)
-    .register(ISkillSyncService, createSkillSyncService())
-    .register(IMcpSyncService, mcpSyncService)
-    .register(
-      IGenUiService,
-      createGenUiService({ registerSandbox: options?.registerPluginSandbox }),
-    )
-    .register(IPluginUiBridgeService, pluginUiBridgeService)
-    .register(IPluginUiSamplingService, pluginUiSamplingService)
-    .register(IPluginUiAppToolsService, pluginUiAppToolsService)
-    // 合并 MCP/Plugin Management 服务装配时误删了 plugin-sync 注册，
-    // RemoteServiceAccess 仍会请求该频道，导致本地候选枚举超时、远端同步无法开始。
-    .register(IPluginSyncService, pluginSyncService)
-    .register(IPluginsService, createPluginsService({ isDesktopRuntime: true }))
-    // 设置页插件管理薄服务——plugins/* 旧协议词的 host 侧唯一消费点。
-    .register(
-      IPluginManagementService,
-      createPluginManagementService({
-        zcodeAgentService,
-        reportTelemetryEvent: options?.reportPluginTelemetryEvent,
-      }),
-    )
-    .register(ISubagentsService, subagentsService)
-    .register(ICommandsService, createCommandsService({ isDesktopRuntime: true }))
-    .register(
-      IHooksService,
-      createHooksService({
-        grantWorkspaceHookTrust: (params) => zcodeAgentService.grantWorkspaceHookTrust(params),
-      }),
-    )
-    .register(IMemoryService, createMemoryService())
-    .register(IOutputStyleService, createOutputStyleService())
-    .register(ISettingsSyncService, createSettingsSyncService({ settingService }))
-    .register(
-      IFeedbackService,
-      createFeedbackService({
-        ...options?.feedback,
-        apiClient,
-        credentialService,
-        oauthService,
-      }),
-    )
-    .register(IPromptAttachmentTransferService, createLocalPromptAttachmentTransferService());
+    );
+  }
 
   // 即使初始配置关闭也必须登记 lifecycle disposer：terminal fence 需要早于任意延迟 setting/acquire
   // 恢复，不能把"当前还没有 Helper"误当成"不需要生命周期所有者"。dispose 时串行 stop host。
@@ -2968,17 +2988,30 @@ export function createLocalServices(options: {
   // 稳定 socket），或用户显式授权流（restartHelper）拉起。启动即零 Helper 常驻。
 
   accountRequestAuthServices.set(services, accountRequestAuthService);
-  offPeakRequestAuthBuilders.set(services, buildOffPeakRequestAuthForTicket);
+  if (buildOffPeakRequestAuthForTicket) {
+    offPeakRequestAuthBuilders.set(services, buildOffPeakRequestAuthForTicket);
+  }
 
   providerRuntimes.set(services, providerRuntime);
   providerProvisioningSources.set(services, providerProvisioningSource);
   providerProvisioningTriggerDisposers.set(services, providerProvisioningDisposers);
   // desktop-attached-remote 的组织态在远端 Host 库里，由远端自己的扫描器归档；本机不扫。
   if (!isDesktopAttachedRemote) {
+    // 自动归档按需运行：开启后启动扫描（间隔 1 小时），关闭时立即停掉定时器并保留手动归档。
     const stopSettingsRescan = settingService.onDidUpdate((event) => {
-      if (shouldRescanTaskAutoArchive(event.keys)) {
-        void taskAutoArchiveScheduler.scan().catch(() => {});
-      }
+      if (!shouldRescanTaskAutoArchive(event.keys)) return;
+      void settingService
+        .get()
+        .then((settings) => {
+          if (settings.taskAutoArchiveEnabled) {
+            taskAutoArchiveScheduler.start();
+            void taskAutoArchiveScheduler.scan().catch(() => {});
+          } else {
+            // 只停周期扫描，保留实例供用户再次开启时重新启动。
+            taskAutoArchiveScheduler.stop();
+          }
+        })
+        .catch(() => undefined);
     });
     taskAutoArchiveScheduler.start();
     taskAutoArchiveDisposers.set(services, () => {

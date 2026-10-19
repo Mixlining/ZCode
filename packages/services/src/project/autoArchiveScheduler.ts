@@ -3,10 +3,10 @@ import type { ProjectTaskRef } from "#src/project/contract.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 
 /**
- * 扫描只读一次设置 + 一次索引小查询，代价可忽略；5 分钟让刚超期或刚失去保护的任务
- * 很快离开列表，又不会像挂在点击上那样「点开即消失」。
+ * 扫描只在「自动归档已开启」时运行；间隔取 1 小时——归档本身以天为粒度，
+ * 更短的轮询只会带来无收益的周期性开销（见 spec/upstream-3.16.1-merge.md）。
  */
-export const TASK_AUTO_ARCHIVE_SCAN_INTERVAL_MS = 5 * 60 * 1000;
+export const TASK_AUTO_ARCHIVE_SCAN_INTERVAL_MS = 60 * 60 * 1000;
 
 /** 变更后需要立即补扫的设置键。 */
 const TASK_AUTO_ARCHIVE_SETTING_KEYS: ReadonlySet<string> = new Set([
@@ -28,10 +28,13 @@ export interface TaskAutoArchiveSchedulerOptions {
 }
 
 export interface TaskAutoArchiveScheduler {
-  /** 立即扫描一次并按固定间隔重复；重复调用无效。 */
+  /** 立即扫描一次并按固定间隔重复；自动归档关闭时不创建定时器，重复调用无效。 */
   start(): void;
+  /** 停止周期扫描并释放定时器；下次 start() 仍可重新启动。 */
+  stop(): void;
   /** 串行扫描；扫描进行中的调用合并为一次补扫。返回本次归档的任务。 */
   scan(): Promise<ProjectTaskRef[]>;
+  /** 终态释放：标记 disposed，之后的 scan/start 都不再工作。 */
   dispose(): void;
 }
 
@@ -97,11 +100,23 @@ export function createTaskAutoArchiveScheduler(
   return {
     start() {
       if (timer || disposed) return;
-      scanInBackground();
-      timer = setInterval(scanInBackground, intervalMs);
-      timer.unref?.();
+      // 关闭自动归档时只做一次策略探测，不创建常驻定时器：空闲应用不产生周期读库。
+      void options
+        .readPolicy()
+        .then((policy) => {
+          if (disposed || timer) return;
+          if (!policy) return;
+          void scan().catch(() => undefined);
+          timer = setInterval(scanInBackground, intervalMs);
+          timer.unref?.();
+        })
+        .catch(() => undefined);
     },
     scan,
+    stop() {
+      if (timer) clearInterval(timer);
+      timer = null;
+    },
     dispose() {
       disposed = true;
       if (timer) clearInterval(timer);

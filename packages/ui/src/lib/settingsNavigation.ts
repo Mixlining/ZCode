@@ -46,6 +46,9 @@ const HIDDEN_SETTINGS_SECTIONS = new Set<SettingsSectionId>([
   // 工作区搜索（.zcodeignore）设置入口先隐藏：规则文件仍生效并可手动编辑，
   // 编辑页代码保留，放开时从这里移除即可。
   "workspaceFileSearch",
+  // 远程设备属远程 workspace 硬禁用域：导航不出现，跳转由 resolveSettingsSection 回落。
+  // 实现、文案与页面保留，仅从入口层移除（见 spec/remote-disable.md）。
+  "remoteDevices",
 ]);
 
 export interface SettingsSectionIntentEventDetail {

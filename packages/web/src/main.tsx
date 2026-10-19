@@ -2043,8 +2043,34 @@ async function bootstrapExternalRelayWebRemoteControl(
   transport.start();
 }
 
+/**
+ * 永久禁用域的路由在入口直接 404：桌面安装包不发布也不托管本页面，
+ * 只有自建 Web 部署可达。返回 404 让用户看到明确结论，而不是登录页/网络错误。
+ * 见 spec/upstream-3.16.1-merge.md。
+ */
+function renderDisabledRouteNotFound(): void {
+  document.title = "404 Not Found";
+  root.render(
+    <main className="flex min-h-dvh items-center justify-center bg-background px-6 text-foreground">
+      <div className="max-w-md text-center">
+        <p className="text-ui-xl font-semibold">404</p>
+        <p className="mt-2 text-ui-sm text-muted-foreground">This page is not available.</p>
+      </div>
+    </main>,
+  );
+}
+
 async function bootstrapWebApp() {
   const params = new URLSearchParams(window.location.search);
+  // 手机远控与会话分享属永久禁用域：路由与回调都在入口 404，不加载页面、不发任何请求。
+  if (
+    isWebRemoteControlRoute() ||
+    isWebRemoteControlOAuthCallback(new URL(window.location.href)) ||
+    isConversationSharePath(window.location.pathname)
+  ) {
+    renderDisabledRouteNotFound();
+    return;
+  }
   if (isWebRemoteControlRoute() || isWebRemoteControlOAuthCallback(new URL(window.location.href))) {
     document.documentElement.lang = resolveWebRemoteControlScreenLocale(navigator.language);
   }

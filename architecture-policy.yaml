@@ -894,3 +894,18 @@ exceptions:
     rule: unmanaged-new-file
     paths: [packages/desktop/src/host/hostServiceResourceTelemetry.ts]
     reason: 已准入的存量 host 遥测装配文件在 v3.16.1 同步中只改了一行守卫注释（远端支持语义），守卫实现与模块边界不变；接管 desktop host 目录需单独的边界梳理。
+  - id: v3-16-1-upstream-source-server-and-packaging
+    rule: unmanaged-new-file
+    paths:
+      - packages/desktop/src/host/sourceServerOperationLogs.ts
+      - packages/server/src/source-server/sourceServerTransportRuntime.ts
+      - packages/server/src/source-server/transportAdapter.ts
+      - packages/services/src/source-server-workspace/sourceServerWorkspace.ts
+      - packages/shared/src/source-server/errorCodes.ts
+      - packages/ui/src/WorkspaceSidebar/RemoteProjectDetailsPopover.tsx
+      - packages/ui/src/hooks/useSourceServerManagementSnapshot.ts
+      - packages/ui/src/settings/SourceServerMigrationReportPanel.tsx
+      - packages/ui/src/store/sourceServerDisplayNameRegistry.ts
+      - packages/zcode-server-cli/src/packaging/stageArchives.ts
+      - packages/zcode-server-cli/src/packaging/stageRemoteAssetsCli.ts
+    reason: v3.16.1 upstream files reached staging without managed-module registration; two of them (stageRemoteAssetsCli, sourceServerOperationLogs) carry the dev guard and the rest are untouched upstream code. Adopting desktop/server/services/ui/zcode-server-cli module boundaries needs a separate refactor.

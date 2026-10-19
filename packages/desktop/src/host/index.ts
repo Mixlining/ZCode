@@ -3790,18 +3790,21 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
           log: (message, details) => logger.warn(message, details),
           establishOwner: () => {
             const initializedServices = createLocalServices({
-              reportPluginTelemetryEvent: (event) => {
-                parentPort?.postMessage({
-                  type: HostResponseTypes.PluginTelemetry,
-                  event: {
-                    ...event,
-                    context: {
-                      ...event.context,
-                      screenResolution: event.context.screenResolution || "unknown",
-                    },
-                  },
-                });
-              },
+              // 遥测硬关闭：不注入上报回调，插件操作不为无消费者的信道构造跨进程载荷。
+              reportPluginTelemetryEvent: ZCODE_TELEMETRY_ENABLED
+                ? (event) => {
+                    parentPort?.postMessage({
+                      type: HostResponseTypes.PluginTelemetry,
+                      event: {
+                        ...event,
+                        context: {
+                          ...event.context,
+                          screenResolution: event.context.screenResolution || "unknown",
+                        },
+                      },
+                    });
+                  }
+                : undefined,
               resolveBotProjectConnection,
               resolveBotRemoteWorkspace: (workspace) =>
                 sourceServerDirectory
@@ -4043,71 +4046,78 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
           );
           services.register(IZCodeTaskService, reportingZCodeTaskService);
         }
-        sourceServerDirectory = new SourceServerDirectory({
-          settingService: services.get(ISettingService),
-          credentialService: services.get(ICredentialService),
-          // host 域无 debug 日志通道；按 debug 语义仅在非生产输出，生产 no-op 防止刷盘。
-          logDebug: (message) => {
-            if (process.env.NODE_ENV !== "production") logger.info(message);
-          },
-        });
-        sourceServerArtifactPolicy =
-          msg.remoteAssets?.sourceServerArtifactPolicy ?? "release-versioned";
-        // Bug 原因：release resolver 过去只传给 updateSource；启动恢复和 connectProfile 直接调用
-        // Manager，在 development-content-addressed 同版本校验处拿不到本地 archive，必然误报 unavailable。
-        const resolveSourceServerRelease = async (
-          probe: Parameters<typeof resolveSourceServerReleaseAsset>[0],
-          target: Parameters<typeof resolveSourceServerReleaseAsset>[2],
-          options?: { metadataOnly?: boolean },
-        ) =>
-          await resolveSourceServerReleaseAsset(
-            probe,
-            msg.remoteAssets ?? {},
-            target,
-            {
-              fetch: hostApiNetworkTransport.fetch,
+        // 远程 workspace 硬禁用：不构造 Source Server directory/manager/管理服务——
+        // 三者构造即注册状态订阅、持有启动快照与连接状态；见 spec/remote-disable.md。
+        if (!REMOTE_WORKSPACE_DISABLED) {
+          sourceServerDirectory = new SourceServerDirectory({
+            settingService: services.get(ISettingService),
+            credentialService: services.get(ICredentialService),
+            // host 域无 debug 日志通道；按 debug 语义仅在非生产输出，生产 no-op 防止刷盘。
+            logDebug: (message) => {
+              if (process.env.NODE_ENV !== "production") logger.info(message);
             },
-            options,
-          );
-        sourceServerConnectionManager = new SourceServerConnectionManager({
-          directory: sourceServerDirectory,
-          admitConnection: createRemoteProjectConnectionAdmission(
-            services.get(IRemoteProjectService),
-          ),
-          onProjectChange: notifyProjectChange,
-          logWarn: (message, error) => logger.warn(message, error),
-          sourceServerArtifactPolicy,
-          resolveRelease: resolveSourceServerRelease,
-        });
-        sourceServerManagementService = createSourceServerManagementService({
-          directory: sourceServerDirectory,
-          manager: sourceServerConnectionManager,
-          resolveRelease: resolveSourceServerRelease,
-          onDirectorySnapshot: (snapshot) => {
-            sourceServerDisplayNameById.clear();
-            for (const server of snapshot.servers) {
-              sourceServerDisplayNameById.set(server.sourceServerId, server.displayName);
-            }
-          },
-          onBeforeSourceServerRemoved: async (sourceServerId) => {
-            const hostId = remoteHostIdFromWorkspaceIdentity(
-              buildServerRemoteWorkspaceIdentity({ serverId: sourceServerId, workspacePath: "/" }),
+          });
+          sourceServerArtifactPolicy =
+            msg.remoteAssets?.sourceServerArtifactPolicy ?? "release-versioned";
+          // Bug 原因：release resolver 过去只传给 updateSource；启动恢复和 connectProfile 直接调用
+          // Manager，在 development-content-addressed 同版本校验处拿不到本地 archive，必然误报 unavailable。
+          const resolveSourceServerRelease = async (
+            probe: Parameters<typeof resolveSourceServerReleaseAsset>[0],
+            target: Parameters<typeof resolveSourceServerReleaseAsset>[2],
+            options?: { metadataOnly?: boolean },
+          ) =>
+            await resolveSourceServerReleaseAsset(
+              probe,
+              msg.remoteAssets ?? {},
+              target,
+              {
+                fetch: hostApiNetworkTransport.fetch,
+              },
+              options,
             );
-            if (!hostId) throw new Error("remote-project.invalid-host-identity");
-            await services.get(IRemoteProjectService).removeHost(hostId);
-            windowHostAttachmentRegistry.detachSourceSettingsAttachments(sourceServerId);
-            sourceServerDisplayNameById.delete(sourceServerId);
-          },
-        });
-        sourceSettingsStateSubscription = sourceServerConnectionManager.onDidChangeState(
-          (state) => {
-            notifyProjectChange();
-            if (state.sourceServerId && shouldDetachSourceSettingsAttachment(state.state)) {
-              windowHostAttachmentRegistry.detachSourceSettingsAttachments(state.sourceServerId);
-            }
-          },
-        );
-        services.register(ISourceServerManagementService, sourceServerManagementService);
+          sourceServerConnectionManager = new SourceServerConnectionManager({
+            directory: sourceServerDirectory,
+            admitConnection: createRemoteProjectConnectionAdmission(
+              services.get(IRemoteProjectService),
+            ),
+            onProjectChange: notifyProjectChange,
+            logWarn: (message, error) => logger.warn(message, error),
+            sourceServerArtifactPolicy,
+            resolveRelease: resolveSourceServerRelease,
+          });
+          sourceServerManagementService = createSourceServerManagementService({
+            directory: sourceServerDirectory,
+            manager: sourceServerConnectionManager,
+            resolveRelease: resolveSourceServerRelease,
+            onDirectorySnapshot: (snapshot) => {
+              sourceServerDisplayNameById.clear();
+              for (const server of snapshot.servers) {
+                sourceServerDisplayNameById.set(server.sourceServerId, server.displayName);
+              }
+            },
+            onBeforeSourceServerRemoved: async (sourceServerId) => {
+              const hostId = remoteHostIdFromWorkspaceIdentity(
+                buildServerRemoteWorkspaceIdentity({
+                  serverId: sourceServerId,
+                  workspacePath: "/",
+                }),
+              );
+              if (!hostId) throw new Error("remote-project.invalid-host-identity");
+              await services.get(IRemoteProjectService).removeHost(hostId);
+              windowHostAttachmentRegistry.detachSourceSettingsAttachments(sourceServerId);
+              sourceServerDisplayNameById.delete(sourceServerId);
+            },
+          });
+          sourceSettingsStateSubscription = sourceServerConnectionManager.onDidChangeState(
+            (state) => {
+              notifyProjectChange();
+              if (state.sourceServerId && shouldDetachSourceSettingsAttachment(state.state)) {
+                windowHostAttachmentRegistry.detachSourceSettingsAttachments(state.sourceServerId);
+              }
+            },
+          );
+          services.register(ISourceServerManagementService, sourceServerManagementService);
+        }
         wireLocalResourceTelemetry(services);
         hasDisposedHostResources = false;
         disposeHostResourcesInFlight = null;
@@ -4142,68 +4152,71 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
           });
         logWindowHostTopology("base-attachment-ready");
         logger.info("local services ready, all channels registered");
-        // URL Host 复用相同启动开关与 Registry；项目发现不创建 logical workspace/Agent。
-        void runStartupReconnectBatch({
-          getSettings: () => services.get(ISettingService).get(),
-          listCandidates: async () =>
-            (await services.get(IRemoteProjectService).readDirectory()).hosts.filter(
-              (host) => host.kind === "server",
-            ),
-          reconnect: (hosts) =>
-            Promise.all(
-              hosts.map(async (host) => {
-                try {
-                  await services.get(IRemoteProjectService).connectHost(host.id);
-                } catch (error) {
-                  logger.warn("URL Server startup reconnect failed", { hostId: host.id, error });
-                }
-              }),
-            ),
-        }).catch((error) => logger.warn("URL Server startup directory unavailable", error));
+        // 远程 workspace 硬禁用：不执行启动重连批次，不读上次连接、不建连、不重试。
+        if (!REMOTE_WORKSPACE_DISABLED) {
+          // URL Host 复用相同启动开关与 Registry；项目发现不创建 logical workspace/Agent。
+          void runStartupReconnectBatch({
+            getSettings: () => services.get(ISettingService).get(),
+            listCandidates: async () =>
+              (await services.get(IRemoteProjectService).readDirectory()).hosts.filter(
+                (host) => host.kind === "server",
+              ),
+            reconnect: (hosts) =>
+              Promise.all(
+                hosts.map(async (host) => {
+                  try {
+                    await services.get(IRemoteProjectService).connectHost(host.id);
+                  } catch (error) {
+                    logger.warn("URL Server startup reconnect failed", { hostId: host.id, error });
+                  }
+                }),
+              ),
+          }).catch((error) => logger.warn("URL Server startup directory unavailable", error));
 
-        // Bug 原因：Directory 迁移属于远程附加能力，等待它完成会把本地 base attachment 的
-        // 首帧一起拖住。base ready 后再后台初始化；失败 flight 清空，用户显式连接仍可重试。
-        void sourceServerDirectory
-          .initialize()
-          .then(async () =>
-            runStartupReconnectBatch({
-              getSettings: () => services.get(ISettingService).get(),
-              listCandidates: async () => {
-                const retained = new Set(
-                  (await services.get(IRemoteProjectService).readDirectory()).hosts.map(
-                    (host) => host.id,
-                  ),
-                );
-                return (await sourceServerDirectory!.listStartupReconnectCandidates()).filter(
-                  (candidate) => retained.has(remoteProjectHostIdForProfile(candidate.profile)),
-                );
-              },
-              reconnect: (candidates) =>
-                sourceServerConnectionManager!.reconnectOnStartup(candidates),
-            }),
-          )
-          .then((results) => {
-            const online = results.filter((result) => result.status === "online").length;
-            // Bug 原因：过去只记录失败计数，真实 Profile/reason 被吞掉，导致冷启动失败只能靠
-            // 手动重连再次触发。启动批次最多 3 个，逐项 warn 不会形成高频日志。
-            for (const result of results) {
-              if (result.status === "failed") {
-                logger.warn("Source Server startup reconnect failed", {
-                  profileId: result.profileId,
-                  error: result.error,
-                });
+          // Bug 原因：Directory 迁移属于远程附加能力，等待它完成会把本地 base attachment 的
+          // 首帧一起拖住。base ready 后再后台初始化；失败 flight 清空，用户显式连接仍可重试。
+          void sourceServerDirectory!
+            .initialize()
+            .then(async () =>
+              runStartupReconnectBatch({
+                getSettings: () => services.get(ISettingService).get(),
+                listCandidates: async () => {
+                  const retained = new Set(
+                    (await services.get(IRemoteProjectService).readDirectory()).hosts.map(
+                      (host) => host.id,
+                    ),
+                  );
+                  return (await sourceServerDirectory!.listStartupReconnectCandidates()).filter(
+                    (candidate) => retained.has(remoteProjectHostIdForProfile(candidate.profile)),
+                  );
+                },
+                reconnect: (candidates) =>
+                  sourceServerConnectionManager!.reconnectOnStartup(candidates),
+              }),
+            )
+            .then((results) => {
+              const online = results.filter((result) => result.status === "online").length;
+              // Bug 原因：过去只记录失败计数，真实 Profile/reason 被吞掉，导致冷启动失败只能靠
+              // 手动重连再次触发。启动批次最多 3 个，逐项 warn 不会形成高频日志。
+              for (const result of results) {
+                if (result.status === "failed") {
+                  logger.warn("Source Server startup reconnect failed", {
+                    profileId: result.profileId,
+                    error: result.error,
+                  });
+                }
               }
-            }
-            logger.info(
-              `Source Server startup reconnect finished, online=${online}, failed=${results.length - online}`,
+              logger.info(
+                `Source Server startup reconnect finished, online=${online}, failed=${results.length - online}`,
+              );
+            })
+            .catch((error) =>
+              logger.warn(
+                "Source Server directory initialization failed; local services remain available",
+                error,
+              ),
             );
-          })
-          .catch((error) =>
-            logger.warn(
-              "Source Server directory initialization failed; local services remain available",
-              error,
-            ),
-          );
+        }
       },
     });
     await databaseStartup.coordinator.start();
