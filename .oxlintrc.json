@@ -29,11 +29,17 @@
         // core 包内以 --no-ignore 运行时，oxlint 按 cwd 相对路径匹配同一组存量文件。
         "src/runtime/methods/steering.ts",
         "src/runtime/methods/turn.ts",
-        "src/runtime/methods/turn-model-step.ts",
-        "**/packages/ui/src/remote-connection-flow/index.ts"
+        "src/runtime/methods/turn-model-step.ts"
       ],
       "rules": {
         "max-lines": ["warn", { "max": 800, "skipBlankLines": true, "skipComments": true }]
+      }
+    },
+    {
+      // 远端连接流程沿用上游存量实现；拆分会打散同一次连接生命周期的状态 owner，暂不按行数拆分。
+      "files": ["**/packages/ui/src/remote-connection-flow/index.ts"],
+      "rules": {
+        "max-lines": "off"
       }
     },
     {

@@ -1459,11 +1459,6 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
     },
     [handleStartDraftInWorkspace, showChatMainView],
   );
-  const handleCreateProjectDraft = useCallback(
-    (path: string, identity?: string) =>
-      handleStartDraftInWorkspaceInChat(path, identity, undefined, "project"),
-    [handleStartDraftInWorkspaceInChat],
-  );
   const activeWorkspacePurpose =
     workspaceTabs.find(
       (tab) =>

@@ -586,11 +586,7 @@ export function createZCodeTaskIndexSyncer(
   const mirrorSummary = taskFacts.ingest;
 
   /** phase 终态迁移 → sqlite status 收敛 + 广播 + 回源正文索引。 */
-  function applyTerminalTransition(
-    target: ZCodeAgentSessionTarget,
-    summary: SessionSummary,
-    options?: { captureRepoSnapshot?: boolean },
-  ): void {
+  function applyTerminalTransition(target: ZCodeAgentSessionTarget, summary: SessionSummary): void {
     emitTerminalAndReady(target, summary);
     const failed = summary.phase === "error";
     const unreadSignal = resolveTerminalUnreadSignal(summary);
@@ -622,7 +618,7 @@ export function createZCodeTaskIndexSyncer(
         void resyncTaskIndexRowFromAgent(target, failed ? "phase.error" : "phase.completed", {
           // 修复原因：patch 已广播时不能让随后的 snapshot 回源再次制造完成提醒；
           // 行缺失时则把同一 signal 交给回源结果，保证提醒既不丢也不重复。
-          ...(meta || !unreadSignal ? {} : { unreadSignal }),
+          ...(meta || !unreadSignal ? undefined : { unreadSignal }),
         });
       })
       .catch((error) => {
@@ -677,11 +673,9 @@ export function createZCodeTaskIndexSyncer(
     const becameTerminal =
       previous !== undefined && !isTerminalPhase(previous.phase) && isTerminalPhase(next.phase);
     if (becameTerminal) {
-      applyTerminalTransition(target, next, {
-        // Bug 根因：deliveryKind 只描述传输方式，不能证明完成副作用已经执行。state.summaries
-        // 已提供 workspace 生命周期幂等边界；running -> terminal 的 recovery 必须补投。
-        captureRepoSnapshot: true,
-      });
+      // Bug 根因：deliveryKind 只描述传输方式，不能证明完成副作用已经执行。state.summaries
+      // 已提供 workspace 生命周期幂等边界；running -> terminal 的 recovery 必须补投。
+      applyTerminalTransition(target, next);
       return;
     }
     if (becameVisibleTask) {

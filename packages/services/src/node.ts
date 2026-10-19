@@ -35,11 +35,7 @@ import {
   PERSONAL_PROVIDER_CONFIG_FILE_NAME,
 } from "@zcode/provider-node";
 import { getAppConfigDir as resolveAppConfigDir } from "./paths.js";
-import {
-  createHasExistingLocalTask,
-  hasAnyAgentSessionRow,
-  resolveAgentSessionDbPath,
-} from "./onboarding/localUsageEvidence.js";
+import { createHasExistingLocalTask } from "./onboarding/localUsageEvidence.js";
 import {
   BOTS_DISABLED,
   buildLocalMediaPreviewUrl,
@@ -1382,7 +1378,6 @@ export function createLocalServices(options: {
   // 增加启动 I/O，后续 session syncer 也继续复用这一实例。
   const taskIndexRepo = new TaskIndexRepo(undefined, options?.projectStorageHostId);
   // onboarding 完成记录：userId 由登录态补全（apikey/未登录为 null），见 docs/onboarding-record-spec.md。
-  const onboardingEvidenceLogger = createServiceLogger("onboardingRecordService");
   const onboardingRecordService = createOnboardingRecordService({
     loadUserId: async () => (await oauthCredentialRepo.loadActiveUserProfile())?.id ?? null,
     // 老用户使用证据不能只查 tasks-index：索引是 session 同步器的衍生投影，同步器在
@@ -1695,11 +1690,6 @@ export function createLocalServices(options: {
   const subagentsService = createSubagentsService({
     isDesktopRuntime: true,
   });
-  const commandsService = createCommandsService({ isDesktopRuntime: true });
-  const hooksService = createHooksService({
-    grantWorkspaceHookTrust: (params) => zcodeAgentService.grantWorkspaceHookTrust(params),
-  });
-  const memoryService = createMemoryService();
   // 只要当前进程已经装配 Provider Runtime，就由该 Environment 自己的 Selection View
   // 决定执行就绪状态。Desktop-attached remote 也读取远端自己的 Config/Account Facts。
   const modelSelectionReadinessSource = providerRuntime.modelSelection;

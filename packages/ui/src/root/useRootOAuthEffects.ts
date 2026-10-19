@@ -8,7 +8,6 @@ import type {
 } from "@zcode/shared";
 import {
   CODING_PLAN_DISABLED,
-  DesktopCommandIds,
   resolveProviderFamilyDomainFromOAuthProvider,
   ZCODE_JWT_INVALID_BROADCAST_CHANNEL,
 } from "@zcode/shared";

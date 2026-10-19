@@ -207,7 +207,7 @@ describe(`${CASE_MARKER}: 远端 task 的子 Agent 会话：打开、继续观�
         });
         const remoteLog = await runSSHCommand(
           prepared.config,
-          'F=$(ls -t ~/.zcode/cli/log/*.jsonl | head -n1); grep -c "\"Agent\"" "$F" || true; grep -o "\"event\":\"[a-z_.]*subagent[a-z_.]*\"" "$F" | sort | uniq -c | tail -n 8',
+          `F=$(ls -t ~/.zcode/cli/log/*.jsonl | head -n1); grep -c '"Agent"' "$F" || true; grep -o '"event":"[a-z_.]*subagent[a-z_.]*"' "$F" | sort | uniq -c | tail -n 8`,
         );
         facts.remoteSubagentLog = remoteLog.stdout.trim().split("\n");
         throw error;

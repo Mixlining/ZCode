@@ -41,7 +41,6 @@ import {
   net,
   protocol,
   session,
-  shell,
   webContents,
 } from "electron";
 import { randomUUID } from "node:crypto";
@@ -63,9 +62,6 @@ import {
   getZCodeDataRootDir,
   normalizeRuntimeProcessEnv,
   setDataBaseDir,
-  migrateApplicationStorage,
-  resolveDefaultZCodeAgentCommand,
-  startupStorage,
 } from "@zcode/services/node";
 import {
   desktopMenuMessageIds,
@@ -264,7 +260,6 @@ import {
   setActiveEmbeddedBrowserPermissionUiBridge,
 } from "./embeddedBrowserPermissionUiBridge.js";
 import {
-  CODING_PLAN_DISABLED,
   mapZCodeEnvToArmsRumEnv,
   PHONE_REMOTE_DISABLED,
   REMOTE_WORKSPACE_DISABLED,

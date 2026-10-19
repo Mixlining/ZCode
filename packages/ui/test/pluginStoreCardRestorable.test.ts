@@ -186,7 +186,8 @@ describe("PluginStoreCard restorable built-ins", () => {
     expect(html).toContain('data-testid="plugin-store-ui-capability"');
     expect(html).not.toContain('data-testid="plugin-store-try-now"');
     const button = buttonProps.find((props) => props["data-testid"] === "plugin-store-open-ui");
-    (button?.onClick as (event: { stopPropagation: () => void }) => void)({
+    if (!button) throw new Error("plugin-store-open-ui button not found");
+    (button.onClick as (event: { stopPropagation: () => void }) => void)({
       stopPropagation: () => {},
     });
     expect(onOpenUi).toHaveBeenCalledWith(item);
@@ -200,7 +201,8 @@ describe("PluginStoreCard restorable built-ins", () => {
     const button = buttonProps.find(
       (props) => props["data-testid"] === "plugin-store-reset-config",
     );
-    (button?.onClick as () => void)();
+    if (!button) throw new Error("plugin-store-reset-config button not found");
+    (button.onClick as () => void)();
     expect(onResetConfig).toHaveBeenCalledWith(item.id);
   });
 
