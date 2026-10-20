@@ -73,6 +73,12 @@ Host 服务装配不创建没有注册或消费方的 commands、hooks、memory 
 - 插件市场目录与插件下载（CDN）。
 - 用户自行配置的模型端点请求（自带 API Key 的正常业务流量）。
 
+「插件市场目录」例外只覆盖 ZCode 官方市场 `zcode-plugins-official`。
+`claude-plugins-official` 是可选个人来源，**不得列入默认市场源、必须可删除、不得自动
+补种**；三条约束与上游同步复核方式见
+[默认市场源硬约束](../docs/claude-code-marketplace-plugin-compat.md#默认市场源硬约束)。
+它不属于「保留必须存在」的厂商读取，用户移除后不得借由任何补种或恢复路径重新出现。
+
 远程工作区运行资产下载（`cdn-zcode.z.ai`）**不再是例外**：远程 workspace 已在
 `spec/remote-disable.md` 中整体硬禁用，该下载路径不再触发。
 
@@ -285,6 +291,11 @@ ARMS browser bootstrap/init 与已删除启动模块相同，均不纳入本构�
 4. `off_peak_tasks` 的表/列/索引/已发布迁移与校验值保持字节不变。
 5. 新增遥测事件类型（如 v3.16.1 的插件生命周期事件）只允许落在守卫后的管道里；
    检查每个新事件的 Host/Main 转发分支都有开关守卫，不允许「无守卫转发 + 仅核心兜底」。
+6. `DEFAULT_PLUGIN_MARKETPLACES` 未被回退为包含 `claude-plugins-official`；市场源管理中
+   claude 的移除入口仍在；`ensureDefaultPluginMarketplaces` 未新增对缺失 claude 记录的
+   补种。执行
+   `git diff <merge-base> <merged> -- packages/shared/src/plugin-marketplaces.ts packages/ui/src/settings/PluginStoreSourcesDialog.tsx`，
+   命中项只能是既有保留实现，不能把 claude 加回默认列表。
 
 ## 变动历史
 

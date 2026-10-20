@@ -20,6 +20,7 @@ _Avoid_: 网络插件、在线插件
 
 **Personal Source（个人来源）**:
 用户自行添加的一切插件来源：claude-plugins-official、git/GitHub/URL/本地目录市场、inline 插件。
+claude-plugins-official 不再默认补种：只有用户手动添加后才出现，移除后不复活。
 _Avoid_: 第三方市场（claude-plugins-official 也归此类，"第三方"名不副实）
 
 **Catalog Auto-Refresh（目录自动刷新）**:
@@ -48,7 +49,8 @@ _Avoid_: 第三方 tab、我的 tab
 _Avoid_: 与 Recommended 混用
 
 **Recommended（推荐）**:
-个人分段顶部的策展区，名单由仓内 `recommendedPlugins.json` 维护（当前推 claude-plugins-official 的精选插件）。仅存在于个人分段。
+已下线。个人分段不再置顶策展名单；仓内 `recommendedPlugins.json` 只保留默认个人市场 id
+（`claude-plugins-official`），用于归属判断与置顶排序，不代表该市场默认存在。
 _Avoid_: 与 Featured 混用
 
 **Manage Installed View（插件管理）**:

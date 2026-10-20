@@ -13,9 +13,10 @@ ZCode 需要最大努力兼容 Claude Code Marketplace 插件，但不能把 Cla
 
 - 支持 marketplace `add/list/update/remove`。
 - 支持 plugin `install/uninstall/update`。
-- 默认注册 Claude 官方 marketplace source：`claude-plugins-official` 指向
-  `anthropics/claude-plugins-official`。默认市场只提供 catalog 来源，不自动安装、
-  不自动启用任何 Claude 插件。
+- 保留 Claude 官方 marketplace source 常量：`claude-plugins-official` 指向
+  `anthropics/claude-plugins-official`，作为可手动添加的个人 catalog 来源。该市场
+  不得列入默认市场源、必须可删除、不得自动补种（硬约束见「默认市场源硬约束」）。
+  手动添加后只提供 catalog 来源，不自动安装、不自动启用任何 Claude 插件。
 - 新增 `installed_plugins.json` 保存安装态；继续用现有 `plugins.enabledPlugins`
   保存启用态。
 - discovery 读取 installed cache roots，并保留已有 `plugins.dirs` inline 插件。
@@ -100,7 +101,8 @@ CDN 市场条目优先。Claude 官方 `claude-plugins-official` 只内置 marke
 
 ### Claude 官方市场弱依赖
 
-`claude-plugins-official` 是可选 catalog 来源，不得成为插件管理或其他市场操作的硬依赖：
+`claude-plugins-official` 是可选 catalog 来源（不默认补种，用户可移除、可手动重新添加），
+不得成为插件管理或其他市场操作的硬依赖：
 
 - 每次 Claude 市场 catalog 刷新使用独立的 30 秒总超时，并通过 `AbortSignal` 终止底层
   HTTP/Archive 请求；超时后立即返回 `plugin_archive_fetch_failed`（或对应来源诊断）。
@@ -129,6 +131,35 @@ Claude catalog request
 写入 `marketplaces/{marketplace}/marketplace.json`，但读取外部源时不能只认根目录
 `marketplace.json`。
 
+### 默认市场源硬约束
+
+`claude-plugins-official` 是**可选个人来源**，不是默认市场。以下三条是长期约束，
+上游同步、重构或新增市场功能时都不得回退：
+
+1. **不得列入默认市场源。** `DEFAULT_PLUGIN_MARKETPLACES` 只允许包含 ZCode 官方市场
+   `zcode-plugins-official`。不得把 `claude-plugins-official` 加回该列表，也不得通过
+   其它启动补种、首次运行种子、配置默认值或远端下发把它变成默认存在。
+2. **必须可删除。** 市场源管理中 `claude-plugins-official` 的移除入口必须保留。
+   只有 `zcode-plugins-official` 不可移除（它在默认补种列表内）。不得以「官方来源」
+   「弱依赖」「刷新失败静默」等理由重新隐藏该市场的删除按钮。
+3. **不得自动补种。** `ensureDefaultPluginMarketplaces` 及任何新增的补种、迁移、
+   恢复逻辑都不得在 `claude-plugins-official` 缺失时重新写入它。用户移除后它不得
+   复活；只有用户显式添加才会出现。
+
+`CLAUDE_OFFICIAL_PLUGIN_MARKETPLACE_ID` 常量、claude 市场的目录分组展示、
+图标增强、刷新失败静默与保留 id 判定（`isOfficialMarketplaceId`）都属于**保留实现**，
+与本约束不冲突：保留它们是为了兼容已安装插件与手动添加路径，不是为了默认提供该市场。
+
+反路径（每条都必须在评审中被拒绝）：
+
+- 把 claude 条目加回 `DEFAULT_PLUGIN_MARKETPLACES`，或新增第二个补种列表包含它；
+- 让 `isRemovableMarketplace` 重新对 claude 返回 `false`，或删除源管理中的移除按钮；
+- 在 overview、启动 seed 或配置解析里对缺失的 claude 市场做「顺手补一条」；
+- 用「用户之前装过 claude 插件」推断用户需要该市场并自动恢复。
+
+上游同步复核：`git diff <merge-base> <merged> -- packages/shared/src/plugin-marketplaces.ts`
+不得出现向 `DEFAULT_PLUGIN_MARKETPLACES` 新增 claude 条目的改动。
+
 ## Marketplace Source 兼容
 
 V1 必须识别 Claude Marketplace source schema，并按支持级别处理：
@@ -146,8 +177,9 @@ V1 必须识别 Claude Marketplace source schema，并按支持级别处理：
 
 默认 marketplace seed 只在 `known_marketplaces.json` 缺少同名市场时写入。若用户已有
 同名 marketplace 记录，必须保留用户记录，不能覆盖 source、`addedAt` 或
-`lastUpdated`。移除默认 marketplace 后，下次读取 marketplace 列表会再次恢复；永久隐藏
-默认市场不属于 V1。
+`lastUpdated`。默认补种列表（`DEFAULT_PLUGIN_MARKETPLACES`）只含 ZCode 官方市场
+`zcode-plugins-official`：Claude 官方市场是可选个人来源，被用户移除后不再自动恢复，
+可随时手动重新添加（见「默认市场源硬约束」）。
 
 Plugin entry `source` 的 V1 支持范围：
 

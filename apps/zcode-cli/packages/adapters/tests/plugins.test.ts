@@ -641,7 +641,7 @@ describe("NodePluginAdapter", () => {
     }
   });
 
-  it("seeds Claude official marketplace without overwriting an existing record", async () => {
+  it("seeds only the ZCode official marketplace and keeps an existing Claude record", async () => {
     const dir = await mkdtemp(join(tmpdir(), "zcode-plugin-default-marketplace-"));
     const storageRoot = join(dir, "storage");
 
@@ -660,8 +660,8 @@ describe("NodePluginAdapter", () => {
 
       const known = ensureDefaultPluginMarketplaces(storageRoot);
 
-      // 默认市场现在有两个：claude-plugins-official（已有记录不被覆盖）+ 唯一 ZCode
-      // 官方市场 zcode-plugins-official（缺失时补种）。
+      // 默认补种列表只含 zcode-plugins-official：已有 claude 记录原样保留、不被覆盖，
+      // 且 claude 不会因为缺失被补种（移除后不再复活）。
       expect(known).toHaveLength(2);
       const claude = known.find((record) => record.id === "claude-plugins-official");
       expect(claude).toMatchObject({
@@ -683,6 +683,19 @@ describe("NodePluginAdapter", () => {
           },
         ],
       });
+    } finally {
+      await rm(dir, { force: true, recursive: true });
+    }
+  });
+
+  it("does not re-seed a removed Claude marketplace", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "zcode-plugin-removed-claude-marketplace-"));
+    const storageRoot = join(dir, "storage");
+
+    try {
+      // 默认补种列表只含 ZCode 官方市场；claude 已移除（known 里没有该 id）时不会被恢复。
+      const known = ensureDefaultPluginMarketplaces(storageRoot);
+      expect(known.map((record) => record.id)).toEqual(["zcode-plugins-official"]);
     } finally {
       await rm(dir, { force: true, recursive: true });
     }

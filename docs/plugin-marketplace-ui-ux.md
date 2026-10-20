@@ -24,7 +24,8 @@
 
 公开与社区分段共同使用官方市场 `zcode-plugins-official`（内置插件 + CDN zip 插件，目录源
 `https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json`），按发布条目 `publisherType` 区分维护归属；个人分段承载其余一切
-个人来源（claude-plugins-official、用户自加市场、inline）。
+个人来源（claude-plugins-official、用户自加市场、inline）。`claude-plugins-official` 不在默认
+补种列表内：它只作为可手动添加的个人来源，用户移除后不会被重新补种。
 
 ### 官方市场单一身份与合并合同
 
@@ -143,9 +144,15 @@ flowchart TD
     桌面与 Web 共用此 UI 和服务，不改变 user inventory、workspaceIdentity 或请求路由。
   - **齿轮**：进入**市场源管理**——现有 marketplace source 管理能力换位置（列出已有源：
     更新/校验/删除/诊断）。「添加」不放这里。
-    市场源行按以下规则排序：`zcode-plugins-official`、`claude-plugins-official` 固定置顶；
-    其余自定义源按 `lastUpdated` 倒序排列；缺少 `lastUpdated` 的自定义源沉底；同一时间按本地化
-    展示名称稳定排序。
+    市场源行按以下规则排序：`zcode-plugins-official`、`claude-plugins-official` 固定置顶
+    （claude 未添加时自然不出现）；其余自定义源按 `lastUpdated` 倒序排列；缺少 `lastUpdated`
+    的自定义源沉底；同一时间按本地化展示名称稳定排序。
+    只有 `zcode-plugins-official` 不可移除（它在默认补种列表内，移除后会被重新补种）；
+    `claude-plugins-official` 与其它个人来源一样可移除，移除后不会复活。
+    **这是长期约束**：不得以「官方来源」「刷新失败静默」「弱依赖」等理由重新隐藏 claude
+    的移除按钮；该市场的展示分组、图标增强与刷新失败静默属于保留实现，与可移除不冲突。
+    规则原文见
+    [默认市场源硬约束](./claude-code-marketplace-plugin-compat.md#默认市场源硬约束)。
   - **添加**：下拉菜单，包含创建插件和添加市场源，收编现有 AddMarketplacePopover 的
     github / git / URL / 本地路径（含拖放）能力。零后端新增。
   - **插件管理**：`secondary + lg + font-medium` 文字按钮，进入市场内管理视图。

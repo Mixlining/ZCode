@@ -9,13 +9,11 @@ import {
   isPublicStoreMarketplaceId,
   sortMarketplaceSources,
 } from "@/settings/pluginStoreListing.js";
-import { DEFAULT_MARKETPLACE_ID } from "@/settings/recommendedPlugins.js";
 
-// 官方市场不可移除：移除后启动时会被重新补种，只会造成「删了又回来」的困惑。
+// 只有 ZCode 官方市场不可移除：它在默认补种列表内，移除后会被重新补种。
+// Claude 官方市场已移出默认补种列表，作为普通个人来源可随时移除且不会复活。
 function isRemovableMarketplace(marketplace: ZCodePluginMarketplaceSummary): boolean {
-  if (isPublicStoreMarketplaceId(marketplace.id)) return false;
-  if (marketplace.id === DEFAULT_MARKETPLACE_ID) return false;
-  return true;
+  return !isPublicStoreMarketplaceId(marketplace.id);
 }
 
 export function PluginStoreSourceRefreshFailure({
