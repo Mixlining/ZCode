@@ -11,7 +11,6 @@ import {
   ZCODE_AGENT_RUNTIME,
   ZCODE_TELEMETRY_ENABLED,
   ZCODE_COMMIT,
-  ZCODE_DYNAMIC_WORKFLOW_MODE_ENV,
   ZCODE_ENV,
   ZCODE_PRODUCT_FLAVOR,
   ZCODE_RUNTIME_ENV_KEY,
@@ -21,7 +20,6 @@ import {
   resolveZaiBusinessBaseUrl,
   resolveZaiOAuthClientId,
   resolveZaiOAuthOrigin,
-  normalizeDynamicWorkflowMode,
   readZCodeAgentTelemetryEnv,
   sanitizeZCodeRuntimeEnv,
   type SourceServerArtifactPolicy,
@@ -469,28 +467,6 @@ export function resolveWindowsAppInstallDirForDataBaseDirGuard(
   return win32.dirname(trimmedResourcesPath);
 }
 
-/**
- * Dynamic Workflow 开关的本地决策按构建档位分两层
- *
- *   - 未打包 dev：透传 shell 里的合法取值，方便手工切档；非法值直接丢弃而不是转发给 Host，
- *     Host 因此不必再判一次来源；
- *   - 打包 preview/production：固定写入 `alwaysOn`，忽略 shell。动态工作流在本构建是常开的
- *     产品能力，不再按灰度档位区分（远端灰度拉取已被 REMOTE_ROLLOUT_DISABLED 永久关闭，
- *     决策记录见 spec/vendor-disable.md 的变动历史），本机环境变量既打不开也关不掉。
- * Main 是唯一决策者：对这个键只有「写」和「删」两种动作，绝不原样透传，
- * Host 端的 resolveDynamicWorkflowClientConfig 才能无条件相信读到的值。
- */
-export function resolveDynamicWorkflowModeHostEnv(options: {
-  inheritedValue: string | undefined;
-  isPackaged: boolean;
-}): Record<string, string> {
-  if (!options.isPackaged) {
-    const mode = normalizeDynamicWorkflowMode(options.inheritedValue);
-    return mode ? { [ZCODE_DYNAMIC_WORKFLOW_MODE_ENV]: mode } : {};
-  }
-  return { [ZCODE_DYNAMIC_WORKFLOW_MODE_ENV]: "alwaysOn" };
-}
-
 export function buildHostProcessEnv(hostProcessLocalEnv: Record<string, string>) {
   const glmBinaryPath = resolveBundledGlmBinaryPath();
   const larkCliBinaryPath = resolveBundledLarkCliBinaryPath();
@@ -555,13 +531,6 @@ export function buildHostProcessEnv(hostProcessLocalEnv: Record<string, string>)
   if (packagedDesktop) {
     delete inheritedEnv.ZCODE_CUA_HELPER_ALLOW_UNSIGNED_LOCAL;
   }
-  const dynamicWorkflowModeHostEnv = resolveDynamicWorkflowModeHostEnv({
-    inheritedValue: rawInheritedEnv[ZCODE_DYNAMIC_WORKFLOW_MODE_ENV],
-    isPackaged: packagedDesktop,
-  });
-  // dev 传非法取值时决策是空对象，空对象无法覆盖 inheritedEnv，所以先无条件删掉继承值再按决策 spread 回去。
-  // 少了这一行，dev 的非法取值会原样穿透到 Host。
-  delete inheritedEnv[ZCODE_DYNAMIC_WORKFLOW_MODE_ENV];
 
   return {
     ...inheritedEnv,
@@ -577,8 +546,6 @@ export function buildHostProcessEnv(hostProcessLocalEnv: Record<string, string>)
     // Preview 与生产版共享任务、配置和凭据，但不同版本的 Helper 不能互相覆盖或触发降级保护。
     // 只隔离 computer-use 下的运行组件，不改写 ZCODE_HOME / ZCODE_DATA_BASE_DIR 业务数据根。
     ...(isPreviewPackagedRuntime ? { ZCODE_CUA_HELPER_INSTALL_VARIANT: "preview" } : {}),
-    // Dynamic Workflow 开关：Main 按档位决策后写入，打包档固定 alwaysOn，dev 透传合法值（继承值已在上面删除）。
-    ...dynamicWorkflowModeHostEnv,
     // 模型请求默认 header 由 agent 进程构造，过去只继承 shell env 导致桌面启动时拿不到 app 版本。
     // 这里从 main 进程显式下发，agent 子进程继承 host env 后即可稳定写入请求 header。
     [ZCODE_APP_VERSION_ENV]: ZCODE_VERSION,

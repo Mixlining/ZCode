@@ -1,21 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ZCODE_DYNAMIC_WORKFLOW_MODE_ENV, type ApiClient } from "@zcode/shared";
+import type { ApiClient } from "@zcode/shared";
 import { BigModelCodingPlanSubscriptionProvider } from "../src/coding-plan-subscription/bigmodelCodingPlanSubscriptionProvider.js";
 import { createCodingPlanSubscriptionService } from "../src/coding-plan-subscription/codingPlanSubscriptionService.js";
 
-// 动态工作流灰度快照的 Host 侧读取（docs/dynamic-workflow/launch.md「Gray release」）：
-// 复用 client/configs 通道，本地覆盖短路远端，失败 fail-closed 且不抛给调用方。
-
-function createConfigsResponse(dynamicWorkflow: unknown): Response {
-  return new Response(
-    JSON.stringify({
-      code: 0,
-      msg: "",
-      data: { configs: dynamicWorkflow === undefined ? {} : { dynamicWorkflow } },
-    }),
-    { status: 200, headers: { "Content-Type": "application/json" } },
-  );
-}
+// 动态工作流快照的 Host 侧读取：本构建不读远端也不读环境变量（REMOTE_ROLLOUT_DISABLED
+// 硬关闭，见 spec/vendor-disable.md 的变动历史），provider 直接返回缺省档位且不发请求。
+// 用户选择由 codingPlanSubscriptionService 套在「提供」上。
 
 function createProvider(apiClient: ApiClient) {
   return new BigModelCodingPlanSubscriptionProvider({
@@ -24,148 +14,66 @@ function createProvider(apiClient: ApiClient) {
   });
 }
 
+const DEFAULT_CONFIG = {
+  mode: "onDemand",
+  enabled: true,
+  source: "default",
+  offeredMode: "onDemand",
+};
+
 describe("getDynamicWorkflowClientConfig", () => {
   afterEach(() => {
-    vi.useRealTimers();
     vi.unstubAllEnvs();
     vi.restoreAllMocks();
   });
 
-  it("本地覆盖命中时直接返回，不打远端（无 TTL、无首次 Host 竞态）", async () => {
-    vi.stubEnv(ZCODE_DYNAMIC_WORKFLOW_MODE_ENV, "alwaysOn");
+  it("硬关闭远端灰度：直接返回缺省 onDemand，不发任何请求", async () => {
     const apiClient: ApiClient = {
       request: vi.fn(async () => {
-        throw new Error("override must not request remote client config");
+        throw new Error("must not request remote client config");
       }),
     };
     const provider = createProvider(apiClient);
 
-    await expect(provider.getDynamicWorkflowClientConfig()).resolves.toEqual({
-      mode: "alwaysOn",
-      enabled: true,
-      source: "override",
-      offeredMode: "alwaysOn",
-    });
-    await expect(
-      provider.getDynamicWorkflowClientConfig({ forceRefresh: true }),
-    ).resolves.toMatchObject({ source: "override" });
+    await expect(provider.getDynamicWorkflowClientConfig()).resolves.toEqual(DEFAULT_CONFIG);
+    await expect(provider.getDynamicWorkflowClientConfig({ forceRefresh: true })).resolves.toEqual(
+      DEFAULT_CONFIG,
+    );
     expect(apiClient.request).not.toHaveBeenCalled();
   });
 
-  it("覆盖值非法时忽略覆盖，仍读远端", async () => {
-    vi.stubEnv(ZCODE_DYNAMIC_WORKFLOW_MODE_ENV, "on");
-    const apiClient: ApiClient = {
-      request: vi.fn(async () => createConfigsResponse({ mode: "onDemand" })),
-    };
-
-    await expect(createProvider(apiClient).getDynamicWorkflowClientConfig()).resolves.toEqual({
-      mode: "onDemand",
-      enabled: true,
-      source: "remote",
-      offeredMode: "onDemand",
-    });
-    expect(apiClient.request).toHaveBeenCalledTimes(1);
-  });
-
-  it("远端下发合法 mode 时按远端裁决", async () => {
-    const apiClient: ApiClient = {
-      request: vi.fn(async () => createConfigsResponse({ mode: "alwaysOn" })),
-    };
-
-    await expect(createProvider(apiClient).getDynamicWorkflowClientConfig()).resolves.toEqual({
-      mode: "alwaysOn",
-      enabled: true,
-      source: "remote",
-      offeredMode: "alwaysOn",
-    });
-  });
-
-  it("远端成功但没有该 key 时视为关闭", async () => {
-    const apiClient: ApiClient = {
-      request: vi.fn(async () => createConfigsResponse(undefined)),
-    };
-
-    await expect(createProvider(apiClient).getDynamicWorkflowClientConfig()).resolves.toEqual({
-      mode: "disabled",
-      enabled: false,
-      source: "default",
-      offeredMode: "disabled",
-    });
-  });
-
-  it("命中 1h 快照缓存，forceRefresh 绕过并看到新值", async () => {
-    const apiClient: ApiClient = {
-      request: vi
-        .fn()
-        .mockResolvedValueOnce(createConfigsResponse({ mode: "disabled" }))
-        .mockResolvedValueOnce(createConfigsResponse({ mode: "alwaysOn" })),
-    };
-    const provider = createProvider(apiClient);
-
-    await expect(provider.getDynamicWorkflowClientConfig()).resolves.toMatchObject({
-      enabled: false,
-    });
-    await expect(provider.getDynamicWorkflowClientConfig()).resolves.toMatchObject({
-      enabled: false,
-    });
-    expect(apiClient.request).toHaveBeenCalledTimes(1);
-
-    await expect(
-      provider.getDynamicWorkflowClientConfig({ forceRefresh: true }),
-    ).resolves.toMatchObject({ mode: "alwaysOn", enabled: true, source: "remote" });
-    expect(apiClient.request).toHaveBeenCalledTimes(2);
-  });
-
-  it("远端请求失败时 fail-closed 返回 default，不抛给调用方", async () => {
+  it("环境变量不再影响档位", async () => {
     const apiClient: ApiClient = {
       request: vi.fn(async () => {
-        throw new Error("network down");
+        throw new Error("must not request remote client config");
       }),
     };
+    vi.stubEnv("ZCODE_DYNAMIC_WORKFLOW_MODE", "alwaysOn");
 
-    await expect(createProvider(apiClient).getDynamicWorkflowClientConfig()).resolves.toEqual({
-      mode: "disabled",
-      enabled: false,
-      source: "default",
-      offeredMode: "disabled",
-    });
-  });
-
-  it("请求失败但本地有覆盖时仍返回覆盖（覆盖先于任何网络动作）", async () => {
-    vi.stubEnv(ZCODE_DYNAMIC_WORKFLOW_MODE_ENV, "disabled");
-    const apiClient: ApiClient = {
-      request: vi.fn(async () => {
-        throw new Error("network down");
-      }),
-    };
-
-    await expect(createProvider(apiClient).getDynamicWorkflowClientConfig()).resolves.toEqual({
-      mode: "disabled",
-      enabled: false,
-      source: "override",
-      offeredMode: "disabled",
-    });
+    await expect(createProvider(apiClient).getDynamicWorkflowClientConfig()).resolves.toEqual(
+      DEFAULT_CONFIG,
+    );
     expect(apiClient.request).not.toHaveBeenCalled();
   });
 
-  it("service 把 options 原样委托给 bigmodel provider", async () => {
+  it("service 把用户选择套在缺省提供上", async () => {
     const apiClient: ApiClient = {
-      request: vi
-        .fn()
-        .mockResolvedValueOnce(createConfigsResponse({ mode: "disabled" }))
-        .mockResolvedValueOnce(createConfigsResponse({ mode: "alwaysOn" })),
+      request: vi.fn(async () => {
+        throw new Error("must not request remote client config");
+      }),
     };
     const service = createCodingPlanSubscriptionService({
       apiClient,
       credentialService: { load: vi.fn() },
+      resolveDynamicWorkflowUserMode: async () => "alwaysOn",
     });
 
     await expect(service.getDynamicWorkflowClientConfig()).resolves.toMatchObject({
-      enabled: false,
+      mode: "alwaysOn",
+      enabled: true,
+      offeredMode: "onDemand",
+      userMode: "alwaysOn",
     });
-    await expect(
-      service.getDynamicWorkflowClientConfig({ forceRefresh: true }),
-    ).resolves.toMatchObject({ enabled: true, source: "remote" });
-    expect(apiClient.request).toHaveBeenCalledTimes(2);
+    expect(apiClient.request).not.toHaveBeenCalled();
   });
 });

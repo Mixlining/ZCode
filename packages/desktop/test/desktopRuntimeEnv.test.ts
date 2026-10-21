@@ -46,12 +46,6 @@ vi.mock("@zcode/shared", () => ({
   get ZCODE_PRODUCT_FLAVOR() {
     return productFlavorMock.value;
   },
-  ZCODE_DYNAMIC_WORKFLOW_MODE_ENV: "ZCODE_DYNAMIC_WORKFLOW_MODE",
-  normalizeDynamicWorkflowMode: (value: unknown) => {
-    if (typeof value !== "string") return undefined;
-    const trimmed = value.trim();
-    return ["disabled", "onDemand", "alwaysOn"].includes(trimmed) ? trimmed : undefined;
-  },
   ZCODE_COMMIT: "commit-test",
   ZCODE_VERSION: "0.0.0-test",
   DEFAULT_ZCODE_ENDPOINT_ORIGIN: "https://zcode.z.ai",
@@ -158,7 +152,6 @@ const originalZCodeRuntimeEnv = process.env["ZCODE_RUNTIME_ENV"];
 const originalGlmBinaryPath = process.env["GLM_BINARY_PATH"];
 const originalZCodeBaseUrl = process.env["ZCODE_BASE_URL"];
 const originalZCodeEndpointOrigin = process.env["ZCODE_ENDPOINT_ORIGIN"];
-const originalDynamicWorkflowMode = process.env["ZCODE_DYNAMIC_WORKFLOW_MODE"];
 const originalZaiOAuthOrigin = process.env["ZAI_OAUTH_ORIGIN"];
 const originalZaiBusinessBaseUrl = process.env["ZAI_BUSINESS_BASE_URL"];
 const originalZaiOAuthClientId = process.env["ZAI_OAUTH_CLIENT_ID"];
@@ -433,14 +426,12 @@ describe("desktopRuntimeEnv buildHostProcessEnv", () => {
     delete process.env["GLM_BINARY_PATH"];
     delete process.env["ZCODE_BASE_URL"];
     delete process.env["ZCODE_ENDPOINT_ORIGIN"];
-    delete process.env["ZCODE_DYNAMIC_WORKFLOW_MODE"];
     productFlavorMock.value = "preview";
     process.chdir(originalCwd);
   });
 
   afterAll(() => {
     restoreEnvValue("NODE_NO_WARNINGS", originalNodeNoWarnings);
-    restoreEnvValue("ZCODE_DYNAMIC_WORKFLOW_MODE", originalDynamicWorkflowMode);
     productFlavorMock.value = "preview";
     restoreEnvValue("NODE_ENV", originalNodeEnv);
     restoreEnvValue("ZCODE_RUNTIME_ENV", originalZCodeRuntimeEnv);
@@ -796,115 +787,6 @@ describe("desktopRuntimeEnv buildHostProcessEnv", () => {
     expect(env.ZAI_BUSINESS_BASE_URL).toBe("https://api.z.ai");
     expect(env.ZAI_OAUTH_CLIENT_ID).toBe("client_P8X5CMWmlaRO9gyO-KSqtg");
     expect(env.ZCODE_CUA_HELPER_INSTALL_VARIANT).toBe("preview");
-  });
-
-  // DWG-05（docs/dynamic-workflow/launch.md「Gray release」）：Main 对
-  // ZCODE_DYNAMIC_WORKFLOW_MODE 只有「写」和「删」两种动作，先在纯函数上钉住三档语义。
-  describe("resolveDynamicWorkflowModeHostEnv", () => {
-    it("未打包 dev 透传 shell 里的合法取值", async () => {
-      const { resolveDynamicWorkflowModeHostEnv } =
-        await import("../src/main/desktopRuntimeEnv.js");
-
-      expect(
-        resolveDynamicWorkflowModeHostEnv({
-          inheritedValue: "disabled",
-          isPackaged: false,
-          isPreview: false,
-        }),
-      ).toEqual({ ZCODE_DYNAMIC_WORKFLOW_MODE: "disabled" });
-    });
-
-    it("未打包 dev 丢弃非法取值和缺省值，而不是转发给 Host", async () => {
-      const { resolveDynamicWorkflowModeHostEnv } =
-        await import("../src/main/desktopRuntimeEnv.js");
-
-      expect(
-        resolveDynamicWorkflowModeHostEnv({
-          inheritedValue: "garbage",
-          isPackaged: false,
-          isPreview: false,
-        }),
-      ).toEqual({});
-      expect(
-        resolveDynamicWorkflowModeHostEnv({
-          inheritedValue: undefined,
-          isPackaged: false,
-          isPreview: false,
-        }),
-      ).toEqual({});
-    });
-
-    it("打包 preview 固定写入 alwaysOn，忽略 shell 的相反取值", async () => {
-      const { resolveDynamicWorkflowModeHostEnv } =
-        await import("../src/main/desktopRuntimeEnv.js");
-
-      expect(
-        resolveDynamicWorkflowModeHostEnv({
-          inheritedValue: "disabled",
-          isPackaged: true,
-          isPreview: true,
-        }),
-      ).toEqual({ ZCODE_DYNAMIC_WORKFLOW_MODE: "alwaysOn" });
-    });
-
-    it("打包 production 永不写入，shell 的合法取值同样无效", async () => {
-      const { resolveDynamicWorkflowModeHostEnv } =
-        await import("../src/main/desktopRuntimeEnv.js");
-
-      expect(
-        resolveDynamicWorkflowModeHostEnv({
-          inheritedValue: "alwaysOn",
-          isPackaged: true,
-          isPreview: false,
-        }),
-      ).toEqual({});
-    });
-  });
-
-  it("未打包 dev 的 host env 带上 shell 里的 Dynamic Workflow 覆盖，非法取值则整键消失", async () => {
-    process.env["ZCODE_DYNAMIC_WORKFLOW_MODE"] = "onDemand";
-    const { buildHostProcessEnv } = await import("../src/main/desktopRuntimeEnv.js");
-
-    expect(buildHostProcessEnv({}).ZCODE_DYNAMIC_WORKFLOW_MODE).toBe("onDemand");
-
-    vi.resetModules();
-    process.env["ZCODE_DYNAMIC_WORKFLOW_MODE"] = "not-a-mode";
-    const { buildHostProcessEnv: rebuilt } = await import("../src/main/desktopRuntimeEnv.js");
-
-    // 非法值必须被删掉而不是随 inheritedEnv 穿透；否则 Host 还要自己分辨来源。
-    expect(rebuilt({}).ZCODE_DYNAMIC_WORKFLOW_MODE).toBeUndefined();
-  });
-
-  it("打包 preview 的 host env 把 Dynamic Workflow 覆盖改写成 alwaysOn", async () => {
-    appMock.isPackaged = true;
-    productFlavorMock.value = "preview";
-    Object.defineProperty(process, "resourcesPath", {
-      value: "/mock/resources",
-      configurable: true,
-    });
-    process.env["ZCODE_DYNAMIC_WORKFLOW_MODE"] = "disabled";
-
-    const { buildHostProcessEnv } = await import("../src/main/desktopRuntimeEnv.js");
-
-    expect(buildHostProcessEnv({}).ZCODE_DYNAMIC_WORKFLOW_MODE).toBe("alwaysOn");
-  });
-
-  it("打包 production 的 host env 删除继承的 Dynamic Workflow 覆盖", async () => {
-    appMock.isPackaged = true;
-    productFlavorMock.value = "production";
-    Object.defineProperty(process, "resourcesPath", {
-      value: "/mock/resources",
-      configurable: true,
-    });
-    process.env["ZCODE_DYNAMIC_WORKFLOW_MODE"] = "alwaysOn";
-
-    const { buildHostProcessEnv } = await import("../src/main/desktopRuntimeEnv.js");
-
-    // shell 和 .env 两条继承路径都要被删干净，本机环境变量不能自行打开灰度。
-    expect(buildHostProcessEnv({}).ZCODE_DYNAMIC_WORKFLOW_MODE).toBeUndefined();
-    expect(
-      buildHostProcessEnv({ ZCODE_DYNAMIC_WORKFLOW_MODE: "alwaysOn" }).ZCODE_DYNAMIC_WORKFLOW_MODE,
-    ).toBeUndefined();
   });
 });
 

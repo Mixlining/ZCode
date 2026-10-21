@@ -6,7 +6,6 @@ import {
   TOPIC_RESOURCE_RELAY_CHANNEL,
   ZCODE_APP_VERSION_ENV,
   ZCODE_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV,
-  ZCODE_DYNAMIC_WORKFLOW_MODE_ENV,
   formatLogPrefix,
   ZCODE_REMOTE_HTTP_PROXY_ENV_KEY,
   ZCODE_REMOTE_NO_PROXY_ENV_KEY,
@@ -73,9 +72,6 @@ const REMOTE_RUNTIME_ENV_KEYS = [
   "ZAI_PRODUCTION_OAUTH_CLIENT_ID",
   // Desktop Main 已完成的单功能灰度结果；远端 server 只消费，不重新分桶。
   ZCODE_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV,
-  // 同上：本地覆盖由 Desktop Main 按构建档位写定（buildHostProcessEnv），
-  // 透传后 SSH/WSL/Docker 远端 Host 与本地 Host 得到同一档位。
-  ZCODE_DYNAMIC_WORKFLOW_MODE_ENV,
 ] as const;
 
 export type RemoteRuntimeEnvKey = (typeof REMOTE_RUNTIME_ENV_KEYS)[number];

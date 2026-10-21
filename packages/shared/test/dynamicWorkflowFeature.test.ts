@@ -6,11 +6,10 @@ import {
   readDynamicWorkflowOfferedMode,
   normalizeDynamicWorkflowMode,
   resolveDynamicWorkflowClientConfig,
-  ZCODE_DYNAMIC_WORKFLOW_MODE_ENV,
 } from "../src/dynamic-workflow-feature.js";
 
 // DWG-01（docs/dynamic-workflow/launch.md「Gray release: the `dynamicWorkflow` feature key」）：
-// 远端取值、缺省 fail-closed、本地覆盖优先级三件事都由这个纯函数裁决，三端共用。
+// 远端取值与缺省档位都由这个纯函数裁决，三端共用。本构建不读环境变量，没有 override 层。
 
 function remote(mode: unknown) {
   return { mode };
@@ -45,52 +44,17 @@ describe("resolveDynamicWorkflowClientConfig（DWG-01）", () => {
     ["mode 不是字符串", remote(1)],
     ["对象里没有 mode", {}],
     ["远端下发字符串而非对象", "alwaysOn"],
-  ])("远端 %s 时 fail-closed 到 default", (_name, value) => {
+  ])("远端 %s 时回落到缺省档位", (_name, value) => {
     expect(resolveDynamicWorkflowClientConfig({ remote: value })).toEqual({
       mode: DEFAULT_DYNAMIC_WORKFLOW_MODE,
-      enabled: false,
+      enabled: true,
       source: "default",
       offeredMode: DEFAULT_DYNAMIC_WORKFLOW_MODE,
     });
   });
 
-  it("本地覆盖优先于远端（含把远端的开关掉）", () => {
-    expect(
-      resolveDynamicWorkflowClientConfig({
-        remote: remote("disabled"),
-        env: { [ZCODE_DYNAMIC_WORKFLOW_MODE_ENV]: "alwaysOn" },
-      }),
-    ).toEqual({ mode: "alwaysOn", enabled: true, source: "override", offeredMode: "alwaysOn" });
-    expect(
-      resolveDynamicWorkflowClientConfig({
-        remote: remote("alwaysOn"),
-        env: { [ZCODE_DYNAMIC_WORKFLOW_MODE_ENV]: "disabled" },
-      }),
-    ).toEqual({ mode: "disabled", enabled: false, source: "override", offeredMode: "disabled" });
-  });
-
-  it("非法或空覆盖被忽略，继续按远端裁决", () => {
-    expect(
-      resolveDynamicWorkflowClientConfig({
-        remote: remote("alwaysOn"),
-        env: { [ZCODE_DYNAMIC_WORKFLOW_MODE_ENV]: "yes" },
-      }),
-    ).toEqual({ mode: "alwaysOn", enabled: true, source: "remote", offeredMode: "alwaysOn" });
-    expect(
-      resolveDynamicWorkflowClientConfig({
-        remote: undefined,
-        env: { [ZCODE_DYNAMIC_WORKFLOW_MODE_ENV]: "" },
-      }).source,
-    ).toBe("default");
-  });
-
-  it("覆盖值允许首尾空白（shell 传参常见）", () => {
-    expect(
-      resolveDynamicWorkflowClientConfig({
-        remote: undefined,
-        env: { [ZCODE_DYNAMIC_WORKFLOW_MODE_ENV]: " alwaysOn " },
-      }),
-    ).toEqual({ mode: "alwaysOn", enabled: true, source: "override", offeredMode: "alwaysOn" });
+  it("缺省档位是 onDemand：入口可见、工具等命令激活", () => {
+    expect(DEFAULT_DYNAMIC_WORKFLOW_MODE).toBe("onDemand");
   });
 });
 
@@ -156,17 +120,16 @@ describe("applyDynamicWorkflowUserMode（DWG-18）", () => {
     expect(applyDynamicWorkflowUserMode(applied, "onDemand").mode).toBe("onDemand");
   });
 
-  it("resolveDynamicWorkflowClientConfig 接收 userMode，覆盖值仍只决定提供的模式", () => {
+  it("resolveDynamicWorkflowClientConfig 接收 userMode，用户选择取代提供的模式", () => {
     expect(
       resolveDynamicWorkflowClientConfig({
-        remote: remote("alwaysOn"),
-        env: { [ZCODE_DYNAMIC_WORKFLOW_MODE_ENV]: "onDemand" },
+        remote: remote("onDemand"),
         userMode: "disabled",
       }),
     ).toEqual({
       mode: "disabled",
       enabled: false,
-      source: "override",
+      source: "remote",
       offeredMode: "onDemand",
       userMode: "disabled",
     });

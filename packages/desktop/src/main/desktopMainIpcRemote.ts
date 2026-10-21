@@ -661,6 +661,11 @@ export function registerRemoteIpcHandlers(options: {
     PlatformChannels.BindRemoteWorkspaceSessionContext,
     async (event, rawPayload: unknown): Promise<BindRemoteWorkspaceSessionContextIpcResult> => {
       try {
+        // 远程 workspace 硬禁用：Connect/探测类 IPC 已在源头关断，这里补上绑定通道的纵深防御，
+        // 避免渲染进程用伪造 sessionId 触发远端上下文写入。见 spec/remote-disable.md。
+        if (REMOTE_WORKSPACE_DISABLED) {
+          throw new Error("远程 workspace 在本构建中已禁用");
+        }
         if (!rawPayload || typeof rawPayload !== "object") {
           throw new Error("远程 workspace context payload 无效");
         }

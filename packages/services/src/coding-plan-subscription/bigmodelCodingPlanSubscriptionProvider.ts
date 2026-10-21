@@ -78,10 +78,8 @@ import {
   DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY,
   REMOTE_ROLLOUT_DISABLED,
   createDynamicWorkflowClientConfig,
-  normalizeDynamicWorkflowMode,
   resolveDynamicWorkflowClientConfig,
   DEFAULT_DYNAMIC_WORKFLOW_MODE,
-  ZCODE_DYNAMIC_WORKFLOW_MODE_ENV,
 } from "@zcode/shared";
 import type { ICredentialService } from "../credential/credential.js";
 import { readApiJson } from "../providers/api/apiJson.js";
@@ -429,24 +427,19 @@ export class BigModelCodingPlanSubscriptionProvider {
   }
 
   /**
-   * 动态工作流灰度快照：与闲时任务同走
-   * client/configs，零新增请求。三条边界：
-   *   1. 本地覆盖（ZCODE_DYNAMIC_WORKFLOW_MODE）在任何网络动作之前裁决，命中即返回——
-   *      preview 构建和开发者手测因此不受 1h 快照与首次 Host 竞态影响；
-   *   2. forceRefresh 与 Off-Peak 同义，清掉快照后重拉（灰度翻转最长 1h 不可见）；
-   *   3. 请求失败 fail-closed：返回 default（disabled）并 warn，绝不把异常抛给调用方——
-   *      调用方在 session create/client 就绪路径上，灰度读失败不能阻断普通聊天。
+   * 动态工作流快照：与闲时任务同走 client/configs，零新增请求。三条边界：
+   *   1. 本构建不读远端也不读环境变量（REMOTE_ROLLOUT_DISABLED 硬关闭，见
+   *      spec/vendor-disable.md 的变动历史），直接返回缺省档位，不发任何请求；
+   *   2. forceRefresh 与 Off-Peak 同义，清掉快照后重拉（上游灰度翻转最长 1h 不可见）；
+   *   3. 请求失败 fail-closed：返回缺省档位并 warn，绝不把异常抛给调用方——
+   *      调用方在 session create/client 就绪路径上，读取失败不能阻断普通聊天。
    */
   async getDynamicWorkflowClientConfig(options?: {
     forceRefresh?: boolean;
   }): Promise<DynamicWorkflowClientConfig> {
-    // 覆盖合法即短路：判据（normalize）与快照构造（resolve）都留在 shared，这里不复述取值域。
-    if (normalizeDynamicWorkflowMode(process.env[ZCODE_DYNAMIC_WORKFLOW_MODE_ENV])) {
-      return resolveDynamicWorkflowClientConfig({ remote: undefined, env: process.env });
-    }
-    // 灰度硬关闭：不再请求远端 dynamicWorkflow 字段，本地覆盖之外一律按默认（关闭）处理。
+    // 远端灰度硬关闭：本构建的档位只有用户设置与缺省值两个来源，这里只产出「提供」。
     if (REMOTE_ROLLOUT_DISABLED) {
-      return resolveDynamicWorkflowClientConfig({ remote: undefined, env: process.env });
+      return resolveDynamicWorkflowClientConfig({ remote: undefined });
     }
     if (options?.forceRefresh) {
       this.clientConfigSnapshot = null;
@@ -456,10 +449,9 @@ export class BigModelCodingPlanSubscriptionProvider {
       const payload = await this.getClientConfigs();
       return resolveDynamicWorkflowClientConfig({
         remote: payload.data?.configs?.dynamicWorkflow,
-        env: process.env,
       });
     } catch (error) {
-      log.warn(undefined, "动态工作流灰度配置读取失败，按关闭处理", {
+      log.warn(undefined, "动态工作流配置读取失败，按缺省档位处理", {
         errorMessage: error instanceof Error ? error.message : String(error),
       });
       return createDynamicWorkflowClientConfig(DEFAULT_DYNAMIC_WORKFLOW_MODE, "default");

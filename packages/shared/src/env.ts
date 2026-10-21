@@ -76,9 +76,9 @@ export const CODING_PLAN_DISABLED: boolean = true;
 export const MEMORY_DIAGNOSTICS_ENABLED: boolean = false;
 
 // 硬禁用：不再拉取远端灰度配置（/api/v1/client/configs 的灰度字段与套餐侧 dynamicWorkflow）。
-// 灰度控制的功能固定在各自本地档位值：desktop context prompt 关闭；动态工作流在桌面打包档
-// 由 main 硬编码写入 alwaysOn（见 spec/vendor-disable.md 的变动历史），dev 与 server 仍由
-// 本地环境变量覆盖（ZCODE_DYNAMIC_WORKFLOW_MODE 等）决定。
+// 灰度控制的功能固定在各自本地档位值：desktop context prompt 关闭；动态工作流既不读远端也
+// 不读环境变量，缺省 onDemand（「通过命令启用」），用户可在设置里改档（见
+// spec/vendor-disable.md 的变动历史与 spec/upstream-3.16.2-merge.md）。
 export const REMOTE_ROLLOUT_DISABLED: boolean = true;
 
 // 硬禁用：官方商店进入页面时的目录自动刷新（保留手动刷新入口）。它会在每次进入商店页发一次

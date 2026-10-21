@@ -145,18 +145,15 @@ describe("connectRemote", () => {
     });
   });
 
-  // DWG-06（docs/dynamic-workflow/launch.md「Gray release」）：Dynamic Workflow 的档位由
-  // Desktop Main 写定，远端 Host 必须拿到同一个值，preview 包的远程工作区才与本地一致。
-  it("透传 Desktop Main 写定的 Dynamic Workflow 灰度档位", () => {
+  // Dynamic Workflow 的档位不再经环境变量下发（2026-10-21 起本构建不读环境变量，见
+  // spec/vendor-disable.md 的变动历史），远端透传表里也不该再有这个键。
+  it("不再透传 Dynamic Workflow 档位", () => {
     expect(
       pickRemoteRuntimeEnv({
         ZCODE_DYNAMIC_WORKFLOW_MODE: "alwaysOn",
         ZCODE_OAUTH_TOKEN: "secret",
       }),
-    ).toEqual({
-      ZCODE_DYNAMIC_WORKFLOW_MODE: "alwaysOn",
-    });
-    // Main 在 production 包里已经删掉这个键，远端因此什么也收不到。
+    ).toEqual({});
     expect(pickRemoteRuntimeEnv({})).toEqual({});
   });
 

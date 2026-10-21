@@ -2377,6 +2377,11 @@ export function useRemoteWorkspaceHistory({
           preparedWorkspaceIdentity,
           isCurrent,
         }) => {
+          // 远程 workspace 硬禁用：正常路径已由连接入口拦住，这里拒绝伪造的已有 session，
+          // 保证「不构造远程会话工作区」的边界不依赖上游调用顺序。见 spec/remote-disable.md。
+          if (REMOTE_WORKSPACE_DISABLED) {
+            throw new Error("Remote workspace is disabled in this build");
+          }
           const sessions = Object.values(
             useRemoteWorkspaceSessionStore.getState().sessionsById,
           ).filter((session) =>

@@ -299,8 +299,38 @@ ARMS browser bootstrap/init 与已删除启动模块相同，均不纳入本构�
 
 ## 变动历史
 
-### 2026-10-04 动态工作流在桌面打包档硬编码开启
+### 2026-10-21 动态工作流不再读服务端与环境变量，缺省「通过命令启用」
 
+- **决策**：动态工作流的档位只有两个来源——**用户设置**与**缺省值**。不读远端灰度、不读
+  环境变量。缺省为 `onDemand`（「通过命令启用」）：`/workflow` 命令与技能入口可见，十个
+  工作流工具等首次 `/workflow`、Resume 或 Configure 后才注册给模型。用户可在设置里改成
+  `disabled` 或 `alwaysOn`。
+- **依据**：`REMOTE_ROLLOUT_DISABLED = true` 已永久关闭远端灰度拉取；环境变量是开发期
+  临时手段，留在产品链路里只会让「看起来可配置」与「实际不生效」并存。上游 v3.16.2 把
+  灰度语义改为「用户选择永远生效」，本决策在此基础上把「提供」一侧彻底收敛到本地缺省。
+- **涉及文件**：`packages/shared/src/dynamic-workflow-feature.ts`（删除
+  `ZCODE_DYNAMIC_WORKFLOW_MODE_ENV`、`DEFAULT_DYNAMIC_WORKFLOW_MODE` 改为 `onDemand`、
+  `resolveDynamicWorkflowClientConfig` 去掉 `env`）、
+  `packages/services/src/coding-plan-subscription/bigmodelCodingPlanSubscriptionProvider.ts`
+  （删除 env 短路分支）、`packages/desktop/src/main/desktopRuntimeEnv.ts`（删除
+  `resolveDynamicWorkflowModeHostEnv` 与注入）、`packages/server/src/remote/connect.ts`
+  （移除远端透传键）、`packages/shared/src/env.ts`（注释同步）。
+- **不变的部分**：`REMOTE_ROLLOUT_DISABLED` 仍为 `true`；`DynamicWorkflowClientConfigSource`
+  的 `remote` / `override` 取值保留为类型域，但本仓库不再产生 `override`；
+  `resolveDynamicWorkflowClientConfig` 仍接受 `remote` 入参（不可达，保留原逻辑结构以降低
+  同步成本）；独立 CLI（`apps/zcode-cli`）的 `--workflow-mode` 缺省仍为 `disabled`。
+- **验收场景（人工；本流程只做静态检查，不运行应用）**：
+  1. 冷启动进入设置「自动化」，工作流设置行出现，「默认」标签落在「通过命令启用」上；
+  2. 会话输入 `/` 的命令目录包含 `/workflow`；首次 `/workflow` 后模型才拿到十个工作流工具；
+  3. 系统层预设 `ZCODE_DYNAMIC_WORKFLOW_MODE=alwaysOn` 后冷启动，默认档位仍是「通过命令启用」。
+- **反路径**：`git grep ZCODE_DYNAMIC_WORKFLOW_MODE` 必须为空；上游若重新引入该键，需在
+  合并时重新收口。用户把设置改成 `disabled` 后 `/workflow` 与工作流 tab 一并消失，改回
+  `onDemand` 立即恢复。
+
+### 2026-10-04 动态工作流在桌面打包档硬编码开启（已被 2026-10-21 取代）
+
+- **取代说明**：2026-10-21 起 main 注入层整体删除，`ZCODE_DYNAMIC_WORKFLOW_MODE` 在本仓库
+  不再存在；缺省档位改为 `onDemand`。以下内容仅作历史记录，其中的环境变量与打包档分支已不存在。
 - **决策**：动态工作流（dynamic workflow）不再是「灰度默认关闭」的功能。Desktop main 在
   fork Host 前对 `ZCODE_DYNAMIC_WORKFLOW_MODE` 的档位决策改为：未打包 dev 透传合法值
   （不变）；**打包 preview 与 production 一律固定写入 `alwaysOn`**，忽略 shell 与用户系统
