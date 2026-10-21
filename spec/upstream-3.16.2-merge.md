@@ -52,7 +52,7 @@ SettingsPage.useSourceServerManagementSnapshot ──enabled:false──▶ 不�
 ```
 
 - 状态所有者：产品开关仍全部在 `packages/shared/src/env.ts`；动态工作流的缺省值唯一在 `packages/shared/src/dynamic-workflow-feature.ts` 的 `DEFAULT_DYNAMIC_WORKFLOW_MODE`；用户选择的唯一持久化仍是 `SettingService`。
-- 环境变量 `ZCODE_DYNAMIC_WORKFLOW_MODE` 在本仓库内不再存在：shared 不再导出 `ZCODE_DYNAMIC_WORKFLOW_MODE_ENV`，services 不读、main 不写、server 不转发。上游若重新引入该键，`git grep ZCODE_DYNAMIC_WORKFLOW_MODE -- packages apps ':!*test*'` 必须为空（测试里的负向断言与 docs 的历史注记允许存在）。
+- 环境变量 `ZCODE_DYNAMIC_WORKFLOW_MODE` 在本仓库内不再是输入：shared 不再导出 `ZCODE_DYNAMIC_WORKFLOW_MODE_ENV`，services 不读、server 不转发；Desktop main 保留一处 `delete inheritedEnv.ZCODE_DYNAMIC_WORKFLOW_MODE`（`readDefinedProcessEnv` 会把 `process.env` 全量带进 Host env，必须删掉继承值）。上游若重新引入该键的**读取**，`git grep ZCODE_DYNAMIC_WORKFLOW_MODE -- packages apps ':!*test*'` 只允许命中这一处删除语句（测试的负向断言与 docs 的历史注记允许存在）。
 
 ## 冲突裁决
 
@@ -128,16 +128,16 @@ modify/delete 冲突全部接受上游删除：
 ## 静态消融记录
 
 - 不删除 `DynamicWorkflowClientConfigSource` 的 `"override"` 取值：它是既有类型域的一部分，删除会波及上游 `resolveDynamicWorkflowOffer` 的结构；该值在本仓库内不再产生。
-- 不为「不读环境变量」新增第二套常量或运行时检查：只删读取点与写入点，`git grep ZCODE_DYNAMIC_WORKFLOW_MODE -- packages apps ':!*test*'` 为空即为完整证据。
+- 不为「不读环境变量」新增第二套常量或运行时检查：只删读取点与写入点。`git grep ZCODE_DYNAMIC_WORKFLOW_MODE -- packages apps ':!*test*'` 唯一允许的命中是 `desktopRuntimeEnv.ts` 里那行 `delete inheritedEnv[...]`（继承层拦截，不是读取）。
 - `resolveDynamicWorkflowClientConfig` 保留 `remote` 入参而不改成只收 `userMode`：避免重写上游 DWG-01 的 remote 断言，降低后续每次同步的人工成本。
-- 远程守卫集中在共享 hook 内：`useSourceServerManagementSnapshot` / `useSourceServerStatuses` / `useSourceServerDisplayNames` / `useSourceServerOperationLogs` 各一处早退，覆盖全部消费方；不给 `SettingsPage`、`ProjectCreation`、`remote-connection-flow` 等上游调用点逐个加参数。`Root`、controller、IPC 三处保留为入口级单行早退。
+- 远程守卫的落点按「能不能被单测驱动」区分：`useSourceServerManagementSnapshot` 与 `useSourceServerOperationLogs` 新增 `enabled` 选项、由调用点传常量（守卫写进 hook 主体会让 64 个用例失败）；`useSourceServerStatuses` 与 `useSourceServerDisplayNames` 的守卫留在 hook 内（副作用只在 registry 构造时发生，现有测试均 mock 了这两个 hook）。`Root`、controller、IPC 三处保留为入口级单行早退。
 - `useSourceServerStatuses` 与 `useRemoteDevicePresentationInput` 抽出一个共享的 `useSourceServerStatusRegistry`：两者本来就共用同一份 `sourceServerStatusRegistry`，拆成两处守卫会重复同一决策。
 
 ## 上游同步复核（merge 后逐条执行）
 
 1. `git diff 0a1fc56d..HEAD -G'ZCODE_TELEMETRY|ARMS|RUM|telemetry'` 新增命中项全部位于守卫内（本轮预期为空）。
 2. 十个编译期常量值未回退：`ZCODE_TELEMETRY_ENABLED`、`ZCODE_VENDOR_ACTIONS_DISABLED`、`CODING_PLAN_DISABLED`、`REMOTE_ROLLOUT_DISABLED`、`MARKETPLACE_AUTO_REFRESH_DISABLED`、`MEMORY_DIAGNOSTICS_ENABLED`、`BOTS_DISABLED`、`PHONE_REMOTE_DISABLED`、`REMOTE_WORKSPACE_DISABLED`、`ZCODE_AUTO_UPDATE_ENABLED`。
-3. `git grep ZCODE_DYNAMIC_WORKFLOW_MODE -- packages apps ':!*test*'` 为空。
+3. `git grep ZCODE_DYNAMIC_WORKFLOW_MODE -- packages apps ':!*test*'` 只命中 `desktopRuntimeEnv.ts` 的 `delete inheritedEnv[...]` 一行；不得出现任何读取（`process.env[...]`、`normalizeDynamicWorkflowMode(process.env...)`）。
 4. 无为禁用域新增的常驻子进程、定时器、长轮询、重连或采样器。
 5. `off_peak_tasks` 的表/列/索引/已发布迁移与校验值保持字节不变（上游 `0007_initial_workspace_order` 只 `ALTER remote_project_entries`）。
 6. `attachRemoteWorkspaceSessionHost` 仍无调用方。

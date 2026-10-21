@@ -323,9 +323,11 @@ ARMS browser bootstrap/init 与已删除启动模块相同，均不纳入本构�
   1. 冷启动进入设置「常规」，交互行为卡片内的工作流设置行出现，「默认」标签落在「通过命令启用」上；
   2. 会话输入 `/` 的命令目录包含 `/workflow`；首次 `/workflow` 后模型才拿到十个工作流工具；
   3. 系统层预设 `ZCODE_DYNAMIC_WORKFLOW_MODE=alwaysOn` 后冷启动，默认档位仍是「通过命令启用」。
-- **反路径**：`git grep ZCODE_DYNAMIC_WORKFLOW_MODE -- packages apps ':!*test*'` 必须为空
-  （测试里的负向断言与 docs 的历史注记允许存在）；上游若重新引入该键，需在合并时重新收口。
-  用户把设置改成 `disabled` 后 `/workflow` 与工作流 tab 一并消失，改回 `onDemand` 立即恢复。
+- **反路径**：`git grep ZCODE_DYNAMIC_WORKFLOW_MODE -- packages apps ':!*test*'` 只允许命中
+  `desktopRuntimeEnv.ts` 的 `delete inheritedEnv[...]` 一行（继承层拦截，不是读取）；出现任何
+  读取点即为回退。测试里的负向断言与 docs 的历史注记允许存在。上游若重新引入该键的读取，
+  需在合并时重新收口。用户把设置改成 `disabled` 后 `/workflow` 与工作流 tab 一并消失，改回
+  `onDemand` 立即恢复。
 
 ### 2026-10-04 动态工作流在桌面打包档硬编码开启（已被 2026-10-21 取代）
 
