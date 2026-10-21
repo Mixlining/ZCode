@@ -37,7 +37,7 @@ const MODE_ICONS: Record<DynamicWorkflowMode, ComponentType<SVGProps<SVGSVGEleme
 
 /**
  * 设置行要显示什么（docs/dynamic-workflow/launch.md「The user's choice」）。快照就绪后总是出现：
- * 服务端只决定默认值，提供的是 disabled 时「默认」落在「关闭」上，用户照样可以打开。
+ * 「提供」在本构建恒为缺省 `onDemand`，disabled 只是用户自己的当前选择。
  * 只有快照加载中、读取失败、或来自不认用户选择的旧 Host（没有 offeredMode）时返回 null。
  * 值与「默认」都取 Host 算好的结果，renderer 不自己套用户选择。
  */

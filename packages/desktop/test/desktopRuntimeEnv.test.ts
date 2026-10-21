@@ -788,6 +788,19 @@ describe("desktopRuntimeEnv buildHostProcessEnv", () => {
     expect(env.ZAI_OAUTH_CLIENT_ID).toBe("client_P8X5CMWmlaRO9gyO-KSqtg");
     expect(env.ZCODE_CUA_HELPER_INSTALL_VARIANT).toBe("preview");
   });
+
+  // 2026-10-21 起动态工作流不读环境变量（spec/vendor-disable.md 的变动历史）：
+  // Main 对该键既不写也不透传，继承值一律删除。
+  it("host env 不注入也不透传 Dynamic Workflow 档位", async () => {
+    process.env["ZCODE_DYNAMIC_WORKFLOW_MODE"] = "alwaysOn";
+    const { buildHostProcessEnv } = await import("../src/main/desktopRuntimeEnv.js");
+
+    expect(buildHostProcessEnv({}).ZCODE_DYNAMIC_WORKFLOW_MODE).toBeUndefined();
+    expect(
+      buildHostProcessEnv({ ZCODE_DYNAMIC_WORKFLOW_MODE: "alwaysOn" }).ZCODE_DYNAMIC_WORKFLOW_MODE,
+    ).toBeUndefined();
+    delete process.env["ZCODE_DYNAMIC_WORKFLOW_MODE"];
+  });
 });
 
 describe("desktopRuntimeEnv runtime identity", () => {

@@ -52,7 +52,7 @@ SettingsPage.useSourceServerManagementSnapshot ──enabled:false──▶ 不�
 ```
 
 - 状态所有者：产品开关仍全部在 `packages/shared/src/env.ts`；动态工作流的缺省值唯一在 `packages/shared/src/dynamic-workflow-feature.ts` 的 `DEFAULT_DYNAMIC_WORKFLOW_MODE`；用户选择的唯一持久化仍是 `SettingService`。
-- 环境变量 `ZCODE_DYNAMIC_WORKFLOW_MODE` 在本仓库内不再存在：shared 不再导出 `ZCODE_DYNAMIC_WORKFLOW_MODE_ENV`，services 不读、main 不写、server 不转发。上游若重新引入该键，`git grep ZCODE_DYNAMIC_WORKFLOW_MODE` 必须为空。
+- 环境变量 `ZCODE_DYNAMIC_WORKFLOW_MODE` 在本仓库内不再存在：shared 不再导出 `ZCODE_DYNAMIC_WORKFLOW_MODE_ENV`，services 不读、main 不写、server 不转发。上游若重新引入该键，`git grep ZCODE_DYNAMIC_WORKFLOW_MODE -- packages apps ':!*test*'` 必须为空（测试里的负向断言与 docs 的历史注记允许存在）。
 
 ## 冲突裁决
 
@@ -72,7 +72,7 @@ modify/delete 冲突全部接受上游删除：
 - `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-runtime-communication-performance.json`
 - `packages/ui/test/workbenchPointerPositionTracker.test.ts`
 
-删除依据：这些用例依赖已下线的 4 分屏入口与被删模块（`workbenchPointerPositionTracker.ts`、`workbenchPointerDragDrop.ts`、`openV4SplitFromSidebar`）。合并后 `TaskActionMenuContent.tsx`、`TaskListItem.tsx`、`grouped/useGroupedDrag.ts`、`WorkbenchPane.tsx`、`helpers/v4-conversation.ts` 全部取上游版本，无悬空引用。
+删除依据：这些用例依赖已下线的 4 分屏入口与被删模块（`workbenchPointerPositionTracker.ts`、`workbenchPointerDragDrop.ts`、`openV4SplitFromSidebar`）。合并后 `TaskActionMenuContent.tsx`、`TaskListItem.tsx`、`grouped/useGroupedDrag.ts`、`WorkbenchPane.tsx`、`packages/desktop/test/e2e/helpers/v4-conversation.ts` 全部取上游版本，无悬空引用。
 
 ## 收尾提交改动清单
 
@@ -95,30 +95,42 @@ modify/delete 冲突全部接受上游删除：
 | `packages/desktop/test/desktopRuntimeEnv.test.ts`                          | 删除 `describe("resolveDynamicWorkflowModeHostEnv")` 与两条引用 `ZCODE_DYNAMIC_WORKFLOW_MODE` 的 `buildHostProcessEnv` 用例 |
 | `packages/shared/test/dynamicWorkflowFeature.test.ts`                      | 删除 env override 用例；调用去掉 `env`；缺省断言改为 `onDemand`                                                             |
 | `packages/services/test/dynamicWorkflowClientConfig.test.ts`               | 删除 env override 用例；`REMOTE_ROLLOUT_DISABLED` 用例期望改为 `onDemand`                                                   |
-| `packages/server/test/remoteConnect.test.ts`                               | 删除 `ZCODE_DYNAMIC_WORKFLOW_MODE` 透传断言                                                                                 |
+| `packages/server/test/remoteConnect.test.ts`                               | 删除 `ZCODE_DYNAMIC_WORKFLOW_MODE` 透传断言，改为「不再透传」的负向断言                                                     |
 | `packages/desktop/test/e2e/helpers/dynamic-workflow-config-mock-server.ts` | 删除导入与 `delete environment[ZCODE_DYNAMIC_WORKFLOW_MODE_ENV]`（该文件在 `tsconfig.e2e.json` 内）                         |
+| `packages/desktop/wdio.conf.ts`                                            | 删除 `ZCODE_DYNAMIC_WORKFLOW_MODE=alwaysOn` 的进程级注入                                                                    |
+| `.../manual-review/pending/conversation-session-r3-subagent.test.ts`       | 删除对该环境变量的前置断言                                                                                                  |
+
+上游带入的格式漂移（`pnpm fmt`）：`packages/zcode-server-cli/test/releaseInstaller.test.ts`、`packages/ui/src/project-sidebar/ProjectDirectoryProvider.tsx`、`packages/desktop/src/main/unreadBadge.ts`、`packages/desktop/test/desktopTrayBadge.test.ts` 及若干 `docs/*.md`。
 
 ### 远程守卫
 
-| 位置                                                | 动作                                                                                                    |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `packages/ui/src/Root.tsx`                          | `handleOpenRemoteConnection` 首行补 `if (REMOTE_WORKSPACE_DISABLED) return;`                            |
-| `packages/ui/src/SettingsPage.tsx`                  | `useSourceServerManagementSnapshot(sourceManagement, { enabled: !REMOTE_WORKSPACE_DISABLED, onError })` |
-| `packages/ui/src/root/useRemoteWorkspaceHistory.ts` | `remoteWorkspaceController.openProject` 首行补早退                                                      |
-| `packages/desktop/src/main/desktopMainIpcRemote.ts` | `BindRemoteWorkspaceSessionContext` handler 首行补早退                                                  |
+| 位置                                                            | 动作                                                                                                              |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `packages/ui/src/Root.tsx`                                      | `handleOpenRemoteConnection` 首行补 `if (REMOTE_WORKSPACE_DISABLED) return;`                                      |
+| `packages/ui/src/hooks/useSourceServerManagementSnapshot.ts`    | `enabled` 统一与 `!REMOTE_WORKSPACE_DISABLED` 合取，覆盖 SettingsPage / 连接流 / ProjectCreation / 面板四个调用点 |
+| `packages/ui/src/hooks/useSourceServerStatusRegistry`（同文件） | `useSourceServerStatuses` / `useRemoteDevicePresentationInput` 共用一处 registry 关断                             |
+| `packages/ui/src/hooks/useSourceServerDisplayNames.ts`          | 注册表构造前关断（`getSnapshot` + `onDidChangeState` 都在构造函数里）                                             |
+| `packages/ui/src/hooks/useSourceServerOperationLogs.ts`         | effect 首行 `REMOTE_WORKSPACE_DISABLED` 早退，覆盖三个调用点                                                      |
+| `packages/ui/src/root/useRemoteWorkspaceHistory.ts`             | `remoteWorkspaceController.openProject` 首行补早退                                                                |
+| `packages/desktop/src/main/desktopMainIpcRemote.ts`             | `BindRemoteWorkspaceSessionContext` handler 首行补早退                                                            |
+
+后五处是 v3.16.1 起就存在的存量缺口（`SourceServerManagement` 三件套在 renderer 侧是无守卫的惰性代理），
+本次按「不需要 remote workspace、不挂载 WSL/Docker」的产品边界统一收口；守卫放在共享 hook 内而不是逐个调用点，
+既覆盖全部消费方，也不给上游的调用点改动制造冲突。
 
 ## 静态消融记录
 
 - 不删除 `DynamicWorkflowClientConfigSource` 的 `"override"` 取值：它是既有类型域的一部分，删除会波及上游 `resolveDynamicWorkflowOffer` 的结构；该值在本仓库内不再产生。
-- 不为「不读环境变量」新增第二套常量或运行时检查：只删读取点与写入点，`git grep ZCODE_DYNAMIC_WORKFLOW_MODE` 为空即为完整证据。
+- 不为「不读环境变量」新增第二套常量或运行时检查：只删读取点与写入点，`git grep ZCODE_DYNAMIC_WORKFLOW_MODE -- packages apps ':!*test*'` 为空即为完整证据。
 - `resolveDynamicWorkflowClientConfig` 保留 `remote` 入参而不改成只收 `userMode`：避免重写上游 DWG-01 的 remote 断言，降低后续每次同步的人工成本。
-- 远程守卫四处均为单行早退，不新增禁用版实现、不新增兜底分支。
+- 远程守卫集中在共享 hook 内：`useSourceServerManagementSnapshot` / `useSourceServerStatuses` / `useSourceServerDisplayNames` / `useSourceServerOperationLogs` 各一处早退，覆盖全部消费方；不给 `SettingsPage`、`ProjectCreation`、`remote-connection-flow` 等上游调用点逐个加参数。`Root`、controller、IPC 三处保留为入口级单行早退。
+- `useSourceServerStatuses` 与 `useRemoteDevicePresentationInput` 抽出一个共享的 `useSourceServerStatusRegistry`：两者本来就共用同一份 `sourceServerStatusRegistry`，拆成两处守卫会重复同一决策。
 
 ## 上游同步复核（merge 后逐条执行）
 
 1. `git diff 0a1fc56d..HEAD -G'ZCODE_TELEMETRY|ARMS|RUM|telemetry'` 新增命中项全部位于守卫内（本轮预期为空）。
-2. 九个编译期常量值未回退：`ZCODE_TELEMETRY_ENABLED`、`ZCODE_VENDOR_ACTIONS_DISABLED`、`CODING_PLAN_DISABLED`、`REMOTE_ROLLOUT_DISABLED`、`MARKETPLACE_AUTO_REFRESH_DISABLED`、`MEMORY_DIAGNOSTICS_ENABLED`、`BOTS_DISABLED`、`PHONE_REMOTE_DISABLED`、`REMOTE_WORKSPACE_DISABLED`。
-3. `git grep ZCODE_DYNAMIC_WORKFLOW_MODE` 为空。
+2. 十个编译期常量值未回退：`ZCODE_TELEMETRY_ENABLED`、`ZCODE_VENDOR_ACTIONS_DISABLED`、`CODING_PLAN_DISABLED`、`REMOTE_ROLLOUT_DISABLED`、`MARKETPLACE_AUTO_REFRESH_DISABLED`、`MEMORY_DIAGNOSTICS_ENABLED`、`BOTS_DISABLED`、`PHONE_REMOTE_DISABLED`、`REMOTE_WORKSPACE_DISABLED`、`ZCODE_AUTO_UPDATE_ENABLED`。
+3. `git grep ZCODE_DYNAMIC_WORKFLOW_MODE -- packages apps ':!*test*'` 为空。
 4. 无为禁用域新增的常驻子进程、定时器、长轮询、重连或采样器。
 5. `off_peak_tasks` 的表/列/索引/已发布迁移与校验值保持字节不变（上游 `0007_initial_workspace_order` 只 `ALTER remote_project_entries`）。
 6. `attachRemoteWorkspaceSessionHost` 仍无调用方。
@@ -126,10 +138,10 @@ modify/delete 冲突全部接受上游删除：
 
 ## 人工验收（本轮不执行）
 
-1. 冷启动进入设置「自动化」，工作流设置行出现，「默认」标签落在「通过命令启用」上。
+1. 冷启动进入设置「常规」，交互行为卡片内的工作流设置行出现，「默认」标签落在「通过命令启用」上。
 2. 会话输入 `/` 的命令目录包含 `/workflow`；首次 `/workflow` 后模型才拿到十个工作流工具。
 3. 在系统层预设 `ZCODE_DYNAMIC_WORKFLOW_MODE=alwaysOn` 后冷启动，默认档位仍是「通过命令启用」（环境变量不生效）。
 4. 点击侧栏/工作区菜单的远程连接入口无反应，不弹连接弹窗，任务管理器无 `wsl.exe` / `docker` 探测进程。
-5. 设置页「远程设备」分区不可达；Host 日志无 `Unknown channel` 与 1s 超时噪声。
+5. 设置页「远程设备」分区不在导航（`HIDDEN_SETTINGS_SECTIONS`）；`SettingsPage` 的 Source 快照因 `enabled: false` 不发起 `getSnapshot`，Host 日志无该 channel 的 `Unknown channel` 与 1s 超时噪声。
 6. 侧栏完整视图/浮窗可正常打开与关闭。
 7. 打包产物冷启动无 ARMS 初始化、无遥测请求。

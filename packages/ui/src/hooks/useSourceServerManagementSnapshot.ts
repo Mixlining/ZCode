@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SourceServerManagementSnapshot } from "@zcode/shared";
+import { REMOTE_WORKSPACE_DISABLED } from "@zcode/shared";
 import type { ISourceServerManagementService } from "@zcode/services";
 
 export function useSourceServerManagementSnapshot(
@@ -14,7 +15,10 @@ export function useSourceServerManagementSnapshot(
   applySnapshot: (snapshot: SourceServerManagementSnapshot) => void;
   refresh: () => void;
 } {
-  const enabled = options.enabled ?? true;
+  // 远程 workspace 硬禁用：Host 不注册 ISourceServerManagementService，而 renderer 侧的
+  // accessor 是惰性代理（恒为 truthy）。在这里统一关断，避免每个调用点各写一遍；
+  // 否则挂载即请求未注册 channel，等满 ChannelServer 超时并留下 Unknown channel 噪声。
+  const enabled = (options.enabled ?? true) && !REMOTE_WORKSPACE_DISABLED;
   const onErrorRef = useRef(options.onError);
   onErrorRef.current = options.onError;
   const observedGenerationRef = useRef(-1);

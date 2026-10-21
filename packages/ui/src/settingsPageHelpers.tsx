@@ -856,7 +856,7 @@ export function GeneralSectionContent({
             />
           }
         />
-        {/* docs/dynamic-workflow/launch.md「The user's choice」：服务端未提供时整行不渲染。 */}
+        {/* 本构建不读远端也不读环境变量：快照就绪后总是渲染，缺省「通过命令启用」。 */}
         {hasServices ? <DynamicWorkflowModeSetting /> : null}
         <SettingsRow
           label={intl.formatMessage({ id: "settings.modelIoFullRetention" })}

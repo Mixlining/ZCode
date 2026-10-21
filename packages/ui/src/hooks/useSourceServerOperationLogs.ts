@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { sourceServerOperationLogSchema, type SourceServerOperationLog } from "@zcode/shared";
+import { REMOTE_WORKSPACE_DISABLED } from "@zcode/shared";
 import type { ISourceServerManagementService } from "@zcode/services";
 import { logger } from "@/logger.js";
 
@@ -14,7 +15,8 @@ export function useSourceServerOperationLogs(
   const profileKey = JSON.stringify([...new Set(profileIds)].sort());
   useEffect(() => {
     setLogsByProfileId({});
-    if (!management?.getRecentOperationLogs) return;
+    // 远程 workspace 硬禁用：Host 不注册该 channel，惰性 accessor 恒 truthy，必须在调用点关断。
+    if (REMOTE_WORKSPACE_DISABLED || !management?.getRecentOperationLogs) return;
     const ids: string[] = JSON.parse(profileKey);
     let disposed = false;
     let pending = false;

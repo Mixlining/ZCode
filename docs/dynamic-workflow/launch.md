@@ -2766,6 +2766,11 @@ automations page.
 
 ### The local override
 
+> **本仓库注记（2026-10-21）**：本节描述上游的灰度覆盖链路，本 fork 已整体移除——不读
+> `ZCODE_DYNAMIC_WORKFLOW_MODE`、不读远端 key、Desktop Main 不再注入该键、server 不再透传。
+> 「提供」恒为本地缺省 `onDemand`（「通过命令启用」），用户可在设置里改档。权威说明见
+> `spec/vendor-disable.md` 的变动历史与 `spec/upstream-3.16.2-merge.md`。
+
 One environment variable, `ZCODE_DYNAMIC_WORKFLOW_MODE`, read by the Host resolver before any
 network call. When it holds one of the three values the resolver returns it with
 `source: "override"` and skips the fetch, so there is no TTL and no first-Host race. Desktop

@@ -8,8 +8,9 @@ import { type DynamicWorkflowMode } from "@zcode/shared";
  * 的 case-local 配置网关。Host 从 `/api/v1/client/configs` 读 `data.configs.dynamicWorkflow.mode`，
  * 这里按 spec 文件名挑一个档位并改写共享 fixture 的这一个键，其余键原样下发。
  *
- * 只 mock 服务端 key。本构建已硬关闭远端灰度（REMOTE_ROLLOUT_DISABLED），Host 不再请求
- * `/client/configs` 的 dynamicWorkflow 字段，这些用例保持 manual-review pending。
+ * 本构建已硬关闭远端灰度（`REMOTE_ROLLOUT_DISABLED`），Host 不再读取该字段，因此依赖它的
+ * gray-* E2E 一律保持 manual-review pending。本 helper 与网关逻辑保留，供上游同步时比对，
+ * 也供 `dynamicWorkflowConfigMockServer.test.ts` 覆盖 mock 自身的三档改写。
  */
 const DISABLED_SPEC_FRAGMENT = "conversation-session-dynamic-workflow-gray-disabled";
 const ALWAYS_ON_SPEC_FRAGMENT = "conversation-session-dynamic-workflow-gray-always-on";

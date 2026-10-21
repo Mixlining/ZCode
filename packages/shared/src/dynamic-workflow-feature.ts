@@ -38,12 +38,15 @@ export function isDynamicWorkflowModeEnabled(mode: DynamicWorkflowMode): boolean
   return mode !== "disabled";
 }
 
-/** 快照的来源：观测用，UI 与日志据此区分「服务端关」与「本地覆盖」。只描述「提供」来自哪里。 */
+/**
+ * 快照的来源：观测用，UI 与日志据此区分「远端下发」与「本地缺省」。只描述「提供」来自哪里。
+ * `"override"` 保留在类型域里以对齐上游签名，但本仓库不产生该值（不读环境变量）。
+ */
 export type DynamicWorkflowClientConfigSource = "remote" | "override" | "default";
 
 /**
- * 灰度快照（launch.md「Gray release」「The user's choice」）。两层：
- *   - 提供（offer）：服务端 key 或本地覆盖决定默认是哪个模式，记在 `offeredMode`（disabled 也只是默认值）；
+ * 动态工作流快照（launch.md「The user's choice」）。两层：
+ *   - 提供（offer）：本构建恒为本地缺省 `onDemand`（远端与环境变量都不参与），记在 `offeredMode`；
  *   - 生效（effective）：用户在设置里的明确选择永远取代提供的模式，记在 `mode` / `enabled`。
  * 旧消费者读 `mode` / `enabled` 即得生效值；设置页读 `offeredMode` 决定「默认」标签。
  */
@@ -53,7 +56,7 @@ export interface DynamicWorkflowClientConfig {
   /** 等于 isDynamicWorkflowModeEnabled(mode)；单独落字段免得每个消费者各写一遍折叠规则。 */
   readonly enabled: boolean;
   readonly source: DynamicWorkflowClientConfigSource;
-  /** 服务端（或本地覆盖）提供的模式：用户没选时的生效模式，也是设置页的「默认」选项。 */
+  /** 「提供」的模式（本构建恒为缺省 `onDemand`）：用户没选时的生效模式，也是设置页的「默认」选项。 */
   readonly offeredMode: DynamicWorkflowMode;
   /** 实际生效的用户选择；缺席表示跟随提供的模式（未选择或非法值）。 */
   readonly userMode?: DynamicWorkflowMode;
@@ -72,7 +75,7 @@ export function createDynamicWorkflowClientConfig(
 }
 
 /**
- * 读快照里服务端提供的默认模式（与用户选择无关）；设置行与中枢的「工作流设置」只在读得到时出现。
+ * 读快照里「提供」的默认模式（与用户选择无关）；设置行与中枢的「工作流设置」只在读得到时出现。
  * disabled 也是合法的默认值：此时行照样出现，「默认」标签落在「关闭」上。
  *
  * 快照可能来自没有 offeredMode 的旧 Host（新 UI——例如手机远控 bundle——连旧桌面）。旧 Host 不认
@@ -86,8 +89,8 @@ export function readDynamicWorkflowOfferedMode(
 }
 
 /**
- * 「服务端给默认、用户选择永远生效」规则的唯一实现（launch.md「The user's choice」）：
- *   - 合法的用户选择取代提供的模式，提供的是 disabled 也一样——功能已全量，服务端只决定默认值；
+ * 「提供给默认、用户选择永远生效」规则的唯一实现（launch.md「The user's choice」）：
+ *   - 合法的用户选择取代提供的模式，提供的是 disabled 也一样——「提供」只决定缺省；
  *   - 缺席或非法值（旧文件、未来版本写入的新值）按跟随提供的模式处理。
  * 只从 `offeredMode` 推导，所以对已应用过选择的快照再次应用是覆盖而不是叠加：Host 闩住的是提供，
  * 每次使用都用最新选择重新应用。
