@@ -709,6 +709,7 @@ export async function selectRemoteWorkspaceProjectFromDialog({
   sessionId,
   path,
   preparedWorkspaceIdentity,
+  draftProjectId,
   localWorkspacePath,
   loadingMessage,
   getRemoteWorkspaceSession,
@@ -733,6 +734,7 @@ export async function selectRemoteWorkspaceProjectFromDialog({
   sessionId: string;
   path: string;
   preparedWorkspaceIdentity?: string;
+  draftProjectId?: string | null;
   workspacePurpose?: "project" | "conversation";
   localWorkspacePath?: string;
   loadingMessage: string;
@@ -774,6 +776,7 @@ export async function selectRemoteWorkspaceProjectFromDialog({
     workspacePath: string;
     workspaceIdentity: string;
     restoreSelection?: boolean;
+    projectId?: string | null;
   }) => void;
 }): Promise<void> {
   if (!canUseRemoteWorkspace) {
@@ -834,7 +837,10 @@ export async function selectRemoteWorkspaceProjectFromDialog({
   const activation = {
     workspacePath,
     workspaceIdentity,
-    ...(restoringTab &&
+    ...(draftProjectId !== undefined ? { projectId: draftProjectId } : {}),
+    // 显式项目草稿与恢复旧会话互斥；后台重连中的同一 tab 不能覆盖新建意图。
+    ...(draftProjectId === undefined &&
+    restoringTab &&
     isWorkspaceTab(restoringTab) &&
     buildWorkspaceSessionKey(restoringTab) ===
       buildWorkspaceSessionKey({ workspacePath, workspaceIdentity })
@@ -1085,6 +1091,7 @@ export function useRemoteWorkspaceHistory({
     workspacePath: string;
     workspaceIdentity: string;
     restoreSelection?: boolean;
+    projectId?: string | null;
   }) => void;
   manuallyOpeningWorkspaceTabId?: string;
 }) {
@@ -1795,6 +1802,7 @@ export function useRemoteWorkspaceHistory({
           sessionId,
           path,
           preparedWorkspaceIdentity,
+          draftProjectId,
           localWorkspacePath,
           workspacePurpose,
           loadingMessage: intl.formatMessage({ id: "common.loading" }),
@@ -1811,16 +1819,18 @@ export function useRemoteWorkspaceHistory({
           bindRemoteWorkspacePath,
           bindRemoteWorkspaceIdentity,
           addTab,
+          // 原项目 ID 必须到达 Root 的草稿 owner，由它同步内存与持久化范围。
           onWorkspaceActivated:
-            draftProjectId === undefined
-              ? onWorkspaceActivated
+            onWorkspaceActivated ??
+            (draftProjectId === undefined
+              ? undefined
               : ({ workspacePath, workspaceIdentity }) => {
                   useZCodeSessionStore
                     .getState()
                     .startDraft(workspacePath, undefined, workspaceIdentity, {
                       projectId: draftProjectId,
                     });
-                },
+                }),
         });
       } finally {
         pendingConnectionTargetsBySessionIdRef.current.delete(sessionId);
