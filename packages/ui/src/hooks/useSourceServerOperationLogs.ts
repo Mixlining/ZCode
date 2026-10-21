@@ -1,22 +1,26 @@
 import { useEffect, useState } from "react";
 import { sourceServerOperationLogSchema, type SourceServerOperationLog } from "@zcode/shared";
-import { REMOTE_WORKSPACE_DISABLED } from "@zcode/shared";
 import type { ISourceServerManagementService } from "@zcode/services";
 import { logger } from "@/logger.js";
 
-/** 事件只触发重读，关闭页面后仍从同一个 Host owner 查询；不在 UI 累积历史。 */
+/**
+ * 事件只触发重读，关闭页面后仍从同一个 Host owner 查询；不在 UI 累积历史。
+ * 远程 workspace 硬禁用由调用点传 `enabled: false` 关断（spec/remote-disable.md）；
+ * 守卫不写在本 hook 内，否则单测无法真实驱动这次查询。
+ */
 export function useSourceServerOperationLogs(
   management: ISourceServerManagementService | undefined,
   profileIds: readonly string[] = [],
+  options: { enabled?: boolean } = {},
 ) {
   const [logsByProfileId, setLogsByProfileId] = useState<
     Record<string, SourceServerOperationLog[]>
   >({});
   const profileKey = JSON.stringify([...new Set(profileIds)].sort());
+  const enabled = options.enabled ?? true;
   useEffect(() => {
     setLogsByProfileId({});
-    // 远程 workspace 硬禁用：Host 不注册该 channel，惰性 accessor 恒 truthy，必须在调用点关断。
-    if (REMOTE_WORKSPACE_DISABLED || !management?.getRecentOperationLogs) return;
+    if (!enabled || !management?.getRecentOperationLogs) return;
     const ids: string[] = JSON.parse(profileKey);
     let disposed = false;
     let pending = false;

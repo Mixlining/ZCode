@@ -46,6 +46,7 @@ vi.mock("@zcode/shared", () => ({
   get ZCODE_PRODUCT_FLAVOR() {
     return productFlavorMock.value;
   },
+  ZCODE_TELEMETRY_ENABLED: false,
   ZCODE_COMMIT: "commit-test",
   ZCODE_VERSION: "0.0.0-test",
   DEFAULT_ZCODE_ENDPOINT_ORIGIN: "https://zcode.z.ai",
@@ -793,13 +794,18 @@ describe("desktopRuntimeEnv buildHostProcessEnv", () => {
   // Main 对该键既不写也不透传，继承值一律删除。
   it("host env 不注入也不透传 Dynamic Workflow 档位", async () => {
     process.env["ZCODE_DYNAMIC_WORKFLOW_MODE"] = "alwaysOn";
-    const { buildHostProcessEnv } = await import("../src/main/desktopRuntimeEnv.js");
+    try {
+      const { buildHostProcessEnv } = await import("../src/main/desktopRuntimeEnv.js");
 
-    expect(buildHostProcessEnv({}).ZCODE_DYNAMIC_WORKFLOW_MODE).toBeUndefined();
-    expect(
-      buildHostProcessEnv({ ZCODE_DYNAMIC_WORKFLOW_MODE: "alwaysOn" }).ZCODE_DYNAMIC_WORKFLOW_MODE,
-    ).toBeUndefined();
-    delete process.env["ZCODE_DYNAMIC_WORKFLOW_MODE"];
+      expect(buildHostProcessEnv({}).ZCODE_DYNAMIC_WORKFLOW_MODE).toBeUndefined();
+      expect(
+        buildHostProcessEnv({ ZCODE_DYNAMIC_WORKFLOW_MODE: "alwaysOn" })
+          .ZCODE_DYNAMIC_WORKFLOW_MODE,
+      ).toBeUndefined();
+    } finally {
+      // 断言失败也要清掉，避免污染同文件后续用例。
+      delete process.env["ZCODE_DYNAMIC_WORKFLOW_MODE"];
+    }
   });
 });
 

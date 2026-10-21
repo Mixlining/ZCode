@@ -531,6 +531,10 @@ export function buildHostProcessEnv(hostProcessLocalEnv: Record<string, string>)
   if (packagedDesktop) {
     delete inheritedEnv.ZCODE_CUA_HELPER_ALLOW_UNSIGNED_LOCAL;
   }
+  // 动态工作流不读环境变量（spec/vendor-disable.md 的变动历史）：readDefinedProcessEnv 会把
+  // 进程里的一切原样带进 Host env，必须在继承层删掉，否则开发者 shell 里的遗留值会穿透到 Host。
+  // 键名用本地字面量：shared 已不再导出 ZCODE_DYNAMIC_WORKFLOW_MODE_ENV。
+  delete inheritedEnv.ZCODE_DYNAMIC_WORKFLOW_MODE;
 
   return {
     ...inheritedEnv,

@@ -104,19 +104,26 @@ modify/delete 冲突全部接受上游删除：
 
 ### 远程守卫
 
-| 位置                                                            | 动作                                                                                                              |
-| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `packages/ui/src/Root.tsx`                                      | `handleOpenRemoteConnection` 首行补 `if (REMOTE_WORKSPACE_DISABLED) return;`                                      |
-| `packages/ui/src/hooks/useSourceServerManagementSnapshot.ts`    | `enabled` 统一与 `!REMOTE_WORKSPACE_DISABLED` 合取，覆盖 SettingsPage / 连接流 / ProjectCreation / 面板四个调用点 |
-| `packages/ui/src/hooks/useSourceServerStatusRegistry`（同文件） | `useSourceServerStatuses` / `useRemoteDevicePresentationInput` 共用一处 registry 关断                             |
-| `packages/ui/src/hooks/useSourceServerDisplayNames.ts`          | 注册表构造前关断（`getSnapshot` + `onDidChangeState` 都在构造函数里）                                             |
-| `packages/ui/src/hooks/useSourceServerOperationLogs.ts`         | effect 首行 `REMOTE_WORKSPACE_DISABLED` 早退，覆盖三个调用点                                                      |
-| `packages/ui/src/root/useRemoteWorkspaceHistory.ts`             | `remoteWorkspaceController.openProject` 首行补早退                                                                |
-| `packages/desktop/src/main/desktopMainIpcRemote.ts`             | `BindRemoteWorkspaceSessionContext` handler 首行补早退                                                            |
+| 位置                                                         | 动作                                                                                                                     |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| `packages/ui/src/Root.tsx`                                   | `handleOpenRemoteConnection` 首行补 `if (REMOTE_WORKSPACE_DISABLED) return;`                                             |
+| `packages/ui/src/SettingsPage.tsx`                           | `useSourceServerManagementSnapshot(..., { enabled: !REMOTE_WORKSPACE_DISABLED })`                                        |
+| `packages/ui/src/hooks/useSourceServerManagementSnapshot.ts` | 新增 `enabled` 选项（默认 true），保持纯逻辑；守卫由调用点传参                                                           |
+| `packages/ui/src/hooks/useSourceServerStatuses.ts`           | `useSourceServerStatuses` / `useRemoteDevicePresentationInput` 共用 `useSourceServerStatusRegistry`，registry 构造前关断 |
+| `packages/ui/src/hooks/useSourceServerDisplayNames.ts`       | 注册表构造前关断（`getSnapshot` + `onDidChangeState` 都在构造函数里）                                                    |
+| `packages/ui/src/hooks/useSourceServerOperationLogs.ts`      | 新增 `options.enabled`（默认 true），三个调用点显式传 `!REMOTE_WORKSPACE_DISABLED`                                       |
+| `packages/ui/src/root/useRemoteWorkspaceHistory.ts`          | `remoteWorkspaceController.openProject` 首行补早退                                                                       |
+| `packages/desktop/src/main/desktopMainIpcRemote.ts`          | `BindRemoteWorkspaceSessionContext` handler 首行补早退                                                                   |
 
-后五处是 v3.16.1 起就存在的存量缺口（`SourceServerManagement` 三件套在 renderer 侧是无守卫的惰性代理），
-本次按「不需要 remote workspace、不挂载 WSL/Docker」的产品边界统一收口；守卫放在共享 hook 内而不是逐个调用点，
-既覆盖全部消费方，也不给上游的调用点改动制造冲突。
+后六处是 v3.16.1 起就存在的存量缺口（`SourceServerManagement` 相关通道在 renderer 侧是无守卫的惰性代理），
+本次按「不需要 remote workspace、不挂载 WSL/Docker」的产品边界统一收口。
+
+**守卫不放进被单测直接驱动的 hook 主体**：`useSourceServerManagementSnapshot` 与
+`useSourceServerOperationLogs` 改为新增 `enabled` 选项、由调用点传编译期常量。把常量写进 hook 主体会让
+`useSourceServerManagementSnapshot.test.ts` / `projectCreation.test.ts` / `sourceServerManagementPanel.test.ts`
+无法再驱动 `getSnapshot` 与事件订阅（实测 64 个用例失败），违反「守卫写在原逻辑并列位置、不改变可测性」的既有惯例。
+`useSourceServerStatuses` / `useSourceServerDisplayNames` 的守卫可以留在 hook 内：它们的注册表副作用只发生在
+构造时，且现有测试全部 mock 了这两个 hook。
 
 ## 静态消融记录
 

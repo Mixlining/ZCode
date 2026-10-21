@@ -16,6 +16,7 @@ import {
   getSourceServerUpdateTarget,
   isSameSourceServerUpdateTarget,
   DEFAULT_REMOTE_ASSET_INSTALL_MODE,
+  REMOTE_WORKSPACE_DISABLED,
   resolveWorkspaceKey,
   ZCODE_VERSION,
   type ConnectionProfile,
@@ -290,6 +291,7 @@ export function useRemoteConnectionFlow(options: RemoteConnectionFlowOptions) {
   const { logsByProfileId: sourceOperationLogs } = useSourceServerOperationLogs(
     sourceManagement,
     upgradeProfileId ? [upgradeProfileId] : [],
+    { enabled: !REMOTE_WORKSPACE_DISABLED },
   );
   useEffect(() => {
     if (

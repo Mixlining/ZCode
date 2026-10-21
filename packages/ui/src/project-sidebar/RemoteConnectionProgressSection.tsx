@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { Check, Copy, LoaderCircle } from "lucide-react";
-import { buildRemoteHostWorkspaceIdentity, parseRemoteWorkspaceIdentity } from "@zcode/shared";
+import {
+  buildRemoteHostWorkspaceIdentity,
+  parseRemoteWorkspaceIdentity,
+  REMOTE_WORKSPACE_DISABLED,
+} from "@zcode/shared";
 import type { RemoteProjectHost } from "@/project-sidebar/contract.js";
 import { cn } from "@/components/lib/utils.js";
 import { toast } from "@/components/ui/toast.js";
@@ -58,6 +62,7 @@ export function RemoteConnectionProgressSection({
   const { logsByProfileId } = useSourceServerOperationLogs(
     management,
     profileId ? [profileId] : [],
+    { enabled: !REMOTE_WORKSPACE_DISABLED },
   );
   const now = useNow(connecting);
   // 修复原因：布尔值会让新错误沿用“已复制”；记录被复制的原文，错误变化后自然失效。

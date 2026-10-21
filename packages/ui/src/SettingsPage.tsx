@@ -43,7 +43,7 @@ import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { logger } from "@/logger.js";
 import { getPathLeaf } from "@/lib/path.js";
-import { CODING_PLAN_DISABLED } from "@zcode/shared";
+import { CODING_PLAN_DISABLED, REMOTE_WORKSPACE_DISABLED } from "@zcode/shared";
 import { useProviderSettingsView } from "@/hooks/useProviderSettingsView.js";
 import { useUsageEntitlement } from "@/hooks/useUsageEntitlement.js";
 import {
@@ -768,11 +768,13 @@ export function SettingsPage({
     services: localHostServices,
   });
   const sourceManagement = localHostServices.sourceServerManagementService;
-  // 远程 workspace 硬禁用由 useSourceServerManagementSnapshot 内部统一关断（编译期常量），
-  // 调用点不再各自传 enabled。见 spec/remote-disable.md。
   const { snapshot: sourceManagementSnapshot } = useSourceServerManagementSnapshot(
     sourceManagement,
     {
+      // 远程 workspace 硬禁用：Host 不注册 ISourceServerManagementService，而 renderer 侧的
+      // accessor 是惰性代理（恒为 truthy）。必须在调用点用编译期常量关断，否则挂载即请求
+      // 未注册 channel，等满 ChannelServer 超时并留下 Unknown channel 噪声。
+      enabled: !REMOTE_WORKSPACE_DISABLED,
       onError: (error) =>
         logger.warn("[SettingsPage] 读取 Source 状态失败", {
           error: error instanceof Error ? error.message : String(error),

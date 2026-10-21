@@ -10,7 +10,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog.js";
 import { useOptionalPlatform } from "@/hooks/usePlatform.js";
-import { DesktopCommandIds } from "@zcode/shared";
+import { DesktopCommandIds, REMOTE_WORKSPACE_DISABLED } from "@zcode/shared";
 /* eslint-disable max-lines -- Source/Profile/迁移三类管理操作共享同一 Host 快照和错误状态。 */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -279,6 +279,7 @@ export function SourceServerManagementPanel({
   const { logsByProfileId } = useSourceServerOperationLogs(
     management,
     snapshot?.profiles.map((profile) => profile.profileId),
+    { enabled: !REMOTE_WORKSPACE_DISABLED },
   );
   const projection = useMemo(
     () =>
