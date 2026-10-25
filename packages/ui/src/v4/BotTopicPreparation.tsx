@@ -1,3 +1,4 @@
+import { BOTS_DISABLED } from "@zcode/shared";
 import { pendingTopicPreparations } from "@/v4/topicPreparationRenderUnits.js";
 import { useContext, useMemo } from "react";
 import { LoaderCircleIcon } from "lucide-react";
@@ -12,6 +13,7 @@ const EMPTY_ROWS: readonly ConversationRow[] = [];
 const EMPTY_PREPARATIONS: readonly Preparation[] = [];
 
 export function useBotTopicPreparations(): readonly Preparation[] {
+  if (BOTS_DISABLED) return EMPTY_PREPARATIONS;
   const value = useContext(DeliveryContext);
   if (!value?.context?.group?.threadId || value.context.activeTaskId !== value.taskId)
     return EMPTY_PREPARATIONS;
@@ -27,6 +29,7 @@ export function BotTopicPreparationList({
   acceptedRows?: readonly ConversationRow[];
   provider?: FeishuBotProvider;
 }) {
+  if (BOTS_DISABLED) return null;
   const { intl } = useZCodeIntl();
   const pending = useMemo(
     () => pendingTopicPreparations(items, acceptedRows),

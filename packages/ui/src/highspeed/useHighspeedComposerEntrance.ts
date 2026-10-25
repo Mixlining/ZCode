@@ -1,3 +1,4 @@
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import { useEffect, useState } from "react";
 
 /** Highspeed 输入框入场方式：activation 播放激活动效，restore 直接呈现稳定态。 */
@@ -24,6 +25,7 @@ export function useHighspeedComposerEntrance({
   activationCardId: string | null;
   onActivationApplied?: (cardId: string) => void;
 }): HighspeedComposerEntrance {
+  if (CODING_PLAN_DISABLED) return "restore";
   const [latch, setLatch] = useState(() => ({
     cardId,
     entrance: resolveEntrance(cardId, activationCardId),

@@ -1,3 +1,4 @@
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import { ComposerSubmissionPendingContext } from "@/project-sidebar/index.js";
 /* oxlint-disable eslint(max-lines) -- composer 集中收口输入区 wiring（附件/草稿/历史/mention），拆分会打散收口粒度。 */
 import { useRemoteProjectReconnect } from "@/hooks/RemoteProjectPresentationContext.js";
@@ -641,6 +642,8 @@ function ConversationComposerImpl({
   const configPickerScopeKey = `${workspaceKey}\0${draftScopeId}`;
   const [text, setText] = useState("");
   const [pending, setPending] = useState(false);
+  // 旧草稿/外部 props 不能恢复加速模型锁定、动画或倒计时。
+  if (CODING_PLAN_DISABLED) highspeedCard = null;
   const [presentedHighspeedCardId, setPresentedHighspeedCardId] = useState<string | null>(null);
   const [highspeedSweepActive, setHighspeedSweepActive] = useState(false);
   const highspeedCardId = highspeedCard?.cardId ?? null;
@@ -660,6 +663,7 @@ function ConversationComposerImpl({
   }, [highspeedCardId]);
   useEffect(() => {
     // 扫光属于激活动效，只在 draw 新命中的交接后播放一次。
+    if (CODING_PLAN_DISABLED) return;
     if (!highspeedPresented || !highspeedEntranceAnimated) {
       setHighspeedSweepActive(false);
       return;

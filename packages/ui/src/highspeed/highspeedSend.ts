@@ -1,3 +1,4 @@
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import type {
   HighspeedCardSnapshot,
   HighspeedMessageMeta,
@@ -67,6 +68,7 @@ export function buildHighspeedRuntimeOverride(
   modelSelection?: ModelSelection;
   modelExecution?: HighspeedModelExecution;
 } {
+  if (CODING_PLAN_DISABLED) return {};
   if (result?.kind !== "accelerated") return {};
   const highspeedMeta: HighspeedMessageMeta = {
     schemaVersion: 1,
@@ -93,6 +95,7 @@ export async function prepareHighspeedSendContext(
   prepareTurn: HighspeedTurnPreparer,
   submissionSelection?: ModelSelection,
 ): Promise<HighspeedSendContext> {
+  if (CODING_PLAN_DISABLED) return { override: {} };
   const result = await prepareTurn(taskId, submissionSelection);
   return {
     override: buildHighspeedRuntimeOverride(result),
@@ -124,6 +127,7 @@ export async function readRegularTpsWithinSendBudget(params: {
   onTimeout?: (budgetMs: number) => void;
   wait?: (milliseconds: number) => Promise<void>;
 }): Promise<number | undefined> {
+  if (CODING_PLAN_DISABLED) return undefined;
   const budgetMs = Math.max(
     0,
     Math.min(

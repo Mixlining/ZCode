@@ -1,3 +1,4 @@
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import { logger } from "@/logger.js";
 
 export type GlobalNoticePriority = "low" | "normal" | "high";
@@ -190,7 +191,7 @@ function resolveBrowserNoticeStorage(): GlobalNoticeStorage {
 }
 
 export const browserGlobalNoticeStore =
-  typeof window === "undefined"
+  CODING_PLAN_DISABLED || typeof window === "undefined"
     ? null
     : createGlobalNoticeStore({
         storage: resolveBrowserNoticeStorage(),

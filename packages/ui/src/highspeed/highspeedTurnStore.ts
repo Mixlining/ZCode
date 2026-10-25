@@ -46,20 +46,20 @@ export interface HighspeedCardAutoShareCandidate {
 const MAX_RECORDS = 300;
 
 let records: HighspeedTurnRecord[] = [];
-const highspeedTpsByCardId = new Map<string, number>();
-const healthyAttemptsByCardId = new Map<
-  string,
-  { expiryAttempted: boolean; completionRetryAttempted: boolean }
->();
+const highspeedTpsByCardId = CODING_PLAN_DISABLED ? null : new Map<string, number>();
+const healthyAttemptsByCardId = CODING_PLAN_DISABLED
+  ? null
+  : new Map<string, { expiryAttempted: boolean; completionRetryAttempted: boolean }>();
 let version = 0;
-const listeners = new Set<() => void>();
+const listeners = CODING_PLAN_DISABLED ? null : new Set<() => void>();
 
 function publishChange(): void {
   version += 1;
-  for (const listener of listeners) listener();
+  for (const listener of listeners ?? []) listener();
 }
 
 export function recordHighspeedTurn(record: HighspeedTurnRecord): void {
+  if (CODING_PLAN_DISABLED) return;
   records = [
     record,
     ...records.filter((candidate) => candidate.sourceCommandId !== record.sourceCommandId),
@@ -77,6 +77,7 @@ export function hydrateHighspeedTurnsFromTranscript(
   sessionId: string,
   rows: readonly HighspeedTranscriptRow[],
 ): number {
+  if (CODING_PLAN_DISABLED) return 0;
   const plan = planHighspeedTranscriptHydration(rows, {
     sessionId,
     now: Date.now(),
@@ -84,7 +85,7 @@ export function hydrateHighspeedTurnsFromTranscript(
     getCardTps: getHighspeedCardTps,
   });
   for (const [cardId, highspeedTps] of plan.cardTps) {
-    highspeedTpsByCardId.set(cardId, highspeedTps);
+    highspeedTpsByCardId?.set(cardId, highspeedTps);
   }
   for (const { record, existed } of plan.records) {
     records = existed
@@ -98,6 +99,7 @@ export function hydrateHighspeedTurnsFromTranscript(
 }
 
 export function discardHighspeedTurn(sourceCommandId: string): boolean {
+  if (CODING_PLAN_DISABLED) return false;
   const nextRecords = records.filter((record) => record.sourceCommandId !== sourceCommandId);
   if (nextRecords.length === records.length) return false;
   records = nextRecords;
@@ -114,6 +116,7 @@ export function completeHighspeedTurn(params: {
   otherDurationMs?: number;
   completedAt?: number;
 }): HighspeedTurnRecord | null {
+  if (CODING_PLAN_DISABLED) return null;
   const current = getHighspeedTurnByCommandId(params.sourceCommandId);
   if (!current) return null;
   if (current.metrics) return current;
@@ -143,14 +146,15 @@ export function completeHighspeedTurn(params: {
 }
 
 export function setHighspeedCardTps(cardId: string, highspeedTps: number): void {
+  if (CODING_PLAN_DISABLED) return;
   if (!Number.isFinite(highspeedTps) || highspeedTps <= 0) return;
-  if (highspeedTpsByCardId.get(cardId) === highspeedTps) return;
-  highspeedTpsByCardId.set(cardId, highspeedTps);
+  if (highspeedTpsByCardId?.get(cardId) === highspeedTps) return;
+  highspeedTpsByCardId?.set(cardId, highspeedTps);
   publishChange();
 }
 
 export function getHighspeedCardTps(cardId: string): number | undefined {
-  return highspeedTpsByCardId.get(cardId);
+  return highspeedTpsByCardId?.get(cardId);
 }
 
 /**
@@ -159,7 +163,8 @@ export function getHighspeedCardTps(cardId: string): number | undefined {
  * 若当时仍有 Turn 运行，再允许最后一轮结束后补查一次。
  */
 export function claimHighspeedHealthyAttempt(cardId: string, allTurnsCompleted: boolean): boolean {
-  const attempts = healthyAttemptsByCardId.get(cardId) ?? {
+  if (CODING_PLAN_DISABLED) return false;
+  const attempts = healthyAttemptsByCardId?.get(cardId) ?? {
     expiryAttempted: false,
     completionRetryAttempted: false,
   };
@@ -170,7 +175,7 @@ export function claimHighspeedHealthyAttempt(cardId: string, allTurnsCompleted: 
     if (attempts.expiryAttempted) return false;
     attempts.expiryAttempted = true;
   }
-  healthyAttemptsByCardId.set(cardId, attempts);
+  healthyAttemptsByCardId?.set(cardId, attempts);
   return true;
 }
 
@@ -179,6 +184,7 @@ export function markHighspeedTurnMetricsPersisted(
   savedDurationMs: number,
   persistedAt = Date.now(),
 ): void {
+  if (CODING_PLAN_DISABLED) return;
   let changed = false;
   records = records.map((record) => {
     if (
@@ -205,6 +211,7 @@ export function markHighspeedTurnMetricsPersisted(
 }
 
 export function markHighspeedCardAutoShared(cardId: string, autoSharedAt = Date.now()): void {
+  if (CODING_PLAN_DISABLED) return;
   let changed = false;
   records = records.map((record) => {
     if (record.card.cardId !== cardId || record.autoSharedAt !== undefined) return record;
@@ -218,6 +225,7 @@ export function claimHighspeedCardAutoShare(
   cardId: string,
   attemptedAt = Date.now(),
 ): HighspeedTurnRecord[] | null {
+  if (CODING_PLAN_DISABLED) return null;
   const cardRecords = listHighspeedTurnsByCard(cardId);
   const metrics = aggregateHighspeedCardMetrics(cardId);
   if (
@@ -272,7 +280,7 @@ export function listExpiredHighspeedCardsAwaitingTps(
   return cardIds.flatMap((cardId) => {
     const cardRecords = sessionRecords.filter((record) => record.card.cardId === cardId);
     if (
-      highspeedTpsByCardId.has(cardId) ||
+      highspeedTpsByCardId?.has(cardId) ||
       cardRecords.every((record) => record.card.expiresAt > now)
     ) {
       return [];
@@ -340,8 +348,8 @@ export function resolveNextHighspeedAutoShareAt(sessionId: string): number | nul
 export function subscribeHighspeedTurns(listener: () => void): () => void {
   // 套餐永久禁用时，消息渲染不能为无消费者的加速卡状态保留订阅。
   if (CODING_PLAN_DISABLED) return () => {};
-  listeners.add(listener);
-  return () => listeners.delete(listener);
+  listeners?.add(listener);
+  return () => listeners?.delete(listener);
 }
 
 export function getHighspeedTurnVersion(): number {

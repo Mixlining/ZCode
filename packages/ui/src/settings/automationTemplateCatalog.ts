@@ -1,3 +1,4 @@
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import type { ClientSceneConfig, ClientSceneItem } from "@zcode/services";
 import type { AutomationScheduledTemplateIconName } from "@/settings/AutomationScheduledTemplateIcon.js";
 import type { OffPeakTemplateIconName } from "@/settings/OffPeakTemplateIcon.js";
@@ -200,7 +201,7 @@ export function mapClientScenesToAutomationTemplates(
 ): AutomationTemplateCatalog {
   return {
     ...mapScheduledTemplates(scenes, isValidCronExpr),
-    offPeak: mapOffPeakTemplates(scenes),
+    offPeak: CODING_PLAN_DISABLED ? [] : mapOffPeakTemplates(scenes),
   };
 }
 

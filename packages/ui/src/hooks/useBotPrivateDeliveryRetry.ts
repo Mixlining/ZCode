@@ -1,3 +1,4 @@
+import { BOTS_DISABLED } from "@zcode/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useServices } from "@/hooks/useServices.js";
 
@@ -7,6 +8,7 @@ export function useBotPrivateDeliveryRetry(botId: string, deliveryId: string) {
   const generation = useRef(0);
   const busy = useRef(false);
   useEffect(() => {
+    if (BOTS_DISABLED) return;
     ++generation.current;
     busy.current = false;
     setState("idle");
@@ -15,7 +17,7 @@ export function useBotPrivateDeliveryRetry(botId: string, deliveryId: string) {
     };
   }, [botId, deliveryId]);
   const retry = useCallback(async () => {
-    if (busy.current) return;
+    if (BOTS_DISABLED || busy.current) return;
     busy.current = true;
     const current = generation.current;
     setState("sending");

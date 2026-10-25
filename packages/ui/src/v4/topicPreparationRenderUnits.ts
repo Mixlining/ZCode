@@ -1,3 +1,4 @@
+import { BOTS_DISABLED } from "@zcode/shared";
 import type { BotTopicPreparation as Preparation } from "@zcode/shared";
 import type { ConversationRow } from "@zcode/shared/zcode-protocol-v4";
 import type { ConversationTurnRenderUnit } from "@/v4/conversationTurnRenderUnits.js";
@@ -6,6 +7,7 @@ export function pendingTopicPreparations(
   items: readonly Preparation[],
   rows: readonly ConversationRow[],
 ) {
+  if (BOTS_DISABLED || items.length === 0) return [];
   const acceptedIds = new Set<string>();
   for (const row of rows) {
     if (row.kind !== "userInput" || !row.botGroupSource) continue;
@@ -22,6 +24,7 @@ export function withTopicPreparationMessages(
   rows: readonly ConversationRow[],
   items: readonly Preparation[],
 ): ConversationTurnRenderUnit[] {
+  if (BOTS_DISABLED || items.length === 0) return units;
   const pending = pendingTopicPreparations(items, rows);
   if (!pending.length) return units;
   const last = units.at(-1);

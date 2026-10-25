@@ -1,3 +1,4 @@
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 /* 闲时任务列表（Figma「Automations - Task list Idle-time task」/ node 4866-1735）：
    2 列卡片网格，卡片结构与定时任务卡同源（MR 1622 设计）：标题 + 指令描述 +
    底部（moon + #N in queue 位次徽章）。按创建时间倒序；hover 菜单按状态收敛（D29/D30）。
@@ -155,6 +156,7 @@ export function OffPeakTaskList({
   onDelete,
   onOpenSession,
 }: OffPeakTaskListProps) {
+  if (CODING_PLAN_DISABLED) return null;
   const { intl } = useZCodeIntl();
   const sorted = sortOffPeakTasksByCreatedAt(tasks);
 

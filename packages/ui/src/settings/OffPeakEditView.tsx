@@ -1,3 +1,4 @@
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 /* eslint-disable max-lines -- 闲时任务整页集中维护创建/编辑/History 与 composer 项目、权限、模型工具条，拆分会割裂表单状态。 */
 /* 闲时任务创建/编辑整页。composer 范式：页标题 +
    返回行 + 内联保持电脑运行开关 + Settings/History tab + 标题输入 + 大 composer 盒
@@ -139,6 +140,7 @@ export function OffPeakEditView({
   onContinue,
   showToast = toast,
 }: OffPeakEditViewProps) {
+  if (CODING_PLAN_DISABLED) return null;
   const { intl } = useZCodeIntl();
   const { settings, update: updateSettings } = useSettings();
   const confirmDialog = useConfirmDialog();

@@ -1,5 +1,7 @@
 # Highspeed 迁移到 Provider 重构后的模型契约
 
+> 当前分支约束（2026-10-25）：Highspeed 永久硬禁用，历史标识与页脚也不展示；不得运行专用派生、订阅、计时、缓存、请求或指标持久化。本文保留上游设计记录，与此冲突的行为不生效；以 `spec/vendor-disable.md` 为准。
+
 > 状态：实施中（2026-09-14）
 > 范围：把 Highspeed 加速卡的单轮推理路由从已退役的 `turnRuntimeModel` 迁移到
 > `modelSelection` + `modelExecution{selectionScope:"execution"}`，并为加速请求新增

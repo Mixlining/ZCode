@@ -1,3 +1,5 @@
+import { useStore } from "zustand";
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import { useCodingPlanEntryGate } from "@/settings/CodingPlanEntryButton.js";
 /* eslint-disable max-lines -- 定时任务主视图集中维护列表、创建/编辑整页路由与启停/删除操作，集中更利于交互一致。 */
 import {
@@ -237,6 +239,15 @@ type AutomationsView =
 
 /** 主视图标签页：Scheduled 常驻，Idle-time 受灰度控制（D31）；不设 All 混排视图。 */
 export type AutomationsTab = "scheduled" | "idle";
+
+// 闲时状态不注册订阅；使用原 store 的初始快照，不建立第二份状态。
+const offPeakSelectionSource = {
+  getState: CODING_PLAN_DISABLED
+    ? useOffPeakTaskStore.getInitialState
+    : useOffPeakTaskStore.getState,
+  getInitialState: useOffPeakTaskStore.getInitialState,
+  subscribe: CODING_PLAN_DISABLED ? () => () => {} : useOffPeakTaskStore.subscribe,
+};
 
 const SCHEDULED_ONLY_AUTOMATION_TABS: readonly AutomationsTab[] = ["scheduled"];
 const SCHEDULED_AND_IDLE_AUTOMATION_TABS: readonly AutomationsTab[] = ["scheduled", "idle"];
@@ -557,32 +568,42 @@ export function AutomationsSection({
   const refresh = useAutomationManagementStore((state) => state.refresh);
 
   const automationTemplates = useAutomationTemplates(clientScenesService);
-  const offPeakTasks = useOffPeakTaskStore((state) => state.tasks);
-  const offPeakStoreLoading = useOffPeakTaskStore((state) => state.loading);
-  const offPeakGrayConfig = useOffPeakTaskStore((state) => state.grayConfig);
-  const offPeakCodingPlanSupport = useOffPeakTaskStore((state) => state.codingPlanSupport);
-  const offPeakTakeNumberAvailability = useOffPeakTaskStore(
+  const offPeakTasks = useStore(offPeakSelectionSource, (state) => state.tasks);
+  const offPeakStoreLoading = useStore(offPeakSelectionSource, (state) => state.loading);
+  const offPeakGrayConfig = useStore(offPeakSelectionSource, (state) => state.grayConfig);
+  const offPeakCodingPlanSupport = useStore(
+    offPeakSelectionSource,
+    (state) => state.codingPlanSupport,
+  );
+  const offPeakTakeNumberAvailability = useStore(
+    offPeakSelectionSource,
     (state) => state.takeNumberAvailability,
   );
-  const offPeakTakeNumberAvailabilityStatus = useOffPeakTaskStore(
+  const offPeakTakeNumberAvailabilityStatus = useStore(
+    offPeakSelectionSource,
     (state) => state.takeNumberAvailabilityStatus,
   );
-  const offPeakOperationId = useOffPeakTaskStore((state) => state.operationId);
-  const offPeakRefresh = useOffPeakTaskStore((state) => state.refresh);
-  const offPeakRefreshCodingPlanSupport = useOffPeakTaskStore(
+  const offPeakOperationId = useStore(offPeakSelectionSource, (state) => state.operationId);
+  const offPeakRefresh = useStore(offPeakSelectionSource, (state) => state.refresh);
+  const offPeakRefreshCodingPlanSupport = useStore(
+    offPeakSelectionSource,
     (state) => state.refreshCodingPlanSupport,
   );
-  const offPeakRefreshTakeNumberAvailability = useOffPeakTaskStore(
+  const offPeakRefreshTakeNumberAvailability = useStore(
+    offPeakSelectionSource,
     (state) => state.refreshTakeNumberAvailability,
   );
-  const offPeakCreate = useOffPeakTaskStore((state) => state.createTask);
-  const offPeakUpdate = useOffPeakTaskStore((state) => state.updateTask);
-  const offPeakPause = useOffPeakTaskStore((state) => state.pauseTask);
-  const offPeakContinue = useOffPeakTaskStore((state) => state.continueTask);
-  const offPeakCancel = useOffPeakTaskStore((state) => state.cancelTask);
-  const offPeakDelete = useOffPeakTaskStore((state) => state.deleteTask);
-  const offPeakDeleteHistory = useOffPeakTaskStore((state) => state.deleteHistory);
-  const consumePendingCreateDraft = useOffPeakTaskStore((state) => state.consumePendingCreateDraft);
+  const offPeakCreate = useStore(offPeakSelectionSource, (state) => state.createTask);
+  const offPeakUpdate = useStore(offPeakSelectionSource, (state) => state.updateTask);
+  const offPeakPause = useStore(offPeakSelectionSource, (state) => state.pauseTask);
+  const offPeakContinue = useStore(offPeakSelectionSource, (state) => state.continueTask);
+  const offPeakCancel = useStore(offPeakSelectionSource, (state) => state.cancelTask);
+  const offPeakDelete = useStore(offPeakSelectionSource, (state) => state.deleteTask);
+  const offPeakDeleteHistory = useStore(offPeakSelectionSource, (state) => state.deleteHistory);
+  const consumePendingCreateDraft = useStore(
+    offPeakSelectionSource,
+    (state) => state.consumePendingCreateDraft,
+  );
 
   const [refreshing, setRefreshing] = useState(false);
   const [view, setView] = useState<AutomationsView>({ mode: "list" });
@@ -626,7 +647,7 @@ export function AutomationsSection({
   });
   const currentWorkspaceIsRemote = isRemoteAutomationWorkspace(activeWorkspaceTab);
   // 灰度中途翻转：只藏创建入口；有非终态存量仍展示并跑到终态。
-  const offPeakGrayEnabled = offPeakGrayConfig?.enabled === true;
+  const offPeakGrayEnabled = !CODING_PLAN_DISABLED && offPeakGrayConfig?.enabled === true;
   const offPeakCreationEnabled = offPeakGrayEnabled && !currentWorkspaceIsRemote;
   // 扫描全部 provider 会把未选中的 Coding Plan 当成当前执行凭证。
   // mock 演示字段仍可覆盖；真实路径只接受与当前 family/selectedKey 一致的脱敏 resolver 快照。
@@ -636,7 +657,9 @@ export function AutomationsSection({
       !offPeakStoreLoading &&
       !isCurrentOffPeakCodingPlanSupported(offPeakCodingPlanSupport, sharedSettings));
   const offPeakVisible =
-    !currentWorkspaceIsRemote && (offPeakGrayEnabled || offPeakTasks.length > 0);
+    !CODING_PLAN_DISABLED &&
+    !currentWorkspaceIsRemote &&
+    (offPeakGrayEnabled || offPeakTasks.length > 0);
   const hasAnyTasks = automations.length > 0 || offPeakTasks.length > 0;
   const visibleTabs = resolveVisibleAutomationTabs({
     hasAnyTasks,
@@ -645,7 +668,9 @@ export function AutomationsSection({
   const hasVisibleTaskCards =
     tab === "scheduled" ? automations.length > 0 : offPeakTasks.length > 0;
   const visibleAutomations = filterAutomationsByStatus(automations, statusFilter);
-  const visibleOffPeakTasks = filterOffPeakTasksByStatus(offPeakTasks, statusFilter);
+  const visibleOffPeakTasks = CODING_PLAN_DISABLED
+    ? []
+    : filterOffPeakTasksByStatus(offPeakTasks, statusFilter);
   const { showOffPeakTemplates, showScheduledTemplates } = resolveAutomationTemplateVisibility({
     hasAnyTasks,
     offPeakCreationEnabled,
@@ -771,6 +796,7 @@ export function AutomationsSection({
 
   // 服务端给出准确恢复时间；到点后重查。刷新期间及失败后继续禁入，直到成功返回 true。
   useEffect(() => {
+    if (CODING_PLAN_DISABLED) return;
     const nextTakeAt = offPeakTakeNumberAvailability?.nextTakeAt;
     if (offPeakTakeNumberAvailability?.canTakeNumber !== false || nextTakeAt === undefined) return;
     const delay = Math.max(0, nextTakeAt - Date.now()) + 100;
@@ -783,6 +809,7 @@ export function AutomationsSection({
 
   // 额度 Tooltip 曾改成不会递减的绝对日期；按远端实现推进分钟边界，保持剩余时长准确。
   useEffect(() => {
+    if (CODING_PLAN_DISABLED) return;
     const nextTakeAt = offPeakTakeNumberAvailability?.nextTakeAt;
     if (offPeakTakeNumberAvailability?.canTakeNumber !== false || nextTakeAt === undefined) return;
     const remainingMs = nextTakeAt - Date.now();
@@ -796,7 +823,7 @@ export function AutomationsSection({
 
   // 位次/状态轮询刷新（host offPeakTaskSync 写库，renderer 每 10s 读快照；无任务不轮）。
   useEffect(() => {
-    if (view.mode !== "list" || offPeakTasks.length === 0) return;
+    if (CODING_PLAN_DISABLED || view.mode !== "list" || offPeakTasks.length === 0) return;
     const timer = setInterval(() => {
       void offPeakRefresh(offPeakTaskService);
     }, 10_000);
@@ -808,7 +835,7 @@ export function AutomationsSection({
     try {
       await Promise.all([
         refresh(zcodeAgentService),
-        offPeakRefresh(offPeakTaskService),
+        ...(!CODING_PLAN_DISABLED ? [offPeakRefresh(offPeakTaskService)] : []),
         ...(offPeakGrayEnabled ? [offPeakRefreshCodingPlanSupport(offPeakTaskService)] : []),
       ]);
       setNow(Date.now());
@@ -826,6 +853,7 @@ export function AutomationsSection({
 
   // New task 页模板卡跳转过来：消费预填草稿 → 切 idle tab + 打开创建表单预填。
   useEffect(() => {
+    if (CODING_PLAN_DISABLED) return;
     const draft = consumePendingCreateDraft();
     if (!draft) return;
     if (currentWorkspaceIsRemote) return;
@@ -899,7 +927,7 @@ export function AutomationsSection({
     error: string | null;
   }>({ id: null, error: null });
   useEffect(() => {
-    if (!isOffPeakDetailNavigationId(openAutomationId)) return;
+    if (CODING_PLAN_DISABLED || !isOffPeakDetailNavigationId(openAutomationId)) return;
     let disposed = false;
     void offPeakRefresh(offPeakTaskService).finally(() => {
       if (disposed) return;
@@ -918,6 +946,7 @@ export function AutomationsSection({
     // 闲时轮尾卡携带 offpeak- 前缀 id，从并行路径解析进 offpeak-edit 视图；
     // 不能落进 cron 解析（必然 missing 并误报 targetNotFound）。
     if (isOffPeakDetailNavigationId(openAutomationId)) {
+      if (CODING_PLAN_DISABLED) return;
       const result = resolveOffPeakDetailNavigation(
         offPeakTasks,
         openAutomationId,
@@ -1226,6 +1255,7 @@ export function AutomationsSection({
 
   const handleOffPeakOpenSession = useCallback(
     (task: ZCodeOffPeakTask) => {
+      if (CODING_PLAN_DISABLED) return;
       if (!task.sessionId || !onOpenSession) return;
       onOpenSession({
         sessionId: task.sessionId,
@@ -1237,6 +1267,7 @@ export function AutomationsSection({
   );
 
   const handleOffPeakOpen = useCallback((task: ZCodeOffPeakTask) => {
+    if (CODING_PLAN_DISABLED) return;
     // 有 session 的卡片主点击不能直接跳会话：会使 Settings/History
     // 无法稳定到达。卡片主路径始终进入任务详情，会话只保留为显式次级动作。
     setView({ mode: "offpeak-edit", task });
@@ -1244,6 +1275,7 @@ export function AutomationsSection({
 
   const handleOffPeakCancel = useCallback(
     async (task: ZCodeOffPeakTask) => {
+      if (CODING_PLAN_DISABLED) return;
       const confirmed = await confirmDialog({
         title: intl.formatMessage({ id: "offPeak.cancel.title" }),
         description: intl.formatMessage(
@@ -1262,6 +1294,7 @@ export function AutomationsSection({
 
   const handleOffPeakDelete = useCallback(
     async (task: ZCodeOffPeakTask) => {
+      if (CODING_PLAN_DISABLED) return;
       const confirmed = await confirmDialog({
         confirmVariant: "destructive",
         title: intl.formatMessage({ id: "offPeak.delete.title" }),
@@ -1283,6 +1316,7 @@ export function AutomationsSection({
 
   const handleOffPeakDeleteHistory = useCallback(
     async (task: ZCodeOffPeakTask) => {
+      if (CODING_PLAN_DISABLED) return;
       await offPeakDeleteHistory(task.offPeakTaskId, offPeakTaskService);
       const message = useOffPeakTaskStore.getState().error;
       if (message) toast(message);
@@ -1292,6 +1326,7 @@ export function AutomationsSection({
 
   const handleOffPeakSubmit = useCallback(
     async (input: OffPeakEditSubmit) => {
+      if (CODING_PLAN_DISABLED) return false;
       const current = view;
       const telemetrySnapshot =
         current.mode === "offpeak-create"
@@ -1373,7 +1408,7 @@ export function AutomationsSection({
   }
 
   // 闲时任务创建/编辑整页（表单范式）。
-  if (view.mode === "offpeak-create" || view.mode === "offpeak-edit") {
+  if (!CODING_PLAN_DISABLED && (view.mode === "offpeak-create" || view.mode === "offpeak-edit")) {
     const editingTask =
       view.mode === "offpeak-edit"
         ? (offPeakTasks.find((task) => task.offPeakTaskId === view.task.offPeakTaskId) ?? view.task)

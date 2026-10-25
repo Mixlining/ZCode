@@ -1,3 +1,4 @@
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import {
   browserGlobalNoticeStore,
@@ -13,6 +14,8 @@ export function GlobalNoticeSurface({
 }: {
   store?: GlobalNoticeStore | null;
 } = {}) {
+  // 当前通知仅服务 Highspeed，禁用时不订阅、不恢复、不启动到期时钟。
+  if (CODING_PLAN_DISABLED) return null;
   const [, refreshAtExpiry] = useState(0);
   const notice = useSyncExternalStore(
     store?.subscribe ?? subscribeNoop,

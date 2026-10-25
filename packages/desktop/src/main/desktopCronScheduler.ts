@@ -95,6 +95,7 @@ export function spawnCronScheduler(deps: CronSchedulerDeps): CronSchedulerHandle
     }
 
     if (msg.type === "offpeak-active-count") {
+      if (CODING_PLAN_DISABLED) return;
       deps.onOffPeakActiveCountChanged?.(msg.count);
       return;
     }

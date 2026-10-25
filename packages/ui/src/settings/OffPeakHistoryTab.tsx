@@ -1,3 +1,4 @@
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 /* 闲时任务 History tab（spec §5 / Figma 4866-2819 · 4866-3106 空态）：
    一行汇总一次完整执行（3h 续跑分段对用户透明，D30-6）：Instructions / Triggered /
    Status / Duration + 行菜单 Go to session / Delete；无执行记录 → 「No history yet.」 */
@@ -45,6 +46,7 @@ export function OffPeakHistoryTab({
   onOpenSession?: (task: ZCodeOffPeakTask) => void;
   onDelete?: (task: ZCodeOffPeakTask) => void;
 }) {
+  if (CODING_PLAN_DISABLED) return null;
   const { intl } = useZCodeIntl();
   // 执行记录 = 首段派发起跑过（startedAt 存在）；纯排队/暂停中的任务无历史。
   if (!task?.startedAt || task.historyDeletedAt !== undefined) {

@@ -272,19 +272,22 @@ export function createFileService(options: CreateFileServiceOptions = {}): IFile
     refresh = false,
   ): Promise<WorkspaceFileIndex> => {
     const workspaceKey = workspaceIdentity?.trim() || rootPath;
+    // 同一身份可查询多个 root；索引按 root 分开，避免交错请求覆盖彼此的在途扫描。
+    const indexKey = JSON.stringify([workspaceKey, rootPath]);
     const ignoreRules = await loadWorkspaceFileSearchIgnoreRules(rootPath, workspaceIgnoreLogger);
     const cacheSignature = `${rootPath}\n${await statWorkspaceFileSearchIgnoreFingerprint(rootPath)}`;
     for (const [key, value] of workspaceFileListCache) {
       if (Date.now() - value.at >= WORKSPACE_FILE_LIST_CACHE_TTL_MS)
         workspaceFileListCache.delete(key);
     }
-    const inFlight = workspaceFileListScanning.get(workspaceKey);
+    const inFlight = workspaceFileListScanning.get(indexKey);
     // 刷新中的同作用域查询等待新索引，不能先命中旧缓存而遗漏刚创建的文件。
-    if (!refresh && inFlight?.signature === cacheSignature) return inFlight.promise;
-    const cached = workspaceFileListCache.get(workspaceKey);
+    // refresh 只绕过已完成缓存；相同扫描仍须复用，避免无命中输入造成并行全仓遍历。
+    if (inFlight?.signature === cacheSignature) return inFlight.promise;
+    const cached = workspaceFileListCache.get(indexKey);
     if (!refresh && cached?.signature === cacheSignature) {
-      workspaceFileListCache.delete(workspaceKey);
-      workspaceFileListCache.set(workspaceKey, cached);
+      workspaceFileListCache.delete(indexKey);
+      workspaceFileListCache.set(indexKey, cached);
       return cached;
     }
     const scanning = (async () => {
@@ -347,13 +350,13 @@ export function createFileService(options: CreateFileServiceOptions = {}): IFile
       const packed = packWorkspaceFileEntries(sorted);
       return { at: Date.now(), signature: cacheSignature, packed };
     })();
-    workspaceFileListScanning.set(workspaceKey, { signature: cacheSignature, promise: scanning });
+    workspaceFileListScanning.set(indexKey, { signature: cacheSignature, promise: scanning });
     try {
       const index = await scanning;
-      // 显式刷新/规则变化可替换在途扫描，旧扫描完成时只服务旧请求，不覆盖新索引。
-      if (workspaceFileListScanning.get(workspaceKey)?.promise === scanning) {
-        workspaceFileListCache.delete(workspaceKey);
-        workspaceFileListCache.set(workspaceKey, index);
+      // 规则变化可替换在途扫描，旧扫描完成时只服务旧请求，不覆盖新索引。
+      if (workspaceFileListScanning.get(indexKey)?.promise === scanning) {
+        workspaceFileListCache.delete(indexKey);
+        workspaceFileListCache.set(indexKey, index);
         while (workspaceFileListCache.size > WORKSPACE_FILE_LIST_CACHE_MAX_ENTRIES) {
           const oldest = workspaceFileListCache.keys().next().value;
           if (oldest === undefined) break;
@@ -362,8 +365,8 @@ export function createFileService(options: CreateFileServiceOptions = {}): IFile
       }
       return index;
     } finally {
-      if (workspaceFileListScanning.get(workspaceKey)?.promise === scanning)
-        workspaceFileListScanning.delete(workspaceKey);
+      if (workspaceFileListScanning.get(indexKey)?.promise === scanning)
+        workspaceFileListScanning.delete(indexKey);
     }
   };
 

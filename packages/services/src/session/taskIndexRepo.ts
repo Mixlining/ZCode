@@ -72,6 +72,10 @@ interface TaskIndexRow {
   meta_json: string;
 }
 
+// 列表投影不读取正文与未使用的 unread 水位，避免大正文进入 Host 临时堆。
+type TaskIndexMetaRow = Omit<TaskIndexRow, "searchable_text" | "last_unread_at">;
+type TaskIndexListRow = TaskIndexMetaRow & { searchable_text: string | null };
+
 interface LegacyAcpTaskIndexRow extends TaskIndexRow {
   acp_session_id: string | null;
 }
@@ -102,7 +106,7 @@ function workspaceKey(params: { workspacePath: string; workspaceIdentity?: strin
   return resolveWorkspaceKey(params);
 }
 
-function resolveTaskIndexRowWorkspaceIdentity(row: TaskIndexRow): string | undefined {
+function resolveTaskIndexRowWorkspaceIdentity(row: TaskIndexMetaRow): string | undefined {
   const columnIdentity = row.workspace_identity?.trim();
   if (columnIdentity === row.workspace_key) {
     return columnIdentity;
@@ -117,7 +121,7 @@ function resolveTaskIndexRowWorkspaceIdentity(row: TaskIndexRow): string | undef
   return undefined;
 }
 
-function rowToMeta(row: TaskIndexRow): ZCodeTaskMeta {
+function rowToMeta(row: TaskIndexMetaRow): ZCodeTaskMeta {
   const meta = readPresentation(row);
   return {
     ...meta,
@@ -130,7 +134,7 @@ function rowToMeta(row: TaskIndexRow): ZCodeTaskMeta {
   };
 }
 
-function readPresentation(row: TaskIndexRow): ZCodeTaskMeta {
+function readPresentation(row: TaskIndexMetaRow): ZCodeTaskMeta {
   const workspaceIdentity = resolveTaskIndexRowWorkspaceIdentity(row);
   try {
     const parsed = zcodeTaskMetaSchema.safeParse(JSON.parse(row.meta_json));
@@ -258,9 +262,10 @@ function buildSearchSnippets(searchableText: string, search: string | null): str
   return snippets;
 }
 
-function rowToTaskListItem(row: TaskIndexRow, search: string | null): ZCodeTaskListItem {
+function rowToTaskListItem(row: TaskIndexListRow, search: string | null): ZCodeTaskListItem {
   const meta = rowToMeta(row);
-  const snippets = buildSearchSnippets(row.searchable_text, search);
+  const snippets =
+    row.searchable_text === null ? [] : buildSearchSnippets(row.searchable_text, search);
   if (snippets.length === 0) {
     return meta;
   }
@@ -1226,7 +1231,6 @@ export class TaskIndexRepo {
           archived,
           deleted,
           title_overridden,
-          searchable_text,
           meta_json, cli_title, cli_title_source, cli_created_at, cli_updated_at, cli_last_outcome, cli_deleted, handoff_pending
         FROM tasks
         WHERE (@workspace_key IS NULL OR workspace_key = @workspace_key)
@@ -1244,7 +1248,7 @@ export class TaskIndexRepo {
         provider: params.provider ?? null,
         pinned: typeof params.pinned === "boolean" ? (params.pinned ? 1 : 0) : null,
         archived: typeof params.archived === "boolean" ? (params.archived ? 1 : 0) : null,
-      }) as unknown as TaskIndexRow[];
+      }) as unknown as TaskIndexMetaRow[];
     return rows.map(rowToMeta);
   }
 
@@ -1358,13 +1362,13 @@ export class TaskIndexRepo {
           archived,
           deleted,
           title_overridden,
-          searchable_text,
+          ${normalizedSearchLike ? "searchable_text" : "NULL AS searchable_text"},
           meta_json, cli_title, cli_title_source, cli_created_at, cli_updated_at, cli_last_outcome, cli_deleted, handoff_pending
         FROM tasks
         WHERE ${whereClause}
         ORDER BY ${orderBy}${limit === null ? "" : " LIMIT ?"}`,
       )
-      .all(...listArgs) as unknown as TaskIndexRow[];
+      .all(...listArgs) as unknown as TaskIndexListRow[];
     const workspacePurposeByKey = new Map(
       params.workspaceScopes.flatMap((scope) =>
         scope.workspacePurpose ? [[workspaceKey(scope), scope.workspacePurpose] as const] : [],

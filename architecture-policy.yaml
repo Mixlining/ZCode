@@ -934,3 +934,16 @@ exceptions:
       - packages/ui/src/settings/DynamicWorkflowModeSetting.tsx
       - packages/ui/src/store/dynamicWorkflowAvailabilityStore.ts
     reason: Admitted upstream files edited only to let the user's dynamic workflow mode choice always win and keep the settings row visible; adopting packages/shared/src and packages/ui/src needs a separate module boundary refactor.
+  - id: disabled-bot-highspeed-existing-ui-guards
+    rule: unmanaged-new-file
+    paths:
+      - packages/ui/src/highspeed/useHighspeedComposerEntrance.ts
+      - packages/ui/src/hooks/useBotBoundGroups.ts
+      - packages/ui/src/hooks/useBotGroupMemberNames.ts
+      - packages/ui/src/hooks/useBotGroupTask.ts
+      - packages/ui/src/hooks/useBotPrivateDeliveryRetry.ts
+      - packages/ui/src/v4/BotGroupDeliveryAction.tsx
+      - packages/ui/src/v4/BotGroupSourceLabel.tsx
+      - packages/ui/src/v4/BotTopicPreparation.tsx
+      - packages/ui/src/v4/topicPreparationRenderUnits.ts
+    reason: Existing admitted upstream files edited only to stop permanently disabled Bot and Highspeed hooks, subscriptions, timers, requests and history derivation using compile-time guards. Original implementations and ownership remain; adopting the shared hooks and v4 directories requires a separate boundary refactor. Scope and future-change constraints are recorded in spec/vendor-disable.md and spec/remote-disable.md.

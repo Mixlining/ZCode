@@ -1,3 +1,4 @@
+import { useStore } from "zustand";
 import { remoteHostIdFromWorkspaceIdentity } from "@zcode/shared";
 import { useRemoteConversationAvailable } from "@/v4/RemoteConversationAvailability.js";
 import {
@@ -6,7 +7,7 @@ import {
 } from "@/lib/remoteWorkspaceServiceError.js";
 import { buildConversationShareItems } from "@/v4/conversationShareItems.js";
 import { resolveSelectionSideInheritedModel } from "@/lib/selectionSideInheritedModel.js";
-import { CODING_PLAN_DISABLED } from "@zcode/shared";
+import { CODING_PLAN_DISABLED, ZCODE_VENDOR_ACTIONS_DISABLED } from "@zcode/shared";
 import { useStartPlanRecommendation } from "@/hooks/useStartPlanRecommendation.js";
 import type { SessionCreateSource } from "@zcode/shared";
 import { reportSessionCreate } from "@/lib/sessionCreateTelemetry.js";
@@ -439,6 +440,19 @@ export interface SessionPaneProps {
   onSearchResultHighlightDone?: (requestId: number) => void;
 }
 
+// 分享已永久禁用：保留原 store/实现，但不注册订阅或随流式更新派生整段历史。
+const unsubscribeDisabledShare = () => {};
+const shareSelectionSource = {
+  getState: useConversationShareSelectionStore.getState,
+  getInitialState: useConversationShareSelectionStore.getInitialState,
+  subscribe: ZCODE_VENDOR_ACTIONS_DISABLED
+    ? () => unsubscribeDisabledShare
+    : useConversationShareSelectionStore.subscribe,
+};
+const EMPTY_SHARE_ITEMS: never[] = [];
+const EMPTY_SHARE_ROW_IDS = new Set<number>();
+const EMPTY_SHARE_FINGERPRINTS = new Map<string, string>();
+
 const MOBILE_PLAN_INTERACTION_RECONCILE_DELAY_MS = 500;
 function createSessionErrorKey(
   sessionId: string | null | undefined,
@@ -743,11 +757,11 @@ export function SessionPane({
     (snapshot?.sessionId === sessionId &&
       (!snapshot.runtimeInitialization || snapshot.runtimeInitialization.status === "ready"));
   const newlyCreatedSessionIdRef = useRef<string | null>(null);
-  const shareDraft = useConversationShareSelectionStore((storeState) =>
-    sessionId ? storeState.drafts[sessionId] : undefined,
+  const shareDraft = useStore(shareSelectionSource, (storeState) =>
+    !ZCODE_VENDOR_ACTIONS_DISABLED && sessionId ? storeState.drafts[sessionId] : undefined,
   );
-  const shareDockState = useConversationShareSelectionStore((storeState) =>
-    sessionId ? storeState.dockStates[sessionId] : undefined,
+  const shareDockState = useStore(shareSelectionSource, (storeState) =>
+    !ZCODE_VENDOR_ACTIONS_DISABLED && sessionId ? storeState.dockStates[sessionId] : undefined,
   );
   const shareDock = shareDockState ?? DEFAULT_CONVERSATION_SHARE_DOCK_STATE;
   const shareTitle = shareDock.title ?? snapshot?.meta.title?.trim() ?? sessionId ?? "";
@@ -759,70 +773,82 @@ export function SessionPane({
   const publishedShareUrl = shareDock.publishedShareUrl;
   const shareError = shareDock.error;
   const shareWarnings = shareDock.warnings;
-  const shareActive = shareDraft?.open === true;
+  const shareActive = !ZCODE_VENDOR_ACTIONS_DISABLED && shareDraft?.open === true;
   // pending 草稿存在即处于范围编辑，避免维护第二套 stage/view 状态。
   const shareSelectionPanelVisible = shareActive && shareDraft?.pendingExcludedRowIds != null;
-  const closeShare = useConversationShareSelectionStore((value) => value.closeShare);
-  const updateShareDockState = useConversationShareSelectionStore((value) => value.updateDockState);
-  const confirmShareSelection = useConversationShareSelectionStore(
+  const closeShare = useStore(shareSelectionSource, (value) => value.closeShare);
+  const updateShareDockState = useStore(shareSelectionSource, (value) => value.updateDockState);
+  const confirmShareSelection = useStore(
+    shareSelectionSource,
     (value) => value.confirmSelectionEdit,
   );
-  const beginShareSelection = useConversationShareSelectionStore(
-    (value) => value.beginSelectionEdit,
-  );
-  const syncAvailableTurns = useConversationShareSelectionStore(
-    (value) => value.syncAvailableTurns,
-  );
-  const toggleShareRow = useConversationShareSelectionStore((value) => value.togglePendingRow);
-  const setAllPendingShareRows = useConversationShareSelectionStore(
+  const beginShareSelection = useStore(shareSelectionSource, (value) => value.beginSelectionEdit);
+  const syncAvailableTurns = useStore(shareSelectionSource, (value) => value.syncAvailableTurns);
+  const toggleShareRow = useStore(shareSelectionSource, (value) => value.togglePendingRow);
+  const setAllPendingShareRows = useStore(
+    shareSelectionSource,
     (value) => value.setAllPendingRowsSelected,
   );
-  const deselectShareProductTurn = useConversationShareSelectionStore(
+  const deselectShareProductTurn = useStore(
+    shareSelectionSource,
     (value) => value.deselectProductTurn,
   );
-  const setShareAccessMode = useConversationShareSelectionStore((value) => value.setAccessMode);
-  const cancelShareSelection = useConversationShareSelectionStore(
-    (value) => value.cancelSelectionEdit,
-  );
+  const setShareAccessMode = useStore(shareSelectionSource, (value) => value.setAccessMode);
+  const cancelShareSelection = useStore(shareSelectionSource, (value) => value.cancelSelectionEdit);
   const dismissShareSelectionPanel = useCallback(() => {
     if (sessionId) cancelShareSelection(sessionId);
   }, [sessionId, cancelShareSelection]);
   const pendingShareRowIds = useMemo(
     () =>
-      new Set(
-        (shareDraft?.availableRowIds ?? []).filter(
-          (id) =>
-            !(shareDraft?.pendingExcludedRowIds ?? shareDraft?.excludedRowIds ?? []).includes(id),
-        ),
-      ),
+      ZCODE_VENDOR_ACTIONS_DISABLED
+        ? EMPTY_SHARE_ROW_IDS
+        : new Set(
+            (shareDraft?.availableRowIds ?? []).filter(
+              (id) =>
+                !(shareDraft?.pendingExcludedRowIds ?? shareDraft?.excludedRowIds ?? []).includes(
+                  id,
+                ),
+            ),
+          ),
     [shareDraft],
   );
   const pendingShareTurnCount = useMemo(
     () =>
-      new Set([...pendingShareRowIds].map((id) => shareDraft?.productTurnIdByRowId[id] ?? id)).size,
+      ZCODE_VENDOR_ACTIONS_DISABLED
+        ? 0
+        : new Set([...pendingShareRowIds].map((id) => shareDraft?.productTurnIdByRowId[id] ?? id))
+            .size,
     [pendingShareRowIds, shareDraft],
   );
   const shareRenderUnits = useMemo(
-    () => buildConversationTurnRenderUnits(snapshot?.rows.window ?? []),
+    () =>
+      ZCODE_VENDOR_ACTIONS_DISABLED
+        ? EMPTY_SHARE_ITEMS
+        : buildConversationTurnRenderUnits(snapshot?.rows.window ?? []),
     [snapshot?.rows.window],
   );
   const shareItems = useMemo(
     () =>
-      buildConversationShareItems(shareRenderUnits, {
-        assistantEmptyPreview: intl.formatMessage({
-          id: "chat.turnNavigator.emptyAssistant",
-        }),
-        assistantRunningPreview: intl.formatMessage({
-          id: "chat.turnNavigator.runningAssistant",
-        }),
-        userFallbackPreview: intl.formatMessage({
-          id: "chat.turnNavigator.userFallback",
-        }),
-      }),
+      ZCODE_VENDOR_ACTIONS_DISABLED
+        ? EMPTY_SHARE_ITEMS
+        : buildConversationShareItems(shareRenderUnits, {
+            assistantEmptyPreview: intl.formatMessage({
+              id: "chat.turnNavigator.emptyAssistant",
+            }),
+            assistantRunningPreview: intl.formatMessage({
+              id: "chat.turnNavigator.runningAssistant",
+            }),
+            userFallbackPreview: intl.formatMessage({
+              id: "chat.turnNavigator.userFallback",
+            }),
+          }),
     [intl, shareRenderUnits],
   );
   const eligibleShareItems = useMemo(
-    () => shareItems.filter((item) => !item.isRunning),
+    () =>
+      ZCODE_VENDOR_ACTIONS_DISABLED
+        ? EMPTY_SHARE_ITEMS
+        : shareItems.filter((item) => !item.isRunning),
     [shareItems],
   );
   useEffect(() => {
@@ -838,7 +864,7 @@ export function SessionPane({
   }, [eligibleShareItems, sessionId, shareActive, snapshot?.rows.window, syncAvailableTurns]);
   const selectedShareProductTurnIds = useMemo(
     () =>
-      sessionId
+      !ZCODE_VENDOR_ACTIONS_DISABLED && sessionId
         ? getConversationShareSelectedProductTurnIds(
             useConversationShareSelectionStore.getState(),
             sessionId,
@@ -849,7 +875,7 @@ export function SessionPane({
   const preflightShareProductTurnIds = useMemo(
     // 选择器预检读取待确认草稿；取消后自动回到已确认范围，不提前提交选择。
     () =>
-      sessionId
+      !ZCODE_VENDOR_ACTIONS_DISABLED && sessionId
         ? getConversationShareSelectedProductTurnIds(
             useConversationShareSelectionStore.getState(),
             sessionId,
@@ -872,24 +898,26 @@ export function SessionPane({
   const [sharePreflightVersion, setSharePreflightVersion] = useState(0);
   const selectedShareTurnFingerprints = useMemo(
     () =>
-      new Map(
-        preflightShareProductTurnIds.map((productTurnId) => [
-          productTurnId,
-          conversationShareTurnFingerprint(
-            snapshot?.rows.window ?? [],
-            productTurnId,
-            workspacePath,
-            {
-              workspaceKey: workspaceIdentity?.trim() || workspacePath,
-              remoteSessionId: remoteSessionId ?? "",
-              sessionId: sessionId ?? "",
-              revision: snapshot?.revision,
-              logEpoch: snapshot?.logEpoch,
-              capabilitiesFingerprint: sharePreflightMetaRef.current.capabilitiesFingerprint,
-            },
+      ZCODE_VENDOR_ACTIONS_DISABLED
+        ? EMPTY_SHARE_FINGERPRINTS
+        : new Map(
+            preflightShareProductTurnIds.map((productTurnId) => [
+              productTurnId,
+              conversationShareTurnFingerprint(
+                snapshot?.rows.window ?? [],
+                productTurnId,
+                workspacePath,
+                {
+                  workspaceKey: workspaceIdentity?.trim() || workspacePath,
+                  remoteSessionId: remoteSessionId ?? "",
+                  sessionId: sessionId ?? "",
+                  revision: snapshot?.revision,
+                  logEpoch: snapshot?.logEpoch,
+                  capabilitiesFingerprint: sharePreflightMetaRef.current.capabilitiesFingerprint,
+                },
+              ),
+            ]),
           ),
-        ]),
-      ),
     [
       remoteSessionId,
       preflightShareProductTurnIds,
@@ -903,6 +931,7 @@ export function SessionPane({
     ],
   );
   const eligibleShareProductTurnIds = useMemo(() => {
+    if (ZCODE_VENDOR_ACTIONS_DISABLED) return EMPTY_SHARE_ITEMS;
     const rowsById = new Map((snapshot?.rows.window ?? []).map((row) => [row.rowId, row]));
     const seen = new Set<string>();
     return eligibleShareItems.flatMap((item) => {
@@ -973,6 +1002,7 @@ export function SessionPane({
   ]);
 
   useEffect(() => {
+    if (ZCODE_VENDOR_ACTIONS_DISABLED) return;
     if (sharePreflightScopeKeyRef.current === sharePreflightScopeKey) return;
     sharePreflightScopeKeyRef.current = sharePreflightScopeKey;
     sharePreflightCacheRef.current.clear();
@@ -986,6 +1016,7 @@ export function SessionPane({
   }, [sharePreflightScopeKey]);
 
   useEffect(() => {
+    if (ZCODE_VENDOR_ACTIONS_DISABLED) return;
     if (shareActive && sessionId) return;
     sharePreflightCacheRef.current.clear();
     sharePreflightMetaRef.current = {
@@ -1187,6 +1218,7 @@ export function SessionPane({
   );
   const invalidateActiveHighspeedCard = useCallback(
     (cardId: string, failureKey: string) => {
+      if (CODING_PLAN_DISABLED) return;
       if (!claimHighspeedCardInvalidation(failureKey)) return;
       void highspeedCardService
         .invalidateCard(cardId)
@@ -1210,7 +1242,7 @@ export function SessionPane({
   const [highspeedActivationCardId, setHighspeedActivationCardId] = useState<string | null>(null);
   // 本 pane 最近呈现过的卡片身份：恢复与复用同一张卡的发送据此判定不是新命中。
   const presentedHighspeedCardIdRef = useRef<string | null>(null);
-  const highspeedMetricsInFlightRef = useRef(new Set<string>());
+  const highspeedMetricsInFlightRef = useRef(CODING_PLAN_DISABLED ? null : new Set<string>());
   const highspeedTurnVersion = useSyncExternalStore(
     subscribeHighspeedTurns,
     getHighspeedTurnVersion,
@@ -1484,7 +1516,7 @@ export function SessionPane({
     const dispatch = dispatchCommandRef.current;
     if (dispatch) {
       for (const record of listHighspeedTurnsAwaitingMetricsPersistence(sessionId)) {
-        if (!record.metrics || highspeedMetricsInFlightRef.current.has(record.sourceCommandId)) {
+        if (!record.metrics || highspeedMetricsInFlightRef.current?.has(record.sourceCommandId)) {
           continue;
         }
         const userRow = snapshot.rows.window.find(
@@ -1509,7 +1541,7 @@ export function SessionPane({
           regularTps,
           highspeedTps,
         );
-        highspeedMetricsInFlightRef.current.add(record.sourceCommandId);
+        highspeedMetricsInFlightRef.current?.add(record.sourceCommandId);
         let metricsPersisted = false;
         void dispatch(
           "setHighspeedMetrics",
@@ -1553,7 +1585,7 @@ export function SessionPane({
             });
           })
           .finally(() => {
-            highspeedMetricsInFlightRef.current.delete(record.sourceCommandId);
+            highspeedMetricsInFlightRef.current?.delete(record.sourceCommandId);
             // Bug 根因：持久化 ACK 触发的 store 更新可能先于 in-flight 清理被 React 消费，
             // 导致本轮重算被跳过；ACK 成功后显式唤醒一次，避免必须发送下一条 prompt。
             if (metricsPersisted) {
@@ -1822,6 +1854,7 @@ export function SessionPane({
   }, [activeHighspeedCard, invalidateActiveHighspeedCard, sessionId, snapshot]);
 
   useEffect(() => {
+    if (CODING_PLAN_DISABLED) return;
     if (!sessionId || snapshot?.sessionId !== sessionId) return;
     const now = Date.now();
     for (const row of snapshot.rows.window) {
@@ -5516,7 +5549,7 @@ export function SessionPane({
   );
   const pendingGuideProjection = snapshot ? projectPendingGuideQueue(snapshot.queue) : null;
   const sharePopoverContent =
-    readOnly || !sessionId ? null : publishedShareUrl ? (
+    ZCODE_VENDOR_ACTIONS_DISABLED || readOnly || !sessionId ? null : publishedShareUrl ? (
       <ConversationShareSuccessDock
         url={publishedShareUrl}
         title={shareTitle}
@@ -5742,7 +5775,7 @@ export function SessionPane({
             compactForRemoteControl && "min-w-0",
           )}
         >
-          {sessionId && !compactForRemoteControl ? (
+          {!ZCODE_VENDOR_ACTIONS_DISABLED && sessionId && !compactForRemoteControl ? (
             <ConversationSharePopover
               key={sessionId}
               sessionId={sessionId}
@@ -5755,18 +5788,20 @@ export function SessionPane({
               {sharePopoverContent}
             </ConversationSharePopover>
           ) : null}
-          <ConversationShareSelectionPanel
-            visible={shareSelectionPanelVisible}
-            items={shareItems}
-            selectedRowIds={pendingShareRowIds}
-            selectedCount={pendingShareTurnCount}
-            preflight={sharePreflight}
-            onSelectAllChange={handleSelectAllShareRows}
-            onToggle={handleShareSelectionToggle}
-            onInspect={handleShareSelectionInspect}
-            onConfirm={handleConfirmShareSelection}
-            onCancel={dismissShareSelectionPanel}
-          />
+          {!ZCODE_VENDOR_ACTIONS_DISABLED && (
+            <ConversationShareSelectionPanel
+              visible={shareSelectionPanelVisible}
+              items={shareItems}
+              selectedRowIds={pendingShareRowIds}
+              selectedCount={pendingShareTurnCount}
+              preflight={sharePreflight}
+              onSelectAllChange={handleSelectAllShareRows}
+              onToggle={handleShareSelectionToggle}
+              onInspect={handleShareSelectionInspect}
+              onConfirm={handleConfirmShareSelection}
+              onCancel={dismissShareSelectionPanel}
+            />
+          )}
           {!isDraft ? (
             <ConversationStatusPanel
               workspacePath={workspacePath}

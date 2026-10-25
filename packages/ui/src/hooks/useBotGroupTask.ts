@@ -1,3 +1,4 @@
+import { BOTS_DISABLED } from "@zcode/shared";
 import { useCallback, useEffect, useState } from "react";
 import { isFeishuBotProvider, type BotContextState, type FeishuBotProvider } from "@zcode/shared";
 import { useServices } from "@/hooks/useServices.js";
@@ -14,6 +15,7 @@ export function useBotGroupTask(
   const [busyId, setBusyId] = useState<string | null>(null);
   const workspaceKey = workspaceIdentity?.trim() || workspacePath;
   useEffect(() => {
+    if (BOTS_DISABLED) return;
     let disposed = false;
     let revision = 0;
     const refresh = async () => {
@@ -60,7 +62,7 @@ export function useBotGroupTask(
   }, [botsService, broadcastService, taskId, workspaceKey]);
   const retry = useCallback(
     async (deliveryId: string) => {
-      if (!context?.group || !botsService.resendGroupResult) return;
+      if (BOTS_DISABLED || !context?.group || !botsService.resendGroupResult) return;
       setBusyId(deliveryId);
       try {
         const result = await botsService.resendGroupResult({
@@ -93,7 +95,7 @@ export function useBotGroupTask(
   );
   const reconcile = useCallback(
     async (deliveryId: string, received: boolean) => {
-      if (!context?.group || !botsService.reconcileGroupResult) return;
+      if (BOTS_DISABLED || !context?.group || !botsService.reconcileGroupResult) return;
       setBusyId(deliveryId);
       try {
         const result = await botsService.reconcileGroupResult({
@@ -127,7 +129,13 @@ export function useBotGroupTask(
   );
   const retryPreparation = useCallback(
     async (messageId: string) => {
-      if (!context?.group?.threadId || !taskId || !botsService.retryTopicPreparation) return;
+      if (
+        BOTS_DISABLED ||
+        !context?.group?.threadId ||
+        !taskId ||
+        !botsService.retryTopicPreparation
+      )
+        return;
       setBusyId(messageId);
       try {
         await botsService.retryTopicPreparation({

@@ -1,3 +1,4 @@
+import { BOTS_DISABLED } from "@zcode/shared";
 import type { ZCodeAutomationBotDeliveryTarget } from "@zcode/shared";
 
 interface CronBotDeliveryRepo {
@@ -30,6 +31,7 @@ export async function watchCronRunBotDelivery(params: {
   repo: CronBotDeliveryRepo;
   botsService: CronBotDeliveryService;
 }): Promise<boolean> {
+  if (BOTS_DISABLED) return false;
   const target = await params.repo.getBotDeliveryTarget(params.automationId, params.workspaceKey);
   if (!target) return false;
   await params.botsService.watchAutomationRun({

@@ -1,3 +1,4 @@
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import { installRequestSecurityDiagnostics } from "./request-security-edition/index.js";
 /* 遥测与厂商能力硬禁用：本构建不启动 ARMS SDK、不发布强制升级检查、不接入口径上报。 */
 import { createLocalTtftExporter } from "./localTtftExporter.js";
@@ -685,12 +686,15 @@ function forwardCronRunResult(
 function forwardOffPeakRunResult(
   result: Parameters<CronSchedulerHandle["handleOffPeakRunResult"]>[0],
 ): void {
+  if (CODING_PLAN_DISABLED) return;
   cronScheduler?.handleOffPeakRunResult(result);
 }
 function wakeCronScheduler(automationId: string): void {
   cronScheduler?.wake(automationId);
 }
 function wakeOffPeakScheduler(offPeakTaskId?: string): void {
+  // 闲时任务不能借共用通道唤醒普通 cron scheduler。
+  if (CODING_PLAN_DISABLED) return;
   // 复用同一条 scheduler-wake 通道（tick 同时覆盖 cron 与 off-peak 分支），仅日志标签区分。
   cronScheduler?.wake(`offpeak:${offPeakTaskId ?? "sync"}`);
 }

@@ -1,3 +1,4 @@
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import type {
   ConversationTurnRenderUnit,
   BuildConversationTurnRenderUnitsOptions,
@@ -439,5 +440,6 @@ export function buildConversationTurnRenderUnits(
   const normalizedUnits = keptUnits.map((unit, index) =>
     normalizeRenderUnitPosition(unit, index, keptUnits.length, options),
   );
+  if (CODING_PLAN_DISABLED) return normalizedUnits;
   return markHighspeedOutputFooterUnits(normalizedUnits, options.nowMs ?? Date.now());
 }

@@ -203,6 +203,7 @@ export const useOffPeakTaskStore = create<OffPeakTaskState>((set, get) => ({
   },
 
   async refresh(service) {
+    if (CODING_PLAN_DISABLED) return;
     try {
       const tasks = await service.list();
       set({ tasks, error: null });
@@ -340,6 +341,7 @@ export const useOffPeakTaskStore = create<OffPeakTaskState>((set, get) => ({
   },
 
   async updateTask(offPeakTaskId, input, service) {
+    if (CODING_PLAN_DISABLED) return false;
     set({ operationId: `offpeak:update:${offPeakTaskId}`, error: null });
     try {
       const updated = await service.updateTask(offPeakTaskId, input);
@@ -354,6 +356,7 @@ export const useOffPeakTaskStore = create<OffPeakTaskState>((set, get) => ({
   },
 
   async pauseTask(offPeakTaskId, service) {
+    if (CODING_PLAN_DISABLED) return;
     set({ operationId: `offpeak:pause:${offPeakTaskId}`, error: null });
     try {
       await service.pauseTask(offPeakTaskId);
@@ -366,6 +369,7 @@ export const useOffPeakTaskStore = create<OffPeakTaskState>((set, get) => ({
   },
 
   async continueTask(offPeakTaskId, service) {
+    if (CODING_PLAN_DISABLED) return;
     set({ operationId: `offpeak:continue:${offPeakTaskId}`, error: null });
     try {
       await service.continueTask(offPeakTaskId);
@@ -378,6 +382,7 @@ export const useOffPeakTaskStore = create<OffPeakTaskState>((set, get) => ({
   },
 
   async cancelTask(offPeakTaskId, service) {
+    if (CODING_PLAN_DISABLED) return;
     set({ operationId: `offpeak:cancel:${offPeakTaskId}`, error: null });
     try {
       await service.cancelTask(offPeakTaskId);
@@ -390,6 +395,7 @@ export const useOffPeakTaskStore = create<OffPeakTaskState>((set, get) => ({
   },
 
   async deleteTask(offPeakTaskId, service) {
+    if (CODING_PLAN_DISABLED) return;
     set({ operationId: `offpeak:delete:${offPeakTaskId}`, error: null });
     try {
       await service.deleteTask(offPeakTaskId);
@@ -402,6 +408,7 @@ export const useOffPeakTaskStore = create<OffPeakTaskState>((set, get) => ({
   },
 
   async deleteHistory(offPeakTaskId, service) {
+    if (CODING_PLAN_DISABLED) return;
     set({
       operationId: `offpeak:delete-history:${offPeakTaskId}`,
       error: null,
@@ -417,14 +424,17 @@ export const useOffPeakTaskStore = create<OffPeakTaskState>((set, get) => ({
   },
 
   dismissNewTaskBanner() {
+    if (CODING_PLAN_DISABLED) return;
     set({ newTaskBannerDismissed: true });
   },
 
   setPendingCreateDraft(draft) {
+    if (CODING_PLAN_DISABLED) return;
     set({ pendingCreateDraft: draft });
   },
 
   consumePendingCreateDraft() {
+    if (CODING_PLAN_DISABLED) return null;
     const draft = get().pendingCreateDraft;
     if (draft) set({ pendingCreateDraft: null });
     return draft;

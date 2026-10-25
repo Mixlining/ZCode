@@ -1,3 +1,4 @@
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import type {
   CommandEnvelope,
   CommandPayloadMap,
@@ -11,6 +12,7 @@ async function setHighspeedMetrics(
   host: V4CommandCoreHost,
   envelope: CommandEnvelope,
 ): Promise<CommandResult | undefined> {
+  if (CODING_PLAN_DISABLED) throw new Error("fault.command.highspeedMetricsUnsupported");
   const payload = envelope.payload as CommandPayloadMap["setHighspeedMetrics"];
   const record = requireRecord(host, envelope.sessionId);
   const resolution = host.resolveRowActionTarget?.(

@@ -1,3 +1,4 @@
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import { isReadonlyAgentSessionKind } from "@zcode/shared";
 import { readBackgroundBashOutputFromOwner } from "./background-work-owner.js";
 // v4 网关 binder。
@@ -343,7 +344,7 @@ export function resolveInputCommandForAdmission(
       text: payload.text,
       attachments: payload.attachments ?? [],
       ...(payload.context_refs ? { sharedContextRefs: payload.context_refs } : {}),
-      ...(payload.highspeedMeta ? { highspeed: payload.highspeedMeta } : {}),
+      ...(!CODING_PLAN_DISABLED && payload.highspeedMeta ? { highspeed: payload.highspeedMeta } : {}),
       ...(payload.inputOrigin ? { inputOrigin: payload.inputOrigin } : {}),
       ...(payload.conversationQuotes ? { conversationQuotes: payload.conversationQuotes } : {}),
       ...(payload.botGroupSource ? { botGroupSource: payload.botGroupSource } : {}),
@@ -445,7 +446,7 @@ function buildForkInitialInput(
       : { state: "notRequested" },
     dispatch: { state: "admitted" },
     admittedAt: admission.admittedAt,
-    ...(input.highspeed ? { highspeed: input.highspeed } : {}),
+    ...(!CODING_PLAN_DISABLED && input.highspeed ? { highspeed: input.highspeed } : {}),
     ...(input.provenance ? { provenance: input.provenance } : {}),
   });
   return {
@@ -603,6 +604,7 @@ export function persistHighspeedTimingOnTurnTerminal(
   event: SessionEvent,
   snapshot: ConversationSnapshot,
 ): void {
+  if (CODING_PLAN_DISABLED) return;
   const record = context.sessions.get(sessionId);
   const sessionStore = context.deps.sessionStore;
   const payload = event.payload as { inputId?: unknown; duration?: unknown };
@@ -688,7 +690,7 @@ export function createConversationV4Gateway(
   const autoDrainRetryTimers = new Map<string, ReturnType<typeof setTimeout>>();
   // Highspeed 执行材料含临时凭据：只按 session/sourceCommandId 驻留内存，绝不进入
   // TurnSteerQueued、snapshot 或 transcript。CLI 重启后缺失时队列提升自动走原模型。
-  const queuedTurnExecutions = new Map<string, Map<string, V4QueuedTurnExecution>>();
+  const queuedTurnExecutions = CODING_PLAN_DISABLED ? null : new Map<string, Map<string, V4QueuedTurnExecution>>();
   const autoDrainV4QueueIfReady = async (record: ZCodeProtocolSessionRecord): Promise<void> => {
     const head = context.v4Gateway?.getQueueHead(record.app.sessionId);
     if (!head) {
@@ -800,19 +802,20 @@ export function createConversationV4Gateway(
       context.v4Gateway?.hasQueuedDelivery(sessionId, delivery) ?? false,
     getQueueLength: (sessionId) => context.v4Gateway?.getQueueLength(sessionId) ?? 0,
     retainQueuedTurnExecution: (sessionId, sourceCommandId, execution) => {
-      const sessionExecutions = queuedTurnExecutions.get(sessionId) ?? new Map();
+      if (CODING_PLAN_DISABLED) return;
+      const sessionExecutions = queuedTurnExecutions?.get(sessionId) ?? new Map();
       sessionExecutions.set(sourceCommandId, execution);
-      queuedTurnExecutions.set(sessionId, sessionExecutions);
+      queuedTurnExecutions?.set(sessionId, sessionExecutions);
     },
     readQueuedTurnExecution: (sessionId, sourceCommandId) =>
-      queuedTurnExecutions.get(sessionId)?.get(sourceCommandId),
+      queuedTurnExecutions?.get(sessionId)?.get(sourceCommandId),
     deleteQueuedTurnExecution: (sessionId, sourceCommandId) => {
-      const sessionExecutions = queuedTurnExecutions.get(sessionId);
+      const sessionExecutions = queuedTurnExecutions?.get(sessionId);
       sessionExecutions?.delete(sourceCommandId);
-      if (sessionExecutions?.size === 0) queuedTurnExecutions.delete(sessionId);
+      if (sessionExecutions?.size === 0) queuedTurnExecutions?.delete(sessionId);
     },
     clearQueuedTurnExecutions: (sessionId) => {
-      queuedTurnExecutions.delete(sessionId);
+      queuedTurnExecutions?.delete(sessionId);
     },
     waitForProjectionEventCommit: (sessionId, eventId, options) => {
       const gateway = context.v4Gateway;
@@ -890,7 +893,7 @@ export function createConversationV4Gateway(
             : { state: "notRequested" },
         dispatch: { state: "admitted" },
         admittedAt: admission.admittedAt,
-        ...(input.highspeed ? { highspeed: input.highspeed } : {}),
+        ...(!CODING_PLAN_DISABLED && input.highspeed ? { highspeed: input.highspeed } : {}),
         ...(input.provenance ? { provenance: input.provenance } : {}),
       });
       await context.deps.sessionStore.saveSessionInput({
@@ -1177,6 +1180,7 @@ export function createConversationV4Gateway(
       });
     },
     setHighspeedMetrics: async (sessionId, input) => {
+      if (CODING_PLAN_DISABLED) return;
       const record = context.sessions.get(sessionId);
       const sessionStore = context.deps.sessionStore;
       if (!record || !sessionStore) throw new Error("proto.sessionNotFound");
@@ -1232,7 +1236,7 @@ export function createConversationV4Gateway(
       // session.removed 推给 sessions-index 订阅者；先 delete 再 dispose 时 workspaceId
       // 恒为 null，删除会话后侧栏列表项永不消失（e2e conversation-session-v4-sidebar 抓出）。
       context.v4Gateway?.disposeSession(sessionId, { deleted: true });
-      queuedTurnExecutions.delete(sessionId);
+      queuedTurnExecutions?.delete(sessionId);
       context.sessions.delete(sessionId);
     },
     // createSession 的执行面：record 建立/事件接线/catalog 同步/失败自清理全在旧
@@ -1641,7 +1645,7 @@ export function createConversationV4Gateway(
           });
         });
     },
-    onHighspeedTurnTerminal: (sessionId, event, snapshot) => {
+    onHighspeedTurnTerminal: CODING_PLAN_DISABLED ? undefined : (sessionId, event, snapshot) => {
       persistHighspeedTimingOnTurnTerminal(context, sessionId, event, snapshot);
     },
     // Gateway 的单一 READY promise 负责并发与水位；binder 只恢复 runtime 并返回 M0/M1。

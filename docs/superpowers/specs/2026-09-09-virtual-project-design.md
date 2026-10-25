@@ -1201,3 +1201,9 @@ Host readTree + CLI 时间镜像 -> 纯选择器 -> 项目列表 / 最近更新�
 项目视图和 task 时间线共用滚动容器，复用 ScrollFadeViewport 的 24px mask。内容未溢出时无 mask；顶部仅下缘渐隐，中间上下缘渐隐，底部仅上缘渐隐。内容或容器尺寸变化后重新计算，导航栏和底部账户区域不参与 mask。保留列表原有间距、纵向滚动、拖拽边界，桌面和手机、深浅主题共用透明度渐变，不增加颜色或业务状态。
 
 MR !2897 手机文件导航：identity 的权威 session 映射与实际 services 注册共同证明连接有效，不要求 session 重复保存 identity 字段。跨 workspace 的 `workspace-bridge-open` 使用 `fileTreeTaskId` 与 `taskHostId` 定位可信任务 cwd，不能同时携带选择任务的 `taskId` 或 project 草稿。Host 复用任务目录准备，不设置 `initialTaskId`；手机新 Root 初始打开文件树，不选任务、不清除未读。旧 Root 的待返回请求仍遵循原有 generation 清理。关闭文件树后清除壳层已消费的打开请求，侧栏重挂载不得再次消费旧入口。
+
+## 任务列表读取投影约束（2026-10-25）
+
+Host TaskIndexRepo 只读投影按用途选择列：listTaskMetas 不读取 searchable_text；queryTaskList 仅在有效非空搜索词需要正文摘要时读取该列。内部类型区分元数据与可选正文投影，不把裁剪结果断言成完整数据库行。CLI 事实、Host 组织态、正文索引写入与迁移均不改变。
+
+人工验收：大量历史任务下比较普通、置顶、归档列表的内容、排序、分页、删除过滤与标题优先级；空串/空白查询不读取正文列，中文、英文及正文搜索的命中和摘要保持一致。只运行静态检查，不执行单测/E2E。

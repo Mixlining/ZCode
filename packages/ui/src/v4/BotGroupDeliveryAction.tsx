@@ -1,3 +1,4 @@
+import { BOTS_DISABLED } from "@zcode/shared";
 import { DeliveryContext } from "@/v4/botGroupDeliveryContext.js";
 import { useContext, useMemo, type ReactNode } from "react";
 import { CircleAlertIcon } from "lucide-react";
@@ -21,6 +22,8 @@ export function BotGroupDeliveryProvider({
   workspaceIdentity?: string;
   children: ReactNode;
 }) {
+  // 禁用时不进入 Provider hooks，避免无效 RPC、广播与成员轮询。
+  if (BOTS_DISABLED) return children;
   // 同一任务只订阅一次群状态，历史回复不各自请求全量 Bot 状态。
   const { context, provider, busyId, retry, reconcile, retryPreparation } = useBotGroupTask(
     taskId,
@@ -66,6 +69,7 @@ export function BotGroupDeliveryAction({
   onRetry: (id: string) => void;
   onReconcile: (id: string, received: boolean) => void;
 }) {
+  if (BOTS_DISABLED) return null;
   const { intl } = useZCodeIntl();
   // Bug 原因：任务级恢复面板与队列浮层重叠，还重复展示正文；只在已关联轮次的操作栏展示。
   const unresolved = results.filter(
@@ -157,6 +161,7 @@ export function ConnectedBotGroupDeliveryAction({
   turnId: string;
   sourceCommandIds: readonly string[];
 }) {
+  if (BOTS_DISABLED) return null;
   const value = useContext(DeliveryContext);
   const context = value?.context;
   if (!value || !context?.group) return null;

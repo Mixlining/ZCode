@@ -1,3 +1,4 @@
+import { BOTS_DISABLED } from "@zcode/shared";
 import { useContext } from "react";
 import { BotGroupMemberNamesContext } from "@/v4/BotGroupMemberNamesContext.js";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.js";
@@ -5,6 +6,7 @@ import type { BotGroupInputSource } from "@zcode/shared";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 
 export function BotGroupSourceLabel({ source }: { source?: BotGroupInputSource }) {
+  if (BOTS_DISABLED) return null;
   const { intl } = useZCodeIntl();
   const members = useContext(BotGroupMemberNamesContext);
   if (!source) return null;

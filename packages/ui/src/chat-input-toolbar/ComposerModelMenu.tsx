@@ -1,3 +1,4 @@
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import { useRef, useState, type ReactNode } from "react";
 import { ScrollFadeViewport } from "@/components/ui/scroll-fade-viewport.js";
 import type { ComposerPlanGroup } from "@/lib/composerPlanGroups.js";
@@ -64,7 +65,7 @@ export function getComposerThoughtDisplay(options: ComposerModelOptions) {
 
 export function isGlmHighspeedModel(name: string) {
   // GLM FlashX 与 Highspeed 共用视觉；只按显示名称判定，避免误命中其他品牌。
-  return /glm/i.test(name) && /highspeed|flashx/i.test(name);
+  return !CODING_PLAN_DISABLED && /glm/i.test(name) && /highspeed|flashx/i.test(name);
 }
 
 export function ComposerThoughtIndicator({

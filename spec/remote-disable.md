@@ -235,3 +235,13 @@ lockfile、`third-party/inventory.json` 与 `THIRD-PARTY-NOTICES.md` 记录保�
    `handleOpenRemoteConnection` 在 `REMOTE_WORKSPACE_DISABLED` 为真时不打开弹窗。
 9. 全仓库无「只做半路拦截、源头仍会构造或进入」的远程/Bot 路径：新增入口必须在源头收口，
    否则视为违反 `spec/vendor-disable.md` 的两维度要求。
+
+## 2026-10-25：Bot 展示与派生链路零工作
+
+BOTS_DISABLED 同时约束聊天页 Bot Provider、群状态/成员姓名查询、投递重试、绑定群刷新、topic preparation、来源与投递按钮。禁用时不挂载业务 Provider/交互组件，不注册广播、窗口 focus、轮询，不读取 Bot 服务；普通聊天与旧历史均不得因 Bot 元数据启动这些流程。历史正文与持久化原样保留。原组件/协议保留以便合并上游，守卫必须在构造、挂载、订阅或派生之前。
+
+上游合并必须复核 useBotGroupTask、useBotGroupMemberNames、useBotBoundGroups、useBotPrivateDeliveryRetry 和 BotGroupDeliveryProvider 的调用方；不能以 Host 服务未注册或结果为空代替 renderer 源头守卫。Timeline 不调用 Bot 准备消息的全历史扫描。
+
+人工验收：打开普通任务、带 Bot metadata 的历史任务并持续输出/切换任务，无 Bot RPC、60 秒成员轮询、focus/广播订阅、来源投递操作及准备动画；普通内容和任务操作不变。只执行静态检查，不自动启动应用。
+
+合并复核须包含 BotGroupDeliveryProvider、useBotGroupTask、useBotGroupMemberNames、useBotBoundGroups、useBotPrivateDeliveryRetry、topicPreparationRenderUnits 与 cronBotDelivery；禁用时 provider 不调用专用 hooks，hooks 不注册广播/focus/计时器或请求，投递不查询 Repo，旧消息普通正文与附件保留。

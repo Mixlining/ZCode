@@ -1,3 +1,4 @@
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 // 会话流命令组：sendText / stop（模式样板）。
 // 每个命令组一个文件：handler 纯函数 (host, envelope) → CommandResult|undefined，
 // 决策逻辑直驱 core，环境能力走 host 钩子（见 ../types.ts 的过渡标注）。
@@ -49,6 +50,10 @@ async function sendText(
   envelope: CommandEnvelope,
 ): Promise<CommandResult | undefined> {
   const rawPayload = envelope.payload as CommandPayloadMap["sendText"];
+  // 禁用时拒绝旧客户端的加速材料，不能进入 admission 或覆盖用户自配模型。
+  if (CODING_PLAN_DISABLED && (rawPayload.highspeedMeta || isHighspeedProviderId(rawPayload.modelSelection?.providerId))) {
+    throw new V4InputAdmissionRejectedError("proto.invalidPayload", "Highspeed is disabled");
+  }
   const record = requireRecord(host, envelope.sessionId);
   // Bug 根因：旧校验只看正文，UI 已允许的 attachment-only query 会在 CLI 被误判为空。
   if (

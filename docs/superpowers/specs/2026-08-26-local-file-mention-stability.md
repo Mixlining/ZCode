@@ -22,12 +22,14 @@ query / workspace / service / enabled 改变
     -> 旧查询结果失效 -> 仅最新查询可更新面板
 
 loaded + 非空 query 无命中
-    -> 本次 query 最多一次 refresh:true -> Host 绕过缓存重新扫描
+    -> 本次面板打开且作用域不变时最多一次 refresh:true
+    -> Renderer 在异步请求前占用额度
+    -> Host 绕过已完成缓存，复用相同作用域在途扫描
 error -> 停止自动请求 -> 关闭再打开/切换 workspace 或 service 才可恢复
 ```
 
-- 缓存归属 file service 实例，按 `workspaceIdentity?.trim() || rootPath` 隔离，并校验 rootPath 与 `.zcodeignore` 指纹。索引短 TTL 60s 与既有 Host 策略一致；同一 key 的扫描去重；缓存有数量上限，移除过期条目。
-- 规则修改后下次查询即按新规则执行；refresh 不能被旧缓存吞掉，旧扫描完成不能覆盖后发扫描。
+- 缓存归属 file service 实例，先按 `workspaceIdentity?.trim() || rootPath` 身份隔离，再按 rootPath 区分索引，并校验 rootPath 与 `.zcodeignore` 指纹。索引短 TTL 60s 与既有 Host 策略一致；同一 key 的扫描去重；缓存有数量上限，移除过期条目。
+- 规则修改后下次查询即按新规则执行；refresh 绕过已完成缓存，但复用相同身份、root 与 ignore 指纹的在途扫描，旧扫描完成不能覆盖后发扫描。
 - 关闭面板清理 Renderer 查询/错误状态；重新打开请求 Host。UI 不再持有完整候选数组或文件搜索 Worker。
 - Host 分批执行候选构建和匹配，批次间让出事件循环；查询结果受数量上限约束，输入不承担全量索引的传输/解码。
 - 本地和远程均使用当前 workspace 对应的 file service；同路径不同 identity、不同 service 不共享缓存或在途查询。手机复用同一 hook 与 RPC，不另建 Host。
@@ -59,3 +61,11 @@ error -> 停止自动请求 -> 关闭再打开/切换 workspace 或 service 才�
 | MFH07 | 文件树与命令中心原接口                                | 分块返回及 shared 匹配兼容；既有单测                                  |
 
 已确认边界：保留空 query、数量、排序、失败终态、miss-refresh；不新增持久索引、文件监听系统或搜索 UI。主题与语言不改变语义；使用同一界面和 canonical mention，重点验证查询契约与桌面/手机交互。E2E 新用例保留 manual-review/pending，推广/CI 准入按既有流程，不在本次自动转正。
+
+## 无命中补刷额度（2026-10-25）
+
+- Renderer 复用现有 provider scope 持有一次补刷额度，关键词与 limit 改变不重置。面板关闭重开、workspace/identity、服务连接、session/project 或项目 roots 修订变化时重置。
+- 补刷前先占用额度；错误继续锁定当前 scope，不随输入循环重试。仅当前 scope 与 query 可以接纳异步结果。
+- Host 是索引唯一 owner，不新增 watcher、轮询或持久索引。60 秒 TTL 不变，过期后的下一次正常查询可重建索引。一次补刷后外部新增的文件，重新打开面板后的无命中补刷或过期后的查询可发现，不承诺每个关键词都强刷。
+- 人工验收：大仓库连续输入多个无命中关键词，同次打开最多一次补刷；同作用域并发 refresh 复用扫描；关闭重开、切项目、修改 roots/ignore 后结果正确且旧结果不污染；读取失败后继续输入不重试。保留 fuzzy 排序、限量结果与文件树分块接口。
+- 本次验证只运行静态检查，以上人工场景不自动执行；旧表中的单测/E2E 为历史证据，不作为本次执行要求。

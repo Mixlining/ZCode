@@ -1,3 +1,4 @@
+import { BOTS_DISABLED } from "@zcode/shared";
 import { useEffect, useState } from "react";
 import type { BotContextState } from "@zcode/shared";
 import { useServices } from "@/hooks/useServices.js";
@@ -14,6 +15,7 @@ export function useBotGroupMemberNames(context: BotContextState | null) {
     null,
   );
   useEffect(() => {
+    if (BOTS_DISABLED) return;
     let disposed = false;
     let loading = false;
     setResolved(null);

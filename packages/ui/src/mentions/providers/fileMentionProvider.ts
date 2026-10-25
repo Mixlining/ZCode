@@ -38,10 +38,6 @@ function mapWorkspaceFileToMentionItem(entry: ProjectFileEntry): MentionItem {
   };
 }
 
-function normalizeRefreshQuery(query: string): string {
-  return query.trim().toLowerCase();
-}
-
 export function useFileMentionProvider(
   workspacePath: string,
   workspaceIdentity: string | undefined,
@@ -69,7 +65,7 @@ export function useFileMentionProvider(
   const scope = useMemo(
     () => ({
       error: null as Error | null,
-      lastMissQuery: null as string | null,
+      missRefreshUsed: false,
     }),
     [
       fileService,
@@ -146,9 +142,10 @@ export function useFileMentionProvider(
       try {
         let entries = await read();
         if (!active) return;
-        const normalizedQuery = normalizeRefreshQuery(query);
-        if (entries.length === 0 && normalizedQuery && scope.lastMissQuery !== normalizedQuery) {
-          scope.lastMissQuery = normalizedQuery;
+        const hasQuery = query.trim().length > 0;
+        if (entries.length === 0 && hasQuery && !scope.missRefreshUsed) {
+          // 同次打开只补扫一次，先占用额度，避免不同关键词反复触发全仓扫描。
+          scope.missRefreshUsed = true;
           // 无命中补扫必须绕过 Host TTL，否则外部新文件在缓存有效期内永远不可见。
           entries = await read(true);
           if (!active) return;

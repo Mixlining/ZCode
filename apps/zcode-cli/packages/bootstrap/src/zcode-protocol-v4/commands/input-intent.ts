@@ -1,3 +1,4 @@
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import type { TurnInputIntentMetadata } from "@zcode/contracts";
 import type { ModelSelection } from "@zcode/shared";
 import type {
@@ -50,7 +51,7 @@ export function inputIntentMetadata(
 ): TurnInputIntentMetadata {
   const admission = commandAdmissionOf(envelope);
   const highspeed =
-    envelope.type === "sendText"
+    !CODING_PLAN_DISABLED && envelope.type === "sendText"
       ? (envelope.payload as CommandPayloadMap["sendText"]).highspeedMeta
       : undefined;
   return {
@@ -158,7 +159,7 @@ export function inputIntentMetadataFromQueueItem(
       : {}),
     attachmentRefs: item.attachments,
     ...(item.sharedContextRefs ? { sharedContextRefs: [...item.sharedContextRefs] } : {}),
-    ...(item.highspeed ? { highspeed: item.highspeed } : {}),
+    ...(!CODING_PLAN_DISABLED && item.highspeed ? { highspeed: item.highspeed } : {}),
     ...(item.source ? { source: item.source } : {}),
     // 提升只改变调度状态；重试／编辑原始输入的来源关联不能在此丢失。
     ...(item.provenance ? { provenance: { ...item.provenance } } : {}),

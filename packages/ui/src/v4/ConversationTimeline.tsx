@@ -1,3 +1,4 @@
+import { BOTS_DISABLED, CODING_PLAN_DISABLED } from "@zcode/shared";
 import { useBotTopicPreparations } from "@/v4/BotTopicPreparation.js";
 import { withTopicPreparationMessages } from "@/v4/topicPreparationRenderUnits.js";
 /* oxlint-disable eslint(max-lines) -- ConversationTimeline 集中承载虚拟滚动、滚动锚定、loadOlder 与 find 高亮协调；拆散会让同一滚动状态跨文件传递。 */
@@ -463,19 +464,15 @@ function ConversationTimelineImpl({
     });
   }, [pluginUiDerivation, sessionKey, pluginUiDisclosureVersion]);
   const topicPreparations = useBotTopicPreparations();
-  const renderUnits = useMemo(
-    () =>
-      withTopicPreparationMessages(
-        buildConversationTurnRenderUnits(rows, {
-          nowMs: liveNowMs,
-          sessionPhase,
-          pluginUiPinResolver,
-        }),
-        rows,
-        topicPreparations,
-      ),
-    [liveNowMs, pluginUiPinResolver, rows, sessionPhase, topicPreparations],
-  );
+  const renderUnits = useMemo(() => {
+    const units = buildConversationTurnRenderUnits(rows, {
+      nowMs: liveNowMs,
+      sessionPhase,
+      pluginUiPinResolver,
+    });
+    if (BOTS_DISABLED) return units;
+    return withTopicPreparationMessages(units, rows, topicPreparations);
+  }, [liveNowMs, pluginUiPinResolver, rows, sessionPhase, topicPreparations]);
   const { virtualizedUnits, liveUnit, liveUnitIndex } = useMemo(
     () => splitConversationTimelineLiveTail(renderUnits),
     [renderUnits],
@@ -509,7 +506,7 @@ function ConversationTimelineImpl({
     onLatestTurnSummaryChange(latestTurnSummary);
   }, [latestTurnSummary, onLatestTurnSummaryChange]);
   const nextHighspeedExpiryMs = useMemo(
-    () => resolveNextHighspeedExpiryMs(rows, liveNowMs),
+    () => (CODING_PLAN_DISABLED ? undefined : resolveNextHighspeedExpiryMs(rows, liveNowMs)),
     [liveNowMs, rows],
   );
   const turnNavigatorQueryRowIds = useMemo(
@@ -687,7 +684,7 @@ function ConversationTimelineImpl({
   }, [hasRunningUnit]);
 
   useEffect(() => {
-    if (nextHighspeedExpiryMs === undefined) return;
+    if (CODING_PLAN_DISABLED || nextHighspeedExpiryMs === undefined) return;
 
     // Bug 根因：会话完成后工作时钟会停止；若 Highspeed 卡稍后才到期，footer 不会自行出现。
     // 单独订阅最近的卡片到期边界，避免为了等待倒计时持续刷新整个历史列表。

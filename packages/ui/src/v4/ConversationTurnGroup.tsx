@@ -1,3 +1,4 @@
+import { BOTS_DISABLED } from "@zcode/shared";
 import { BotTopicPreparation } from "@/v4/BotTopicPreparation.js";
 import { useBotTopicInterruption } from "@/v4/botGroupDeliveryContext.js";
 import { ConnectedBotGroupDeliveryAction } from "@/v4/BotGroupDeliveryAction.js";
@@ -387,7 +388,23 @@ function ConversationCuaGroupRow({
   );
 }
 
-function ConversationAssistantWorkItems({
+// 分组计算放在 Radix Presence 内：关闭动画结束后卸载，不再随流式更新计算隐藏历史。
+function ConversationAssistantWorkItems(
+  props: React.ComponentProps<typeof ConversationAssistantWorkItemsContent>,
+) {
+  const history = props.historyContainer;
+  if (!history) return <ConversationAssistantWorkItemsContent {...props} />;
+  return (
+    <CollapsibleContent
+      data-testid={testId(TID_CHAT_ASSISTANT_HISTORY_CONTENT, history.chunkKey)}
+      data-history-open={String(history.open)}
+    >
+      <ConversationAssistantWorkItemsContent {...props} />
+    </CollapsibleContent>
+  );
+}
+
+function ConversationAssistantWorkItemsContent({
   rows,
   context,
   stageTailIsRunning = false,
@@ -438,9 +455,7 @@ function ConversationAssistantWorkItems({
     ],
   );
 
-  // history 外壳不能在这层投影前创建：当 CUA 消费原 message
-  // 或运行中 shell 被延迟分类时，会留下 pt-5 和空的 gap-4 容器。只有确认
-  // 内层存在可渲染项后才创建 CollapsibleContent，让外壳与内容一起消失。
+  // 只有存在可渲染项才创建间距层；过滤为空时 Radix 空壳高度为零。
   if (items.length === 0) {
     return null;
   }
@@ -469,17 +484,12 @@ function ConversationAssistantWorkItems({
     </div>
   );
 
-  if (!historyContainer) {
-    return content;
-  }
-
-  return (
-    <CollapsibleContent
-      data-testid={testId(TID_CHAT_ASSISTANT_HISTORY_CONTENT, historyContainer.chunkKey)}
-      data-history-open={String(historyContainer.open)}
-    >
-      <div className="pt-5">{content}</div>
-    </CollapsibleContent>
+  return historyContainer ? (
+    <div data-history-work-items className="pt-5">
+      {content}
+    </div>
+  ) : (
+    content
   );
 }
 
@@ -776,7 +786,7 @@ function ConversationWorkSegmentFlow({
       // 外层 flex gap 不属于 Radix 测量的 content 高度，收起到 0 后会在
       // display:none 的最后一帧再少 20px。普通兄弟用外边距保持原盒模型，history
       // 的间距则放进动画层。
-      className="history-message flex flex-col [&>*+*:not([data-slot='collapsible-content'])]:mt-5"
+      className="history-message flex flex-col [&>:not([data-slot='collapsible-content'])~:not([data-slot='collapsible-content'])]:mt-5 [&>[data-slot='collapsible-content']:has([data-history-work-items])~:not([data-slot='collapsible-content'])]:mt-5"
     >
       {segment.flowItems.map((item, index) => {
         const stageTailIsRunning =
@@ -811,7 +821,9 @@ function ConversationWorkSegmentFlow({
                 data-testid={testId(TID_CHAT_ASSISTANT_HISTORY_CONTENT, chunkKey)}
                 data-history-open={String(open)}
               >
-                <div className="pt-5">{group}</div>
+                <div data-history-work-items className="pt-5">
+                  {group}
+                </div>
               </CollapsibleContent>
             );
           } else {
@@ -1250,21 +1262,26 @@ function ConversationTurnGroupImpl({
   const visibleUserRows = useMemo(() => unit.visibleUserInputs, [unit.visibleUserInputs]);
   useSyncExternalStore(subscribeHighspeedTurns, getHighspeedTurnVersion, getHighspeedTurnVersion);
   const sourceCommandId = unit.header?.sourceCommandId ?? visibleUserRows[0]?.sourceCommandId;
-  const highspeedTurn = getHighspeedTurnByCommandId(sourceCommandId);
+  const highspeedTurn = CODING_PLAN_DISABLED ? null : getHighspeedTurnByCommandId(sourceCommandId);
   // Bug 根因：历史标识过去只依赖 Renderer 内存；卡过期或冷恢复后记录不可用，
   // 即使 transcript 已持久化 highspeed metadata，也会把 accelerated output 渲染成普通工时。
-  const isHighspeed = highspeedTurn !== null || visibleUserRows.some((row) => row.highspeed);
-  const highspeedExpiresAt = Math.max(
-    highspeedTurn?.card.expiresAt ?? Number.NEGATIVE_INFINITY,
-    ...visibleUserRows.flatMap((row) => (row.highspeed ? [row.highspeed.expiresAt] : [])),
-  );
+  const isHighspeed =
+    !CODING_PLAN_DISABLED &&
+    (highspeedTurn !== null || visibleUserRows.some((row) => row.highspeed));
+  const highspeedExpiresAt = CODING_PLAN_DISABLED
+    ? Number.NEGATIVE_INFINITY
+    : Math.max(
+        highspeedTurn?.card.expiresAt ?? Number.NEGATIVE_INFINITY,
+        ...visibleUserRows.flatMap((row) => (row.highspeed ? [row.highspeed.expiresAt] : [])),
+      );
   // Bug 根因：紫色流光过去只看“本轮曾使用 Highspeed”，卡过期后 metadata 仍会保留，
   // 导致 fallback 阶段仍在执行的 Tool 被永久染成紫色。运行态样式必须同时服从卡片有效期。
   const showHighspeedAnimatedGradient = isHighspeed && unit.isRunning && highspeedExpiresAt > nowMs;
   // 完成态统计即使因 replayable 事件先到，也必须等整轮停止生成后才能进入 UI。
-  const highspeedMeta = unit.isRunning
-    ? undefined
-    : visibleUserRows.find((row) => row.highspeed)?.highspeed;
+  const highspeedMeta =
+    CODING_PLAN_DISABLED || unit.isRunning
+      ? undefined
+      : visibleUserRows.find((row) => row.highspeed)?.highspeed;
   const highspeedShareTarget = useMemo(() => {
     // 旧记录的 metadata 不能在套餐禁用后重新打开厂商分享入口。
     if (CODING_PLAN_DISABLED) return null;
@@ -1336,8 +1353,11 @@ function ConversationTurnGroupImpl({
     [unit.assistantTextRows, unit.assistantWorkRows, unit.latestAssistantTextRow],
   );
   const assistantFileSummaryText = useMemo(
-    () => unit.assistantTextRows.map((row) => row.text).join("\n\n"),
-    [unit.assistantTextRows],
+    () =>
+      !isOfficeMode && unit.header?.fileChanges
+        ? unit.assistantTextRows.map((row) => row.text).join("\n\n")
+        : "",
+    [isOfficeMode, unit.header?.fileChanges, unit.assistantTextRows],
   );
   const assistantCopyText = useMemo(
     () =>
@@ -1405,7 +1425,8 @@ function ConversationTurnGroupImpl({
     [unit.header, unit.isRunning, workflowRunByRunId],
   );
   const offPeakTurnCards = useMemo(
-    () => (unit.isRunning ? [] : resolveOffPeakTurnCards(unit.assistantWorkRows)),
+    () =>
+      CODING_PLAN_DISABLED || unit.isRunning ? [] : resolveOffPeakTurnCards(unit.assistantWorkRows),
     [unit.assistantWorkRows, unit.isRunning],
   );
   const canRenderAssistantActions =
@@ -1413,10 +1434,14 @@ function ConversationTurnGroupImpl({
     latestAssistantTextRow?.state === "complete" &&
     assistantCopyText !== undefined;
   // runtime turnId 与产品轮次 ID 不同；用 CLI 行上的命令归因关联投递，包含被裁剪输入的 header。
-  const deliverySourceCommandIds = [
-    ...(unit.header?.sourceCommandId ? [unit.header.sourceCommandId] : []),
-    ...unit.visibleUserInputs.flatMap((row) => (row.sourceCommandId ? [row.sourceCommandId] : [])),
-  ];
+  const deliverySourceCommandIds = BOTS_DISABLED
+    ? []
+    : [
+        ...(unit.header?.sourceCommandId ? [unit.header.sourceCommandId] : []),
+        ...unit.visibleUserInputs.flatMap((row) =>
+          row.sourceCommandId ? [row.sourceCommandId] : [],
+        ),
+      ];
   const hasHookActions =
     // Hook action 与 copy/feedback/fork 共用 turn eligibility；
     // timelineOnly 维护 turn（compact/modelChange marker 轮）即使带历史遗留的
@@ -1429,7 +1454,11 @@ function ConversationTurnGroupImpl({
   const canForkLatestAssistant = latestAssistantTextRow?.actions?.canFork === true;
   const backgroundResultTitle = resolveBackgroundResultTitle(unit);
   const showHighspeedOutputFooter =
-    unit.showHighspeedOutputFooter === true && isHighspeed && !unit.timelineOnly && !unit.isRunning;
+    !CODING_PLAN_DISABLED &&
+    unit.showHighspeedOutputFooter === true &&
+    isHighspeed &&
+    !unit.timelineOnly &&
+    !unit.isRunning;
   const hasAssistantWorkContent = unit.timelineOnly
     ? unit.assistantWorkRows.length > 0
     : unit.assistantWorkRows.length > 0 ||
@@ -1554,7 +1583,7 @@ function ConversationTurnGroupImpl({
           {/* 修复原因：CronCreate/CronUpdate 工具本身仍按普通工具行展示；成功卡片属于整轮
               完成后的结果摘要，必须等回复结束再跟随最终 assistant 正文收尾。 */}
           <CronAutomationTurnCards cards={cronAutomationTurnCards} context={context} />
-          <OffPeakTurnCards cards={offPeakTurnCards} context={context} />
+          {!CODING_PLAN_DISABLED && <OffPeakTurnCards cards={offPeakTurnCards} context={context} />}
           {!isOfficeMode && unit.header?.fileChanges ? (
             <ConversationFileSummaryPanel
               header={unit.header}
@@ -1608,10 +1637,12 @@ function ConversationTurnGroupImpl({
               {hasHookActions ? (
                 <ConversationHookDetailsAction rows={unit.hookInvocations} turnId={unit.turnId} />
               ) : null}
-              <ConnectedBotGroupDeliveryAction
-                turnId={unit.turnId}
-                sourceCommandIds={deliverySourceCommandIds}
-              />
+              {!BOTS_DISABLED && (
+                <ConnectedBotGroupDeliveryAction
+                  turnId={unit.turnId}
+                  sourceCommandIds={deliverySourceCommandIds}
+                />
+              )}
             </MessageActions>
           ) : null}
           {showHighspeedOutputFooter ? (
@@ -1656,7 +1687,7 @@ function ConversationTurnGroupImpl({
           highspeedMeta={highspeedMeta}
         />
       )}
-      {unit.topicPreparations?.length ? (
+      {!BOTS_DISABLED && unit.topicPreparations?.length ? (
         <BotTopicPreparation items={unit.topicPreparations} />
       ) : null}
     </section>

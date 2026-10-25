@@ -1,3 +1,4 @@
+import { BOTS_DISABLED } from "@zcode/shared";
 import { GenUiMessageResponse } from "@/gen-ui/index.js";
 import { ConversationUserInputBubble } from "@/v4/ConversationUserInputBubble.js";
 import { expandTopicInputMessages } from "@/v4/topicInputMessages.js";
@@ -1305,7 +1306,7 @@ const SingleUserInputRowView = memo(function SingleUserInputRowView({
           <span>{intl.formatMessage({ id: "chat.message.sentByScheduledTask" })}</span>
         </div>
       ) : null}
-      {row.botGroupSource ? (
+      {!BOTS_DISABLED && row.botGroupSource ? (
         // 群来源原先插在材料与正文之间，割裂同一输入；统一放在材料之前。
         <div data-v4-user-input-source="true" className="mb-2 flex min-w-0 max-w-full">
           <BotGroupSourceLabel source={row.botGroupSource} />

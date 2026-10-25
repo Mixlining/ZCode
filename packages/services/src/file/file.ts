@@ -14,7 +14,7 @@ export interface WorkspaceFileSearchParams {
   workspaceIdentity?: string;
   query: string;
   limit?: number;
-  /** 无命中补扫：绕过尚未过期的文件索引。 */
+  /** 无命中补扫：绕过已完成缓存，复用相同身份、root 与 ignore 指纹的在途扫描。 */
   refresh?: boolean;
 }
 

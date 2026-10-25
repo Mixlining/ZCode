@@ -1,3 +1,4 @@
+import { BOTS_DISABLED } from "@zcode/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BotConfig, BotState } from "@zcode/shared";
 import { useServices } from "@/hooks/useServices.js";
@@ -44,6 +45,7 @@ export function useBotBoundGroups(bot: BotConfig) {
   const revision = useRef(0);
   const savingRef = useRef(false);
   const refresh = useCallback(async () => {
+    if (BOTS_DISABLED) return [];
     const requested = ++revision.current;
     const next = await botsService.getBotStates();
     if (alive.current && requested === revision.current) {
@@ -53,6 +55,7 @@ export function useBotBoundGroups(bot: BotConfig) {
     return next;
   }, [botsService]);
   const reload = useCallback(async () => {
+    if (BOTS_DISABLED) return;
     const requested = revision.current + 1;
     setError(null);
     try {
@@ -66,6 +69,7 @@ export function useBotBoundGroups(bot: BotConfig) {
     }
   }, [refresh]);
   useEffect(() => {
+    if (BOTS_DISABLED) return;
     alive.current = true;
     void reload();
     const subscription = broadcastService.onMessage((message) => {
@@ -79,7 +83,8 @@ export function useBotBoundGroups(bot: BotConfig) {
   }, [broadcastService, reload]);
   const toggle = useCallback(
     async (chatId: string, enabled: boolean) => {
-      if (savingRef.current || !bot.enabled || !botsService.setGroupEnabled) return;
+      if (BOTS_DISABLED || savingRef.current || !bot.enabled || !botsService.setGroupEnabled)
+        return;
       savingRef.current = true;
       setSaving(chatId);
       setError(null);

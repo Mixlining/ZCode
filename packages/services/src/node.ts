@@ -3222,21 +3222,22 @@ export async function migrateApplicationStorage(
   hostId?: string,
 ): Promise<{ backupSkipped: boolean }> {
   const automations = new AutomationRepo();
-  const offPeak = new OffPeakTaskRepo();
+  // 共用迁移由普通 Repo 完成；禁用闲时域不构造专用 Repo 或执行旧行业务初始化。
+  const offPeak = CODING_PLAN_DISABLED ? null : new OffPeakTaskRepo();
   const tasks = new TaskIndexRepo(settings, hostId);
   try {
     await automations.ensureReady();
-    await offPeak.ensureReady();
+    await offPeak?.ensureReady();
     await tasks.ensureReady();
     return {
       backupSkipped:
         tasks.migrationBackupSkipped ||
         automations.migrationBackupSkipped ||
-        offPeak.migrationBackupSkipped,
+        (offPeak?.migrationBackupSkipped ?? false),
     };
   } finally {
     tasks.close();
-    offPeak.close();
+    offPeak?.close();
     automations.close();
   }
 }

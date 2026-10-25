@@ -1,3 +1,4 @@
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import { useCodingPlanEntryGate } from "@/settings/CodingPlanEntryButton.js";
 /* New task 页闲时任务入口（Figma ⚫️ Z.ai - Zcode / node 5488-3978；spec §5「模板」/ D30-4 第二入口）。
    引导横幅「Use free run Idle-time task」+ Client Scenes 模板卡（预填创建表单，Customize=空白）。
@@ -42,6 +43,7 @@ interface OffPeakNewTaskEntryProps {
 }
 
 export function OffPeakNewTaskEntry({ onOpenAutomations }: OffPeakNewTaskEntryProps) {
+  if (CODING_PLAN_DISABLED) return null;
   const { intl, locale } = useZCodeIntl();
   const { clientScenesService } = useServices();
   const { offPeak: remoteOffPeakTemplates } = useAutomationTemplates(clientScenesService);
