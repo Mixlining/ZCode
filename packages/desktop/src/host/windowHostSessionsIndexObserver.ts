@@ -1,5 +1,6 @@
 import { createServiceLogger } from "@zcode/services/node";
 import { createHash } from "node:crypto";
+import { PHONE_REMOTE_DISABLED } from "@zcode/shared";
 import { collectMobilePushEvents, type MobilePushEvent } from "@zcode/shared/web-remote-relay";
 import type { IDisposable } from "@zcode/rpc";
 import { ZCODE_AGENT_RUNTIME_UNAVAILABLE_CODE, type IZCodeAgentService } from "@zcode/services";
@@ -67,7 +68,8 @@ export function createWindowHostSessionsIndexObserver(options: {
   const workspaceKey = options.target.workspaceIdentity?.trim() || options.target.workspacePath;
   const topic = sessionsIndexTopic(workspaceKey);
   const summaries = new Map<string, SessionSummary>();
-  const notificationRuns = new Map<string, string>();
+  // 手机远控硬禁用：不维护推送 run 归属缓存；sessions-index 观察器本身继续服务本地任务列表。
+  const notificationRuns = PHONE_REMOTE_DISABLED ? null : new Map<string, string>();
   const assembler = new TopicWireFrameAssembler(sessionsIndexTopicFrameSchema);
   let activeSubscriptionId: string | null = null;
   let cursor: { logEpoch: string; seq: number } | null = null;
@@ -124,8 +126,10 @@ export function createWindowHostSessionsIndexObserver(options: {
         if (session.phase === "running" || session.phase === "prewarming")
           running.add(session.sessionId);
       }
-      for (const sessionId of notificationRuns.keys())
-        if (!running.has(sessionId)) notificationRuns.delete(sessionId);
+      if (notificationRuns) {
+        for (const sessionId of notificationRuns.keys())
+          if (!running.has(sessionId)) notificationRuns.delete(sessionId);
+      }
       cursor = { logEpoch: frame.payload.snapshot.logEpoch, seq: frame.toSeq };
       recovering = false;
       clearRecoveryTimer();
@@ -138,7 +142,7 @@ export function createWindowHostSessionsIndexObserver(options: {
     }
     for (const delta of frame.payload.deltas) {
       if (delta.op === "session.upserted") {
-        if (live && !recovering) {
+        if (live && !recovering && notificationRuns) {
           const previous = summaries.get(delta.session.sessionId);
           const next = delta.session;
           const workspaceId = createHash("sha256").update(workspaceKey).digest("hex");
@@ -177,7 +181,7 @@ export function createWindowHostSessionsIndexObserver(options: {
         summaries.set(delta.session.sessionId, delta.session);
       } else {
         summaries.delete(delta.sessionId);
-        notificationRuns.delete(delta.sessionId);
+        notificationRuns?.delete(delta.sessionId);
       }
     }
     cursor = { ...cursor, seq: frame.toSeq };

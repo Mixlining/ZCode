@@ -16,7 +16,7 @@ v3.17.1 新增的手机推送、手机日志拉取、Data Sync 与 provisioning 
   `IDeviceSyncStateService` 不注册，Data Sync 页面与入口不挂载，跨进程调用点在调用前用常量判断。
 - provisioning lane 与 `IDeviceSyncStateService` 的注册与构造保持在
   `REMOTE_WORKSPACE_DISABLED` 守卫内。
-- `attachRemoteWorkspaceSessionHost` 仍无调用方；Source Server 服务集合与启动重连继续不构造。
+- `attachRemoteWorkspaceSessionHost` 不注入附件桥（桥内调用点因依赖缺失不可达）；Source Server 服务集合与启动重连继续不构造。
 
 本构建只支持**本机桌面单机**形态：一个窗口对应一个 window-scoped Local Host，只服务本地
 workspace。不再提供手机远控、远程 workspace（SSH / WSL / Docker）与消息平台 Bot
@@ -39,7 +39,9 @@ WebSocket 重连、跨进程锁心跳或空闲状态缓存。
 `spec/vendor-disable.md` 的「禁用是永久的」一节。
 
 `packages/desktop/src/main/attachRemoteWorkspaceSessionHost` 在合并前已无任何调用方（手机
-relay 是本仓库之外的上游服务）。禁用后它必须**继续无调用方**：新增调用方即视为破坏本约束。
+relay 是本仓库之外的上游服务）。禁用后 Main **不得向
+`createWebRemoteControlSharedHostAttachments` 注入该依赖**：桥内保留调用点，但依赖缺失时
+直接抛 `REMOTE_SESSION_MISSING`，因此不可达。新增注入或新增调用方即视为破坏本约束。
 
 ## 三层边界
 
@@ -234,8 +236,8 @@ lockfile、`third-party/inventory.json` 与 `THIRD-PARTY-NOTICES.md` 记录保�
 3. 远程资产 staging 入口（v3.16.1 起为 `stage:remote-assets` 调用链）的
    `stageRemoteAssetsCli.ts` 仍在 `REMOTE_WORKSPACE_DISABLED` 下整轮返回；
    上游若改写该入口，确认这一守卫没被合并冲掉。
-4. `attachRemoteWorkspaceSessionHost` 仍未新增调用方；`AttachServicePort` 的
-   `web-remote-replayable` 拒绝分支仍在。
+4. Main 仍不向附件桥注入 `attachRemoteWorkspaceSessionHost`（桥内调用点因依赖缺失
+   不可达）；`AttachServicePort` 的 `web-remote-replayable` 拒绝分支仍在。
 5. `packages/server` 的 `/api/connect-remote` 与 `/ws/remote/:id` 守卫仍在，
    且普通 `/ws` 与 `entry-http.js` 未被一并关闭。
 6. UI 侧 `REMOTE_WORKSPACE_DISABLED` 的启动恢复分支（`allowRemoteWorkspaceRestore`）

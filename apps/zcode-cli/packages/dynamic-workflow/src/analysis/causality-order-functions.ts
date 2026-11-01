@@ -68,4 +68,3 @@ export function resolveCallDeclaration(
   if (declaration === undefined) return undefined;
   return asScriptFunction(declaration, scriptFile);
 }
-

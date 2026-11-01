@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { ZCODE_SITES_DISABLED } from "@zcode/shared";
 import { resolveRuntimeZCodeEndpointOrigin } from "@zcode/shared/zcodeEndpoint";
 import { createSitesApi } from "./api.ts";
 import { createSitesServer } from "./server.ts";
@@ -11,6 +12,9 @@ const REQUEST_TIMEOUT_MS = 15_000;
 
 // 官方插件宿主通过导出的 main 启动；导入时直接连接会被宿主判定为无效入口。
 export async function main(): Promise<void> {
+  // ZCode Sites 硬禁用：插件入口即使被外部 MCP 配置直接拉起，也不创建 HTTP API、
+  // 面板或 stdio server；调用方会看到进程正常退出而不是发起官方请求。
+  if (ZCODE_SITES_DISABLED) return;
   // 宿主经 HTTP(S)_PROXY / NO_PROXY 把网络出口配置给子进程，内置 fetch 默认不读，要显式打开。
   // Node 24.14 起才有这个 API（桌面端内置的 Node 已满足），@types/node 24.12 还没有声明。
   (http as typeof http & { setGlobalProxyFromEnv?: () => void }).setGlobalProxyFromEnv?.();

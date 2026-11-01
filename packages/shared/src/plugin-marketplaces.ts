@@ -11,6 +11,11 @@ export interface DefaultPluginMarketplace {
 
 export const ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID = "zcode-plugins-official";
 
+/** ZCode Sites 官方插件名；禁用时按名称与官方 id 双重过滤，覆盖换市场安装的记录。 */
+export const ZCODE_SITE_PLUGIN_NAME = "zcode-site";
+/** ZCode Sites 官方插件 id；硬禁用时插件发现层按此 id 过滤所有来源（含已安装记录）。 */
+export const ZCODE_SITE_PLUGIN_ID = `${ZCODE_SITE_PLUGIN_NAME}@${ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID}`;
+
 /**
  * Claude Code 官方市场（GitHub git 源）。不进默认补种列表：用户可手动添加为个人来源，
  * 移除后不会被重新补种。它不是 ZCode 的强依赖：GitHub 不可达时刷新必然失败，
@@ -36,7 +41,7 @@ const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS_BASE: readonly string[] = [
   // visualize（交互视图）随 UI 插件合入时 CLI 定义已标 defaultEnabled，但这里漏加，
   // Settings 会把它当成默认关闭，与 CLI 实际启用状态不一致。
   "visualize@zcode-plugins-official",
-  "zcode-site@zcode-plugins-official",
+  ZCODE_SITE_PLUGIN_ID,
   // 电脑控制回退为默认关闭，故 computer-use 不在此名单内。
   // 该集合必须与 official-plugin-definitions.ts 里标了 defaultEnabled 的插件逐一对应，
   // bootstrap 的「Settings 默认启用集合与 CLI 的官方插件声明一致」单测机械对照两者。
@@ -47,7 +52,7 @@ const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS_BASE: readonly string[] = [
 export const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS: ReadonlySet<string> = new Set(
   ZCODE_SITES_DISABLED
     ? DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS_BASE.filter(
-        (pluginId) => pluginId !== "zcode-site@zcode-plugins-official",
+        (pluginId) => pluginId !== ZCODE_SITE_PLUGIN_ID,
       )
     : DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS_BASE,
 );

@@ -1,7 +1,9 @@
+import { ZCODE_SITE_PLUGIN_ID } from "@zcode/shared";
+
 export const MIN_PREVIEW_PANE_HEAVY_CONTENT_VISIBLE_INLINE_SIZE_PX = 96;
 
 /** 「打开标签页」里内置的 Sites 入口打开的官方插件（只有一个 surface）。 */
-export const SITES_PLUGIN_ID = "zcode-site@zcode-plugins-official";
+export const SITES_PLUGIN_ID = ZCODE_SITE_PLUGIN_ID;
 
 export type OpenTabLauncherItemId =
   | "sites"

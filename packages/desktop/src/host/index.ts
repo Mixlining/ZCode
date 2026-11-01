@@ -2396,16 +2396,21 @@ const windowRemoteConnectionRegistry = createWindowRemoteConnectionRegistry<
 });
 
 const windowHostControllerRuntime = createWindowHostControllerRuntime({
-  onRunStarted: (run) =>
-    parentPort?.postMessage({
-      type: HostResponseTypes.Broadcast,
-      message: { channel: "mobile-push:run", payload: run },
-    }),
-  onNotification: (event) =>
-    parentPort?.postMessage({
-      type: HostResponseTypes.Broadcast,
-      message: { channel: "mobile-push:event", payload: event },
-    }),
+  // 手机远控硬禁用：不注入推送回调，Host 不派生 run/event，也不向 Main 广播。
+  onRunStarted: PHONE_REMOTE_DISABLED
+    ? undefined
+    : (run) =>
+        parentPort?.postMessage({
+          type: HostResponseTypes.Broadcast,
+          message: { channel: "mobile-push:run", payload: run },
+        }),
+  onNotification: PHONE_REMOTE_DISABLED
+    ? undefined
+    : (event) =>
+        parentPort?.postMessage({
+          type: HostResponseTypes.Broadcast,
+          message: { channel: "mobile-push:event", payload: event },
+        }),
   createId: randomUUID,
   readHostTaskList: (query) => {
     if (!activeServices) throw new Error("Window Host services unavailable");

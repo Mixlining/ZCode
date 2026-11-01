@@ -800,18 +800,18 @@ const appTelemetryRuntime = createAppTelemetryRuntime({
   appLaunchCoordinator,
 });
 
-const reportRemoteConversationTelemetry = createRemoteConversationTelemetryDispatcher(
-  async (event) => {
-    const locale = Intl.DateTimeFormat().resolvedOptions();
-    const context = appTelemetryRuntime.getLatestRendererContext() ?? {
-      clientTimezone: locale.timeZone,
-      clientLanguage: locale.locale,
-      screenResolution: "",
-    };
-    await appTelemetryCore.reportEvent({ ...event, context });
-  },
-  appTelemetryCore.trackPendingReport,
-);
+// 遥测硬禁用：不创建远端会话遥测 dispatcher（内部持有去重 Set 与串行 tail）。
+const reportRemoteConversationTelemetry = ZCODE_TELEMETRY_ENABLED
+  ? createRemoteConversationTelemetryDispatcher(async (event) => {
+      const locale = Intl.DateTimeFormat().resolvedOptions();
+      const context = appTelemetryRuntime.getLatestRendererContext() ?? {
+        clientTimezone: locale.timeZone,
+        clientLanguage: locale.locale,
+        screenResolution: "",
+      };
+      await appTelemetryCore.reportEvent({ ...event, context });
+    }, appTelemetryCore.trackPendingReport)
+  : null;
 
 function reportRemoteUsageEventForRenderer(rendererId: number, event: TelemetryEventPayload): void {
   const context =
@@ -870,7 +870,13 @@ const loadRemoteControlAuthorization = createTelemetryAuthorizationLoader(
 );
 const webRemoteControlSharedHostAttachments = createWebRemoteControlSharedHostAttachments({
   windowHostProcessMap,
-  attachRemoteWorkspaceSessionHost: remoteSessionManager.attachRemoteWorkspaceSessionHost,
+  // 远程 workspace 硬禁用：不注入附件接管依赖，桥内调用点因依赖缺失不可达；
+  // 管理员/远控路径即使被误触也只能得到 REMOTE_SESSION_MISSING。
+  ...(REMOTE_WORKSPACE_DISABLED
+    ? {}
+    : {
+        attachRemoteWorkspaceSessionHost: remoteSessionManager.attachRemoteWorkspaceSessionHost,
+      }),
   logger,
 });
 const deviceMid = ensureDesktopDeviceMidSync();
@@ -1981,7 +1987,7 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
           },
           onRemoteConversationTelemetry: (message) => {
             if (!ZCODE_TELEMETRY_ENABLED) return;
-            void reportRemoteConversationTelemetry(message.event);
+            void reportRemoteConversationTelemetry?.(message.event);
           },
           onSessionCreateTelemetry: (message) => {
             void appTelemetryCore.reportEvent(message.event).catch(() => {});

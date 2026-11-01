@@ -32,6 +32,7 @@ import {
   type RequestVerificationConfig,
   allowRequestVerificationHeaders,
   requestVerificationInteractionAvailable,
+  ZCODE_TELEMETRY_ENABLED,
 } from "@zcode/shared";
 import { zcodeMcpUiSamplingResultSchema } from "@zcode/shared";
 import { MCP_APPS_SAMPLING_TRANSPORT_TIMEOUT_MS } from "@zcode/shared/mcp-apps";
@@ -1436,11 +1437,16 @@ export function createZCodeAgentService(
   const localTtftFactsEmitter = new Emitter<{ workspaceKey: string; facts: LocalTtftFacts }>();
   const conversationTelemetryFactEmitters = new Map<string, Emitter<ConversationTelemetryFact>>();
   const remoteConversationTelemetryEmitter = new Emitter<RemoteConversationTelemetryEvent>();
-  const remoteConversationTelemetry = new Map<string, RemoteConversationTelemetry>();
+  // 遥测硬禁用：不装配远端 collector Map；本地事实仍走 conversationTelemetryFactEmitters
+  // 供任务活动统计等非出网消费者使用。
+  const remoteConversationTelemetry = ZCODE_TELEMETRY_ENABLED
+    ? new Map<string, RemoteConversationTelemetry>()
+    : null;
   function collectRemoteConversationFact(
     workspace: ZCodeAgentWorkspaceTarget,
     fact: ConversationTelemetryFact,
   ): boolean {
+    if (!remoteConversationTelemetry) return false;
     const key = resolveWorkspaceKey(workspace);
     let collector = remoteConversationTelemetry.get(key);
     if (!collector) {
@@ -4133,8 +4139,10 @@ export function createZCodeAgentService(
       emitter.dispose();
     }
     conversationTelemetryFactEmitters.clear();
-    for (const collector of remoteConversationTelemetry.values()) collector.dispose();
-    remoteConversationTelemetry.clear();
+    if (remoteConversationTelemetry) {
+      for (const collector of remoteConversationTelemetry.values()) collector.dispose();
+      remoteConversationTelemetry.clear();
+    }
     remoteConversationTelemetryEmitter.dispose();
     for (const emitter of offPeakLifecycleEmitters.values()) emitter.dispose();
     offPeakLifecycleEmitters.clear();
@@ -7424,8 +7432,8 @@ export function createZCodeAgentService(
         // 该入口被 restartWorkspaceProcess 用作 runtime invalidation，并非
         // workspace/service 真 teardown。销毁 workspace emitter 会让既有 UI/task-index
         // listener 永久绑在死对象上；emitters 只由 disposeLocalState/disposeAll 释放。
-        remoteConversationTelemetry.get(workspaceKey)?.dispose();
-        remoteConversationTelemetry.delete(workspaceKey);
+        remoteConversationTelemetry?.get(workspaceKey)?.dispose();
+        remoteConversationTelemetry?.delete(workspaceKey);
       }
       await processManager.disposeWorkspace(params);
     },

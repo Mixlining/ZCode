@@ -1,5 +1,5 @@
 import { ZCODE_OFFICIAL_PLUGIN_MARKETPLACE } from "@zcode/contracts";
-import { ZCODE_SITES_DISABLED } from "@zcode/shared";
+import { ZCODE_SITES_DISABLED, ZCODE_SITE_PLUGIN_NAME } from "@zcode/shared";
 
 // 内置插件的商店信息 seed（原样写入官方 marketplace.json 的条目 raw，键名与 CDN 目录
 // schema 一致：displayName_i18n / examplePrompts_i18n 等），解析复用 adapter 的
@@ -475,7 +475,9 @@ const ALL_OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = [
 // ZCode Sites 硬禁用：内置定义、默认启用集合与 UI 面板入口一起关断。
 // 插件包、命令与协议保留，只是不再产出可加载的定义。
 export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = ZCODE_SITES_DISABLED
-  ? ALL_OFFICIAL_PLUGIN_DEFINITIONS.filter((definition) => definition.name !== "zcode-site")
+  ? ALL_OFFICIAL_PLUGIN_DEFINITIONS.filter(
+      (definition) => definition.name !== ZCODE_SITE_PLUGIN_NAME,
+    )
   : ALL_OFFICIAL_PLUGIN_DEFINITIONS;
 
 // 在 official plugin 定义里标了 defaultEnabled: true 的, 拼成 `<name>@<marketplace>` 形式,

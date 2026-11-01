@@ -672,7 +672,10 @@ export function createConversationTurnRenderUnitsSelector() {
         ),
         resolver: currentOptions.pluginUiPinResolver,
         units,
-        cardIndexes: units.flatMap((unit, index) => (hasHighspeedCard(unit) ? [index] : [])),
+        // Highspeed 硬禁用：不扫描历史 metadata 建 footer 索引。
+        cardIndexes: CODING_PLAN_DISABLED
+          ? []
+          : units.flatMap((unit, index) => (hasHighspeedCard(unit) ? [index] : [])),
       };
     }
 
@@ -725,10 +728,14 @@ export function createConversationTurnRenderUnitsSelector() {
     }
 
     const cardIndexes = history.cardIndexes;
-    const marked = markHighspeedOutputFooterUnits(
-      [...cardIndexes.map((index) => historyUnits[index]!), ...tailUnits],
-      currentOptions.nowMs,
-    );
+    // Highspeed 硬禁用：不聚合耗时/TPS，也不为 footer 分配临时对象；
+    // 正常轮次分区与引用复用（reuseFinal）继续走原路径。
+    const marked = CODING_PLAN_DISABLED
+      ? tailUnits
+      : markHighspeedOutputFooterUnits(
+          [...cardIndexes.map((index) => historyUnits[index]!), ...tailUnits],
+          currentOptions.nowMs,
+        );
     const historyLookup = (key: string) =>
       previousHistoryFinalByKey.get(key) ?? previousTailFinalByKey.get(key);
     const markedCards = cardIndexes.map((_, index) => reuseFinal(marked[index]!, historyLookup));

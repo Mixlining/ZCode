@@ -24,6 +24,7 @@ import {
   ZCODE_INLINE_PLUGIN_MARKETPLACE,
   ZCODE_OFFICIAL_PLUGIN_MARKETPLACE,
 } from "@zcode/contracts";
+import { ZCODE_SITES_DISABLED, ZCODE_SITE_PLUGIN_ID, ZCODE_SITE_PLUGIN_NAME } from "@zcode/shared";
 import {
   directoryExists,
   fileExists,
@@ -152,6 +153,14 @@ export class NodePluginAdapter implements PluginPort {
       throwIfAborted(options);
       const loaded = loadPlugin(candidate, diagnostics);
       if (!loaded) continue;
+      // ZCode Sites 硬禁用：按权威 id 与 manifest 名双重过滤，覆盖 official roots、
+      // official cache、installed_plugins.json 记录以及换市场安装的同一插件。
+      // 源码与磁盘历史记录保留，只是不再装配命令、MCP server 或 UI surface。
+      if (
+        ZCODE_SITES_DISABLED &&
+        (loaded.id === ZCODE_SITE_PLUGIN_ID || loaded.manifest.name === ZCODE_SITE_PLUGIN_NAME)
+      )
+        continue;
       // 内置（官方）插件被「卸载」后只在 user config 写 suppressedBuiltins 标记。这里在发现层
       // 用插件的权威 id（manifest 名 @ marketplace）过滤，不依赖缓存文件是否已被物理删除——
       // 这样即便 app 升级遗留了旧版本缓存目录、或会话内 facade 持有过时配置，被卸载的内置插件

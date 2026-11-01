@@ -16,8 +16,10 @@
   保持早退（不起 1 秒批次定时器与首字延迟采样），CLI 不安装采样；OTLP exporter 仍由
   `OTLP_DIAGNOSTIC_EXPORT_DISABLED` 关断。
 - 上游新增官方内置插件 `zcode-site` 与 `official-command-endpoint` 本地代理：归入
-  `ZCODE_SITES_DISABLED = true`，不产出插件定义、不创建代理端点、不挂载 Sites 面板；
-  插件包、命令与协议保留。
+  `ZCODE_SITES_DISABLED = true`。插件发现层按 `ZCODE_SITE_PLUGIN_ID` 与 manifest 名过滤
+  official roots / cache / `installed_plugins.json` 所有来源，已安装或已启用记录不会恢复
+  命令、MCP 声明或 UI surface；插件入口 `main()` 直接返回，不创建 HTTP API；不创建
+  `official-command-endpoint`，不挂载 Sites 面板。插件包、命令与协议保留。
 - 上游删除 `Remote{Mcp,Plugin,Skill}SyncDialog.tsx` 并改为 Data Sync 页面：接受删除，
   Data Sync 由 `spec/remote-disable.md` 的 `DATA_SYNC_DISABLED` 收口。
 
@@ -391,6 +393,8 @@ ARMS browser bootstrap/init 与已删除启动模块相同，均不纳入本构�
 
 人工验收：普通及旧 Highspeed 历史不出现任何加速展示或时钟；输入/模型切换正常；无 Highspeed 请求、通知恢复、统计或动画。旧闲时工具记录不生成专用卡片，自动化仅保留普通 cron/工作流；无闲时 RPC/轮询，旧库数据与迁移不变。实施只执行静态检查。
 
-静态消融与合并核对：保留组件入口、派生入口和 RPC/store 写入口的守卫，各自阻止挂载副作用、历史扫描与潜在独立调用，不能只保留末端服务守卫。Highspeed 专用 Map/Set 在禁用时不构造；普通历史与模型选择继续走原路径。闲时存储准备不构造 OffPeakTaskRepo，共用 schema/已发布迁移仍由普通 Repo 执行；Main 的闲时唤醒与 active-count/result 入口也必须短路，不能唤醒共用 cron scheduler。
+静态消融与合并核对：保留组件入口、派生入口和 RPC/store 写入口的守卫，各自阻止挂载副作用、历史扫描与潜在独立调用，不能只保留末端服务守卫。Highspeed 专用 Map/Set 在禁用时不构造；普通历史与模型选择继续走原路径。`ConversationTimeline` 使用的
+`createConversationTurnRenderUnitsSelector` 与 `buildConversationTurnRenderUnits` 两个入口都必须在
+footer 索引与 `markHighspeedOutputFooterUnits` 之前早退，不能只守其中一个入口。闲时存储准备不构造 OffPeakTaskRepo，共用 schema/已发布迁移仍由普通 Repo 执行；Main 的闲时唤醒与 active-count/result 入口也必须短路，不能唤醒共用 cron scheduler。
 
 提交治理（2026-10-25）：本轮对既有上游 Bot/Highspeed 文件只增加编译期禁用守卫，不改变状态所有者或新增运行服务。沿用 architecture-policy.yaml 的存量文件精确路径例外，仅豁免列出的 9 个文件的 unmanaged-new-file 规则，不修改上游快照、baseline 或全局门禁。例外不允许新增文件、恢复能力或扩展职责；后续职责与边界变化须单独完成受管模块设计。
