@@ -120,13 +120,14 @@ export function createWindowHostSessionsIndexObserver(options: {
       summaries.clear();
       // recovery 快照只重建基线；仍在运行的任务沿用实时开始时建立的 owner，
       // 否则 gap 恢复后的终态会因 run_not_observed 被永久跳过。
-      const running = new Set<string>();
+      // 手机远控禁用时不维护 run 归属，也就不需要收集 running 集合。
+      const running = notificationRuns ? new Set<string>() : null;
       for (const session of frame.payload.snapshot.sessions) {
         summaries.set(session.sessionId, session);
-        if (session.phase === "running" || session.phase === "prewarming")
+        if (running && (session.phase === "running" || session.phase === "prewarming"))
           running.add(session.sessionId);
       }
-      if (notificationRuns) {
+      if (notificationRuns && running) {
         for (const sessionId of notificationRuns.keys())
           if (!running.has(sessionId)) notificationRuns.delete(sessionId);
       }

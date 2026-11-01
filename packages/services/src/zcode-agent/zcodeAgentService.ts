@@ -62,7 +62,7 @@ import {
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { Emitter } from "@zcode/rpc";
-import type { IDisposable } from "@zcode/rpc";
+import type { Event, IDisposable } from "@zcode/rpc";
 import type {
   AccountProviderConfigSnapshot,
   ModelSelectionView,
@@ -1330,6 +1330,11 @@ export function resolveOffPeakToolSelection(
     ? selection
     : { ...selection, options: { reasoningLevel: thoughtLevel } };
 }
+/** 遥测硬禁用时 `onDynamicRemoteConversationTelemetry` 的稳定空事件：不创建 listener Set。 */
+const NO_REMOTE_CONVERSATION_TELEMETRY_EVENT: Event<RemoteConversationTelemetryEvent> = () => ({
+  dispose() {},
+});
+
 export function createZCodeAgentService(
   options?: CreateZCodeAgentServiceOptions,
 ): IZCodeAgentService & { disposeAllAndWait(): Promise<void> } {
@@ -1436,9 +1441,12 @@ export function createZCodeAgentService(
   const conversationFrameEmitters = new Map<string, Emitter<ConversationTopicWireCandidate>>();
   const localTtftFactsEmitter = new Emitter<{ workspaceKey: string; facts: LocalTtftFacts }>();
   const conversationTelemetryFactEmitters = new Map<string, Emitter<ConversationTelemetryFact>>();
-  const remoteConversationTelemetryEmitter = new Emitter<RemoteConversationTelemetryEvent>();
-  // 遥测硬禁用：不装配远端 collector Map；本地事实仍走 conversationTelemetryFactEmitters
+  // 遥测硬禁用：不创建远端遥测 emitter（Emitter 构造即持有 listener Set），
+  // 也不装配远端 collector Map；本地事实仍走 conversationTelemetryFactEmitters
   // 供任务活动统计等非出网消费者使用。
+  const remoteConversationTelemetryEmitter = ZCODE_TELEMETRY_ENABLED
+    ? new Emitter<RemoteConversationTelemetryEvent>()
+    : null;
   const remoteConversationTelemetry = ZCODE_TELEMETRY_ENABLED
     ? new Map<string, RemoteConversationTelemetry>()
     : null;
@@ -1454,7 +1462,7 @@ export function createZCodeAgentService(
         workspaceScopeKey: `${v4ConnectionId}\0${key}`,
         workspaceTelemetryDetail: resolveWorkspaceTelemetryDetail(workspace),
         report: async (event) =>
-          remoteConversationTelemetryEmitter.fire(
+          remoteConversationTelemetryEmitter?.fire(
             remoteConversationTelemetryEventSchema.parse(event),
           ),
       });
@@ -4143,7 +4151,7 @@ export function createZCodeAgentService(
       for (const collector of remoteConversationTelemetry.values()) collector.dispose();
       remoteConversationTelemetry.clear();
     }
-    remoteConversationTelemetryEmitter.dispose();
+    remoteConversationTelemetryEmitter?.dispose();
     for (const emitter of offPeakLifecycleEmitters.values()) emitter.dispose();
     offPeakLifecycleEmitters.clear();
     localTtftFactsEmitter.dispose();
@@ -7236,7 +7244,7 @@ export function createZCodeAgentService(
         });
     },
     onDynamicRemoteConversationTelemetry() {
-      return remoteConversationTelemetryEmitter.event;
+      return remoteConversationTelemetryEmitter?.event ?? NO_REMOTE_CONVERSATION_TELEMETRY_EVENT;
     },
     onDynamicConversationTelemetryFact(params: ZCodeAgentWorkspaceTarget) {
       return getConversationTelemetryFactEmitter(params).event;

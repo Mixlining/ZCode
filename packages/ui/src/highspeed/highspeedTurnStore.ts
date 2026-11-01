@@ -361,9 +361,14 @@ function highspeedCardDependencies(
   ];
 }
 
+// 套餐永久禁用：两个 useSyncExternalStore 消费者返回同一份稳定空快照，
+// 不再为每次渲染创建 Set、过滤 records 或生成新数组。
+const EMPTY_HIGHSPEED_DEPENDENCIES: readonly (HighspeedTurnRecord | number | undefined)[] = [];
+
 export function getHighspeedSessionDependencies(
   sessionId: string | null,
 ): readonly (HighspeedTurnRecord | number | undefined)[] {
+  if (CODING_PLAN_DISABLED) return EMPTY_HIGHSPEED_DEPENDENCIES;
   return highspeedCardDependencies(
     new Set(
       records
@@ -376,6 +381,7 @@ export function getHighspeedSessionDependencies(
 export function getHighspeedTurnDependencies(
   sourceCommandId: string | undefined,
 ): readonly (HighspeedTurnRecord | number | undefined)[] {
+  if (CODING_PLAN_DISABLED) return EMPTY_HIGHSPEED_DEPENDENCIES;
   const record = getHighspeedTurnByCommandId(sourceCommandId);
   return highspeedCardDependencies(new Set(record ? [record.card.cardId] : []));
 }

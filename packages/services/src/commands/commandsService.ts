@@ -19,7 +19,12 @@ import {
   type UserCommand,
   type ZCodeCommand,
 } from "@zcode/shared";
-import { DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS } from "@zcode/shared";
+import {
+  DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS,
+  ZCODE_SITES_DISABLED,
+  ZCODE_SITE_PLUGIN_ID,
+  ZCODE_SITE_PLUGIN_NAME,
+} from "@zcode/shared";
 import type { ICommandsService } from "./commands.js";
 import { CommandFileParser, type CommandFileFormat } from "./commandFileParser.js";
 import { readInstalledPluginRoots } from "#src/plugins/installedPluginRoots.js";
@@ -398,6 +403,13 @@ async function resolvePluginCommandRootDescriptors(): Promise<PluginCommandRootD
       continue;
     }
     const pluginId = `${manifest.name}@${candidate.marketplace}`;
+    // ZCode Sites 硬禁用：官方缓存/安装记录不向命令页贡献命令；磁盘记录保留。
+    if (
+      ZCODE_SITES_DISABLED &&
+      (pluginId === ZCODE_SITE_PLUGIN_ID || manifest.name === ZCODE_SITE_PLUGIN_NAME)
+    ) {
+      continue;
+    }
     // 内置官方插件被「卸载」后只在 CLI config 写入 suppressedBuiltins；desktop 直接扫
     // 官方 cache 时不经过 CLI resolve 的过滤，需要在这里同样跳过，否则被卸载的内置插件
     // 仍会从 cache 贡献命令。

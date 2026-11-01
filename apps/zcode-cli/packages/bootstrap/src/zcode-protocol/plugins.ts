@@ -30,6 +30,11 @@ import {
   type ZCodePluginsUninstallResult,
   type ZCodePluginsValidateResult,
 } from "@zcode/shared";
+import {
+  ZCODE_SITES_DISABLED,
+  ZCODE_SITE_PLUGIN_ID,
+  ZCODE_SITE_PLUGIN_NAME,
+} from "@zcode/shared";
 import type { PluginDiagnostic, PluginMetadata } from "@zcode/contracts";
 import {
   addZCodePluginMarketplace,
@@ -161,12 +166,21 @@ function createMissingConfiguredPluginInfos(
     if (separatorIndex <= 0 || separatorIndex === pluginId.length - 1) {
       return [];
     }
+    const pluginName = pluginId.slice(0, separatorIndex);
+    // ZCode Sites 硬禁用：旧 enabledPlugins/options 不再投影成 missing 条目，
+    // 否则技能/命令页会把缓存中的命令与技能重新显示出来；磁盘配置保留。
+    if (
+      ZCODE_SITES_DISABLED &&
+      (pluginId === ZCODE_SITE_PLUGIN_ID || pluginName === ZCODE_SITE_PLUGIN_NAME)
+    ) {
+      return [];
+    }
     const enabledSource = configResult.sources.plugins.enabled[pluginId];
     const optionSources = configResult.sources.plugins.options[pluginId];
     return [
       {
         id: pluginId,
-        name: pluginId.slice(0, separatorIndex),
+        name: pluginName,
         enabled: configResult.config.plugins.enabledPlugins[pluginId] ?? false,
         source: "missing",
         marketplace: pluginId.slice(separatorIndex + 1),
