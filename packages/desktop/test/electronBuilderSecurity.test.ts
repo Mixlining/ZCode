@@ -122,9 +122,10 @@ it("精确锁定 Electron 44 与配套打包更新工具链", async () => {
     await readFile(new URL("../package.json", import.meta.url), "utf8"),
   );
 
-  expect(desktopPackage.devDependencies.electron).toBe("44.7.0");
-  expect(desktopPackage.devDependencies["electron-builder"]).toBe("26.17.0");
-  expect(desktopPackage.dependencies["electron-updater"]).toBe("6.8.10");
+  // dev 分支保留更新的 Electron 44.7.2 与 semver range；上游 pin 为 44.7.0 / 精确版本。
+  expect(desktopPackage.devDependencies.electron).toBe("44.7.2");
+  expect(desktopPackage.devDependencies["electron-builder"]).toBe("^26.17.0");
+  expect(desktopPackage.dependencies["electron-updater"]).toBe("^6.8.10");
   expect(require("electron-builder/package.json").version).toBe("26.17.0");
   expect(require("electron-updater/package.json").version).toBe("6.8.10");
 });

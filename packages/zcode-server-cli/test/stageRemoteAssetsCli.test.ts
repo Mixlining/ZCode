@@ -2,6 +2,7 @@ import { EventEmitter } from "node:events";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { REMOTE_WORKSPACE_DISABLED } from "@zcode/shared";
 
 const { spawn, begin, collect } = vi.hoisted(() => ({
   spawn: vi.fn(),
@@ -46,7 +47,8 @@ async function runCli(args: string[]) {
   await import(cliModulePath);
 }
 
-describe("remote asset staging CLI", () => {
+// 远程 workspace 硬禁用：staging 入口整轮跳过，测试断言必须随产品边界一起短路。
+describe.skipIf(REMOTE_WORKSPACE_DISABLED)("remote asset staging CLI", () => {
   it("wires the root Linux command to the existing staging entry", async () => {
     const rootPackage = JSON.parse(
       await readFile(new URL("../../../package.json", import.meta.url), "utf8"),

@@ -56,7 +56,8 @@ describe("powershell-command", () => {
       const output = execFileSync(
         "powershell.exe",
         createEncodedPowerShellArgs(
-          "[Console]::Out.Write($zcodeArg0 + [Environment]::NewLine + $zcodeArg1)",
+          // 控制台默认 OEM 代码页会把中文动态值转成乱码；测试只验证值还原，显式设 UTF-8 输出。
+          "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8;[Console]::Out.Write($zcodeArg0 + [Environment]::NewLine + $zcodeArg1)",
           values,
         ),
         { encoding: "utf8" },

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { devNull, tmpdir } from "node:os";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { afterEach, test } from "vitest";
@@ -16,13 +16,17 @@ afterEach(async () => {
 async function fixture() {
   const root = await mkdtemp(join(tmpdir(), "telemetry-fields-"));
   roots.push(root);
+  // Windows 的 os.devNull 是 \\.\nul，Git 不接受它作为 GIT_CONFIG_GLOBAL；
+  // 用临时空文件既保留隔离，又能在三个平台上一致工作。
+  const emptyGitConfig = join(root, ".gitconfig-empty");
+  await writeFile(emptyGitConfig, "");
   const git = (...args: string[]) =>
     exec("git", args, {
       cwd: root,
       env: {
         ...process.env,
         GIT_CONFIG_NOSYSTEM: "1",
-        GIT_CONFIG_GLOBAL: devNull,
+        GIT_CONFIG_GLOBAL: emptyGitConfig,
         GIT_AUTHOR_NAME: "Test",
         GIT_AUTHOR_EMAIL: "test@example.com",
         GIT_COMMITTER_NAME: "Test",

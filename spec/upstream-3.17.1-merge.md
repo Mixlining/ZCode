@@ -67,22 +67,22 @@
 
 ## 冲突裁决
 
-| 文件 / 类别                                                              | 裁决                                                                                                       |
-| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| `packages/shared/src/env.ts`                                             | 上游本次未改；保留 dev 的十个策略常量并新增 `DATA_SYNC_DISABLED`、`ZCODE_SITES_DISABLED`                   |
-| `packages/desktop/src/main/appARMSBootstrap.ts`、`.vscode/settings.json` | 保持 dev 删除（ARMS 白名单 / 仓库无关编辑器配置）                                                          |
-| 上游删除的 246 个测试/E2E/夹具                                           | 接受删除                                                                                                   |
-| `Remote{Mcp,Plugin,Skill}SyncDialog.tsx`                                 | 接受上游删除；新 Data Sync 入口由 `DATA_SYNC_DISABLED` 关断                                                |
-| `docs/testing/*`、`docs/superpowers/*`、其它 `docs/` 冲突                | 取上游；`spec/*` 保持 dev                                                                                  |
-| `AGENTS.md`                                                              | 两侧保留：上游新增条款 + dev 硬禁用规则；验证章节改为「静态检查 + 工程测试」                               |
-| 根 `package.json`                                                        | 取上游脚本全集；保留 dev 仍被引用的脚本；版本改 3.17.1                                                     |
-| `packages/desktop/package.json`、`pnpm-workspace.yaml`、`mise.toml`      | 保留 dev 工具链 pin；吸收上游新增依赖，不改 workspace 配置                                                 |
-| `architecture-policy.yaml`                                               | 取上游 150 条 + 回填 dev 的 5 条独有条目与守卫例外；重新生成 `scripts/architecture/upstream-snapshot.json` |
-| `.husky/pre-push`                                                        | 取上游（捕获 push stdin）                                                                                  |
-| `packages/desktop/scripts/r3-remote-spec-inventory.mjs`                  | 取上游（dev 未改；无 `harness/remote` 时检查跳过）                                                         |
-| `pnpm-lock.yaml`                                                         | 不接受任一侧，删除后用 pnpm 11.27.1 重新生成                                                               |
-| `third-party/*`、`NOTICE.md`、`THIRD-PARTY-NOTICES.md`                   | 取上游                                                                                                     |
-| Desktop E2E / fixtures 冲突                                              | 取上游                                                                                                     |
+| 文件 / 类别                                                              | 裁决                                                                                                                                    |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/shared/src/env.ts`                                             | 上游本次未改；保留 dev 的十个策略常量并新增 `DATA_SYNC_DISABLED`、`ZCODE_SITES_DISABLED`                                                |
+| `packages/desktop/src/main/appARMSBootstrap.ts`、`.vscode/settings.json` | 保持 dev 删除（ARMS 白名单 / 仓库无关编辑器配置）                                                                                       |
+| 上游删除的 246 个测试/E2E/夹具                                           | 接受删除                                                                                                                                |
+| `Remote{Mcp,Plugin,Skill}SyncDialog.tsx`                                 | 接受上游删除；新 Data Sync 入口由 `DATA_SYNC_DISABLED` 关断                                                                             |
+| `docs/testing/*`、`docs/superpowers/*`、其它 `docs/` 冲突                | 取上游；`spec/*` 保持 dev                                                                                                               |
+| `AGENTS.md`                                                              | 两侧保留：上游新增条款 + dev 硬禁用规则；验证章节改为「静态检查 + 工程测试」                                                            |
+| 根 `package.json`                                                        | 取上游脚本全集；保留 dev 仍被引用的脚本；版本改 3.17.1；`pnpm` 字段迁入 `pnpm-workspace.yaml`（pnpm 11 不再读取 package.json 的该字段） |
+| `packages/desktop/package.json`、`pnpm-workspace.yaml`、`mise.toml`      | 保留 dev 工具链 pin；吸收上游新增依赖，不改 workspace 配置                                                                              |
+| `architecture-policy.yaml`                                               | 取上游 150 条 + 回填 dev 的 5 条独有条目与守卫例外；重新生成 `scripts/architecture/upstream-snapshot.json`                              |
+| `.husky/pre-push`                                                        | 取上游（捕获 push stdin）                                                                                                               |
+| `packages/desktop/scripts/r3-remote-spec-inventory.mjs`                  | 取上游（dev 未改；无 `harness/remote` 时检查跳过）                                                                                      |
+| `pnpm-lock.yaml`                                                         | 不接受任一侧，删除后用 pnpm 11.27.1 重新生成                                                                                            |
+| `third-party/*`、`NOTICE.md`、`THIRD-PARTY-NOTICES.md`                   | 取上游                                                                                                                                  |
+| Desktop E2E / fixtures 冲突                                              | 取上游                                                                                                                                  |
 
 ## 收尾提交改动清单
 
@@ -148,6 +148,21 @@ export const ZCODE_SITES_DISABLED = true;
 7. `DEFAULT_PLUGIN_MARKETPLACES` 仍只含 `zcode-plugins-official`，claude 未被补种。
 8. 远程资产 staging 入口的 `REMOTE_ASSETS_DISABLED` 仍为 `true`。
 9. `pnpm test:engineering` 中因硬禁用失败的测试已最小短路，且短路原因记录在本文件。
+
+## 实测结果
+
+- `pnpm typecheck`、Desktop Main `tsc --noEmit`、`pnpm lint`（0 error / 6 warning）、`pnpm fmt:check`、`pnpm architecture:check --changed`、`git diff --check` 全部通过。
+- `pnpm test:engineering`：151 个文件通过 / 6 个跳过（157），928 个用例通过 / 41 跳过（969），0 失败。
+- `pnpm test:architecture`（50 pass / 1 skip）、`docs:stale-phrases:check`、`db:schema:check`、`check:e2e-remote-targets`（无私有队列，跳过）通过。
+- 合并后按常量逐文件比对守卫引用：`ZCODE_VENDOR_ACTIONS_DISABLED` 在 `packages/web/src/main.tsx` 的 3 处随 `createWebPlatform` 抽取到 `packages/web/src/platform/index.ts` 而丢失，已在新位置恢复；其余九个常量的引用都在，重命名文件的守卫随新路径保留。
+- 测试短路与适配：
+  - `packages/zcode-server-cli/test/stageRemoteAssetsCli.test.ts`：`describe.skipIf(REMOTE_WORKSPACE_DISABLED)`，staging 入口整轮跳过。
+  - `packages/desktop/test/subagentConfigProxy.test.ts`：本机 Windows 拒绝 `AssignProcessToJobObject`（ERROR_NOT_SUPPORTED），用例在 win32 跳过；Linux/macOS 继续执行。`NODE_OPTIONS --import` 改用 `pathToFileURL`，修复 Windows 盘符路径不是合法 ESM URL。
+  - `packages/desktop/test/electronBuilderSecurity.test.ts`：期望值改为 dev 的 Electron 44.7.2 与 semver range。
+  - `packages/desktop/test/e2eElectronServiceLifecycle.test.ts`：`patchedDependencies` 改读 `pnpm-workspace.yaml`（pnpm 11 忽略 package.json 的 pnpm 字段）。
+  - `packages/desktop/test/telemetryFieldContract.test.ts`：`GIT_CONFIG_GLOBAL` 改用临时空文件，规避 Windows `os.devNull` 不被 Git 接受。
+  - `packages/desktop/test/powershell-command.test.ts`：动态值往返测试显式设置 `[Console]::OutputEncoding = UTF8`，避免 OEM 代码页把中文变成乱码。
+- pnpm 11 不读取 `package.json` 的 `pnpm` 字段：上游新增的 `overrides` / `patchedDependencies` 已迁入 `pnpm-workspace.yaml`，lockfile 由 pnpm 11.27.1 重新生成。
 
 ## 人工验收（本轮不执行）
 

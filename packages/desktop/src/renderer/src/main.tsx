@@ -21,6 +21,7 @@ import "@zcode/ui/styles.css";
 import { connectViaMessagePort, createMessagePortServiceConnection } from "@zcode/client";
 import {
   InternalChannels,
+  DATA_SYNC_DISABLED,
   databaseStartupStateSchema,
   type DatabaseStartupControl,
   parseLaunchMarks,
@@ -318,7 +319,8 @@ function initializeBusinessRoot(port: MessagePort): void {
   appInitialized = true;
   const services = connectViaMessagePort(port, {
     sourceServerManagementService: true,
-    deviceSyncStateService: true,
+    // Data Sync 硬禁用：Host 不注册该服务，renderer 也不建立惰性代理。
+    deviceSyncStateService: !DATA_SYNC_DISABLED,
   });
   baseServicesForRemoteSessions = services;
   registerBaseWorkspaceServices(services);
