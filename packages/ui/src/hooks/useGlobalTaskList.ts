@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type {
   WindowHostControllerTaskListItem,
-  ZCodeTaskListKind,
+  ZCodeTaskListQuery,
   ZCodeTaskListWorkspaceScope,
 } from "@zcode/services";
 import { logger } from "@/logger.js";
@@ -34,7 +34,9 @@ function buildWorkspaceScopes(workspaceTabs: WorkspaceTabState[]): ZCodeTaskList
 }
 
 export function useGlobalTaskList(params: {
-  kind: ZCodeTaskListKind;
+  kind: ZCodeTaskListQuery["kind"];
+  scope?: "host";
+  enabled?: boolean;
   workspaceTabs: WorkspaceTabState[];
   sortBy: "created" | "updated";
   searchQuery: string;
@@ -49,8 +51,12 @@ export function useGlobalTaskList(params: {
   );
   const controllerRevision = useSyncExternalStore(
     controllerRegistry?.subscribe ?? subscribeToNothing,
-    controllerRegistry?.getRevision ?? zeroRevision,
-    controllerRegistry?.getRevision ?? zeroRevision,
+    (params.scope === "host"
+      ? controllerRegistry?.getDirectoryRevision
+      : controllerRegistry?.getRevision) ?? zeroRevision,
+    (params.scope === "host"
+      ? controllerRegistry?.getDirectoryRevision
+      : controllerRegistry?.getRevision) ?? zeroRevision,
   );
   const workspaceSignature = JSON.stringify(
     params.workspaceTabs
@@ -80,10 +86,11 @@ export function useGlobalTaskList(params: {
       ),
   );
   const workspaceScopes = useMemo(
-    () => buildWorkspaceScopes(params.workspaceTabs),
+    () =>
+      params.scope === "host" ? ("host" as const) : buildWorkspaceScopes(params.workspaceTabs),
     // workspaceSignature 是标准化后的 scope 值签名，避免父组件重建 tabs 数组时重复查询。
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [workspaceSignature],
+    [workspaceSignature, params.scope],
   );
   const taskListVersionSignature = useZCodeSessionStore((state) =>
     JSON.stringify(
@@ -135,6 +142,14 @@ export function useGlobalTaskList(params: {
   const load = useCallback(
     async (version: WindowControllerTaskListVersion) => {
       const requestSerial = ++requestSerialRef.current;
+      if (params.enabled === false) {
+        setItems([]);
+        itemsRef.current = [];
+        setTotal(0);
+        setHasMore(false);
+        setLoading(false);
+        return;
+      }
       if (workspaceScopes.length === 0) {
         // 空 scope 也要保持引用稳定：每次都 setItems([]) 会让本 hook 的消费者在每个
         // Controller revision 都重渲染（DOM 文案不变，但整棵空态子树重建）。
@@ -189,7 +204,7 @@ export function useGlobalTaskList(params: {
         }
       }
     },
-    [controllerRegistry, params.kind, query, queryKey, workspaceScopes],
+    [controllerRegistry, params.enabled, params.kind, query, queryKey, workspaceScopes],
   );
 
   const refresh = useCallback(async () => {

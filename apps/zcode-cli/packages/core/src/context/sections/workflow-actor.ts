@@ -46,7 +46,10 @@ function buildWorkflowContract(): string {
   ].join("\n");
 }
 
-function buildWorkflowActorIdentityPrompt(actor: WorkflowActorContext): string {
+function buildWorkflowActorIdentityPrompt(
+  actor: WorkflowActorContext,
+  midConversationSystem: boolean,
+): string {
   const name = actor.name?.trim();
   const named = name ? `, named "${name}"` : "";
   const opening = [
@@ -59,15 +62,18 @@ function buildWorkflowActorIdentityPrompt(actor: WorkflowActorContext): string {
     opening.join("\n"),
     ...(persona ? ["", persona] : []),
     "",
-    buildHarnessBlock(),
+    buildHarnessBlock(midConversationSystem),
     "",
     buildWorkflowContract(),
   ];
   return parts.join("\n");
 }
 
-export function buildWorkflowActorIdentitySection(actor: WorkflowActorContext): ContextSection {
-  const content = buildWorkflowActorIdentityPrompt(actor);
+export function buildWorkflowActorIdentitySection(
+  actor: WorkflowActorContext,
+  midConversationSystem = true,
+): ContextSection {
+  const content = buildWorkflowActorIdentityPrompt(actor, midConversationSystem);
   return {
     name: "Workflow Actor Identity",
     source: "workflow_actor_identity",

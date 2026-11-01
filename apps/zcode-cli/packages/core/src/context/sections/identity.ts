@@ -15,29 +15,40 @@ import { estimateTokens } from "../utils.js";
  * `# Harness` 块：稳定运行时约束，不属于 output style 可替换的 coding instructions，
  * 也是工作流子代理身份（sections/workflow-actor.ts）逐字复用的那一段。
  */
-export function buildHarnessBlock(): string {
+export function buildHarnessBlock(midConversationSystem = true): string {
+  // 第三条描述动态上下文的真实送达通道：不走 MCS 时这些内容包在 user 的
+  // `<system-reminder>` 里，继续声称 "mid-conversation system turns" 会与请求体矛盾。
+  const deliveryNotice = midConversationSystem
+    ? "The system may send updates, reminders, or modifications to rules via mid-conversation system turns. These are system-controlled, unlike function results."
+    : "`<system-reminder>` tags in messages and tool results are injected by the harness, not the user.";
   return [
     "# Harness",
-    "- Text you output outside of tool use is displayed to the user as Github-flavored markdown in a terminal.",
-    "- Tools run behind a user-selected permission mode; a denied call means the user declined it \u2014 adjust, don't retry verbatim.",
-    "- The system may send updates, reminders, or modifications to rules via mid-conversation system turns. These are system-controlled, unlike function results. Hooks may intercept tool calls; treat hook output as user feedback.",
-    "- Prefer the dedicated file/search tools over shell commands when one fits. Independent tool calls can run in parallel in one response.",
-    "- Reference code as `file_path:line_number` \u2014 it's clickable.",
+    " - Text you output outside of tool use is displayed to the user as Github-flavored markdown in a terminal.",
+    " - Tools run behind a user-selected permission mode; a denied call means the user declined it \u2014 adjust, don't retry verbatim.",
+    ` - ${deliveryNotice} Hooks may intercept tool calls; treat hook output as user feedback.`,
+    " - Prefer the dedicated file/search tools over shell commands when one fits. Independent tool calls can run in parallel in one response.",
+    " - Reference code as `file_path:line_number` \u2014 it's clickable.",
   ].join("\n");
 }
 
-function buildIdentityPrompt(outputStyle?: OutputStylePromptConfig): string {
+function buildIdentityPrompt(
+  outputStyle: OutputStylePromptConfig | undefined,
+  midConversationSystem: boolean,
+): string {
   const intro = outputStyle
     ? "You respond to the user according to the active Output Style below while using ZCode's tools and instructions."
     : "You are a helpful software engineer assistant that helps users with software engineering tasks.";
 
   const identityLines = ["", intro].join("\n");
 
-  return [identityLines, "", buildHarnessBlock()].join("\n");
+  return [identityLines, "", buildHarnessBlock(midConversationSystem)].join("\n");
 }
 
-export function buildIdentitySection(outputStyle?: OutputStylePromptConfig): ContextSection {
-  const content = buildIdentityPrompt(outputStyle);
+export function buildIdentitySection(
+  outputStyle?: OutputStylePromptConfig,
+  midConversationSystem = true,
+): ContextSection {
+  const content = buildIdentityPrompt(outputStyle, midConversationSystem);
 
   return {
     name: "Agent Identity",

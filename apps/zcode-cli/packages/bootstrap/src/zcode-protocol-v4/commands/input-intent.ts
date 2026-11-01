@@ -26,6 +26,7 @@ export interface CanonicalCommandIntent {
   admittedDelivery?: TurnInputIntentMetadata["admittedDelivery"];
   fallbackReasonCode?: string;
   attachmentRefs?: readonly AttachmentRef[];
+  genUiContext?: TurnInputIntentMetadata["genUiContext"];
   sharedContextRefs?: TurnInputIntentMetadata["sharedContextRefs"];
   provenance?: TurnInputIntentMetadata["provenance"];
   source?: TurnInputIntentMetadata["source"];
@@ -45,6 +46,7 @@ export function inputIntentMetadata(
     modelSelection?: ModelSelection;
     mode?: SubmissionMode;
     planEnabled?: boolean;
+    genUiContext?: TurnInputIntentMetadata["genUiContext"];
     sharedContextRefs?: TurnInputIntentMetadata["sharedContextRefs"];
     source?: TurnInputIntentMetadata["source"];
   },
@@ -55,7 +57,9 @@ export function inputIntentMetadata(
       ? (envelope.payload as CommandPayloadMap["sendText"]).highspeedMeta
       : undefined;
   return {
-    ...(options.inputOrigin ? { inputOrigin: options.inputOrigin } : {}),
+    ...((envelope.inputOrigin ?? options.inputOrigin)
+      ? { inputOrigin: envelope.inputOrigin ?? options.inputOrigin }
+      : {}),
     ...(options.conversationQuotes ? { conversationQuotes: options.conversationQuotes } : {}),
     ...(options.botGroupSource ? { botGroupSource: options.botGroupSource } : {}),
     sourceCommandId: envelope.commandId,
@@ -85,6 +89,7 @@ export function inputIntentMetadata(
           : "startNow"),
     ...(options.fallbackReasonCode ? { fallbackReasonCode: options.fallbackReasonCode } : {}),
     ...(options.attachmentRefs ? { attachmentRefs: [...options.attachmentRefs] } : {}),
+    ...(options.genUiContext !== undefined ? { genUiContext: options.genUiContext } : {}),
     ...(options.sharedContextRefs ? { sharedContextRefs: [...options.sharedContextRefs] } : {}),
     ...(highspeed ? { highspeed } : {}),
     ...(options.source ? { source: options.source } : {}),
@@ -101,7 +106,9 @@ export function inputIntentMetadataFromCanonical(
   const originalSourceCommandId =
     canonical.provenance?.sourceCommandId ?? canonical.sourceCommandId;
   return {
-    ...(canonical.inputOrigin ? { inputOrigin: canonical.inputOrigin } : {}),
+    ...((envelope.inputOrigin ?? canonical.inputOrigin)
+      ? { inputOrigin: envelope.inputOrigin ?? canonical.inputOrigin }
+      : {}),
     ...(canonical.conversationQuotes ? { conversationQuotes: canonical.conversationQuotes } : {}),
     ...(canonical.botGroupSource ? { botGroupSource: canonical.botGroupSource } : {}),
     sourceCommandId: envelope.commandId,
@@ -118,6 +125,7 @@ export function inputIntentMetadataFromCanonical(
     admittedDelivery: canonical.admittedDelivery ?? "startNow",
     ...(canonical.fallbackReasonCode ? { fallbackReasonCode: canonical.fallbackReasonCode } : {}),
     ...(canonical.attachmentRefs ? { attachmentRefs: [...canonical.attachmentRefs] } : {}),
+    ...(canonical.genUiContext !== undefined ? { genUiContext: canonical.genUiContext } : {}),
     ...(canonical.sharedContextRefs ? { sharedContextRefs: [...canonical.sharedContextRefs] } : {}),
     ...(canonical.source ? { source: canonical.source } : {}),
     ...(originalSourceCommandId
@@ -158,6 +166,7 @@ export function inputIntentMetadataFromQueueItem(
       ? { fallbackReasonCode: item.delivery.fallbackReasonCode }
       : {}),
     attachmentRefs: item.attachments,
+    ...(item.genUiContext !== undefined ? { genUiContext: item.genUiContext } : {}),
     ...(item.sharedContextRefs ? { sharedContextRefs: [...item.sharedContextRefs] } : {}),
     ...(!CODING_PLAN_DISABLED && item.highspeed ? { highspeed: item.highspeed } : {}),
     ...(item.source ? { source: item.source } : {}),
