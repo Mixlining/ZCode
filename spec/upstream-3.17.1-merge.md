@@ -146,7 +146,7 @@ export const ZCODE_SITES_DISABLED = true;
 5. `off_peak_tasks` 的表/列/索引/已发布迁移与校验值保持字节不变。
 6. `attachRemoteWorkspaceSessionHost` 仍无调用方；`packages/server` 的 `/api/connect-remote` 与 `/ws/remote/:id` 仍不可达，普通 `/ws` 保留。
 7. `DEFAULT_PLUGIN_MARKETPLACES` 仍只含 `zcode-plugins-official`，claude 未被补种。
-8. 远程资产 staging 入口的 `REMOTE_ASSETS_DISABLED` 仍为 `true`。
+8. 远程资产 staging 入口的 `stageRemoteAssetsCli.ts` 仍在 `REMOTE_WORKSPACE_DISABLED` 下整轮返回。
 9. `pnpm test:engineering` 中因硬禁用失败的测试已最小短路，且短路原因记录在本文件。
 
 ## 实测结果

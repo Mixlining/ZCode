@@ -211,18 +211,14 @@ lockfile、`third-party/inventory.json` 与 `THIRD-PARTY-NOTICES.md` 记录保�
 
 ## 构建侧的同名开关
 
-远程资产 staging 入口是纯 `.mjs`，无法 import `packages/shared/src/env.ts` 的
-`.ts` 常量。v3.15.1 起该守卫由 `scripts/prepare-prebuilds.mjs` 自己的
-`const REMOTE_ASSETS_DISABLED = true` 表达；v3.16.1 上游删除该脚本后，守卫迁移到
-新 staging 入口（`packages/zcode-server-cli` 的 `stage:remote-assets` 调用链），
-以同样的硬编码常量整轮跳过。这是本仓库既有惯例（另有
-`MODEL_TELEMETRY_HARD_DISABLED`、`AUTO_ONBOARDING_DISABLED` 等独立硬禁用常量），
-不要为了「单一事实来源」把它改成运行时读文件解析——那只是把简单常量换成解析脆弱性。
+远程资产 staging 入口是 TypeScript：`packages/zcode-server-cli/src/packaging/stageRemoteAssetsCli.ts`
+直接 import `packages/shared/src/env.ts` 的 `REMOTE_WORKSPACE_DISABLED`，并在入口第一行整轮返回。
+代码里不再存在独立的 `REMOTE_ASSETS_DISABLED` 常量；v3.15.1 的旧 `scripts/prepare-prebuilds.mjs`
+已随上游删除，其硬编码常量只保留在历史合并记录里。
 
-同一决策落在多处常量时，**改动其中一处必须核对另一处**：`env.ts` 的
-`REMOTE_WORKSPACE_DISABLED` 与 staging 入口的 `REMOTE_ASSETS_DISABLED`。
-两者不一致的表现是远端资产静默不生成——构建不报错、但产物缺资产，排查成本高，
-因此此处与上游同步清单都记这条。
+同一决策落在多处时，**改动其中一处必须核对另一处**：`env.ts` 的
+`REMOTE_WORKSPACE_DISABLED` 与 staging 入口的早返回。两者不一致的表现是远端资产
+静默不生成——构建不报错、但产物缺资产，排查成本高，因此此处与上游同步清单都记这条。
 
 不得把任一开关改写成读取运行时环境变量。
 
@@ -236,7 +232,8 @@ lockfile、`third-party/inventory.json` 与 `THIRD-PARTY-NOTICES.md` 记录保�
    `undefined`（`get(...)` 会立刻抛 `Service not registered`）；跨进程（renderer 侧）
    必须在调用点加 `BOTS_DISABLED` 守卫，否则等满 1s 超时并留下 `Unknown channel` 噪声。
 3. 远程资产 staging 入口（v3.16.1 起为 `stage:remote-assets` 调用链）的
-   `REMOTE_ASSETS_DISABLED` 仍为 `true`；上游若改写该入口，确认这一守卫没被合并冲掉。
+   `stageRemoteAssetsCli.ts` 仍在 `REMOTE_WORKSPACE_DISABLED` 下整轮返回；
+   上游若改写该入口，确认这一守卫没被合并冲掉。
 4. `attachRemoteWorkspaceSessionHost` 仍未新增调用方；`AttachServicePort` 的
    `web-remote-replayable` 拒绝分支仍在。
 5. `packages/server` 的 `/api/connect-remote` 与 `/ws/remote/:id` 守卫仍在，
