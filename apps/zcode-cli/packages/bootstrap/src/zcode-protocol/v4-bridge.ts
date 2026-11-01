@@ -1242,7 +1242,7 @@ export function createConversationV4Gateway(
         return;
       }
       await closeSessionRuntime(context, sessionId, true);
-      queuedTurnExecutions.delete(sessionId);
+      queuedTurnExecutions?.delete(sessionId);
     },
     // createSession 的执行面：record 建立/事件接线/catalog 同步/失败自清理全在旧
     // createSession op 内（半初始化 record 的回收顺序修过 bug，不重复实现）。

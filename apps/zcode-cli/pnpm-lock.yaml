@@ -73,9 +73,6 @@ importers:
       typescript:
         specifier: ^6.0.2
         version: 6.0.3
-      vitest:
-        specifier: ^4.1.1
-        version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@24.12.3)(@vitest/coverage-v8@4.1.11)(vite@8.0.10(@types/node@24.12.3)(esbuild@0.27.7)(tsx@4.21.0)(yaml@2.9.1))
 
   ../../packages/provider:
     dependencies:
@@ -92,9 +89,6 @@ importers:
       typescript:
         specifier: ^6.0.2
         version: 6.0.3
-      vitest:
-        specifier: ^4.1.1
-        version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@24.12.3)(@vitest/coverage-v8@4.1.11)(vite@8.0.10(@types/node@24.12.3)(esbuild@0.27.7)(tsx@4.21.0)(yaml@2.9.1))
 
   ../../packages/provider-node:
     dependencies:
@@ -117,9 +111,6 @@ importers:
       typescript:
         specifier: ^6.0.2
         version: 6.0.3
-      vitest:
-        specifier: ^4.1.1
-        version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@25.9.8)(@vitest/coverage-v8@4.1.11)(vite@8.0.10(@types/node@25.9.8)(esbuild@0.27.7)(tsx@4.21.0)(yaml@2.9.1))
 
   ../../packages/shared:
     dependencies:
@@ -143,7 +134,11 @@ importers:
         specifier: 8.20.0
         version: 8.20.0
 
-  ../../packages/zcode-cua: {}
+  ../../packages/zcode-cua:
+    dependencies:
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.27.1
+        version: 1.29.0(supports-color@7.2.0)(zod@4.6.5)
 
   packages/adapters:
     dependencies:
@@ -801,6 +796,54 @@ importers:
 
   packages/zcode-guide-plugin: {}
 
+  packages/zcode-site-plugin:
+    devDependencies:
+      '@modelcontextprotocol/client':
+        specifier: 2.0.0
+        version: 2.0.0
+      '@modelcontextprotocol/core':
+        specifier: 2.0.0
+        version: 2.0.0
+      '@modelcontextprotocol/ext-apps':
+        specifier: 2.0.0
+        version: 2.0.0(@modelcontextprotocol/client@2.0.0)(@modelcontextprotocol/core@2.0.0)(@modelcontextprotocol/server@2.0.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(zod@4.6.5)
+      '@modelcontextprotocol/sdk':
+        specifier: 1.29.0
+        version: 1.29.0(supports-color@7.2.0)(zod@4.6.5)
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.12.3
+      '@types/react':
+        specifier: ^19.2.14
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.14)
+      '@zcode/shared':
+        specifier: workspace:*
+        version: link:../../../../packages/shared
+      esbuild:
+        specifier: ^0.25.0
+        version: 0.25.12
+      lucide-react:
+        specifier: ^1.17.0
+        version: 1.47.0(react@19.2.7)
+      react:
+        specifier: ^19.2.0
+        version: 19.2.7
+      react-dom:
+        specifier: ^19.2.0
+        version: 19.2.7(react@19.2.7)
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.5
+        version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@24.12.3)(@vitest/coverage-v8@4.1.11)(vite@8.0.10(@types/node@24.12.3)(esbuild@0.25.12)(tsx@4.21.0)(yaml@2.9.1))
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
+
   tools/prompt-trajectory:
     devDependencies:
       '@types/node':
@@ -812,6 +855,46 @@ importers:
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
+
+  tools/provider-regression:
+    dependencies:
+      '@zcode/adapters':
+        specifier: workspace:*
+        version: link:../../packages/adapters
+      '@zcode/bootstrap':
+        specifier: workspace:*
+        version: link:../../packages/bootstrap
+      '@zcode/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@zcode/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@zcode/model-option-map':
+        specifier: workspace:*
+        version: link:../../../../packages/model-option-map
+      '@zcode/provider':
+        specifier: workspace:*
+        version: link:../../../../packages/provider
+      '@zcode/provider-node':
+        specifier: workspace:*
+        version: link:../../../../packages/provider-node
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
+    devDependencies:
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.12.3
+      tsx:
+        specifier: ^4.20.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.5
+        version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@24.12.3)(@vitest/coverage-v8@4.1.11)(vite@8.0.10(@types/node@24.12.3)(esbuild@0.27.7)(tsx@4.21.0)(yaml@2.9.1))
 
   tools/typescript: {}
 
@@ -6457,14 +6540,6 @@ snapshots:
     optionalDependencies:
       vite: 8.0.10(@types/node@24.12.3)(esbuild@0.27.7)(tsx@4.21.0)(yaml@2.9.1)
 
-  '@vitest/mocker@4.1.11(vite@8.0.10(@types/node@25.9.8)(esbuild@0.27.7)(tsx@4.21.0)(yaml@2.9.1))':
-    dependencies:
-      '@vitest/spy': 4.1.11
-      estree-walker: 3.0.3
-      magic-string: 0.30.21
-    optionalDependencies:
-      vite: 8.0.10(@types/node@25.9.8)(esbuild@0.27.7)(tsx@4.21.0)(yaml@2.9.1)
-
   '@vitest/pretty-format@4.1.11':
     dependencies:
       tinyrainbow: 3.2.0
@@ -7934,6 +8009,10 @@ snapshots:
     dependencies:
       react: 19.2.5
 
+  lucide-react@1.47.0(react@19.2.7):
+    dependencies:
+      react: 19.2.7
+
   magic-string@0.30.21:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
@@ -8995,20 +9074,6 @@ snapshots:
       tsx: 4.21.0
       yaml: 2.9.1
 
-  vite@8.0.10(@types/node@25.9.8)(esbuild@0.27.7)(tsx@4.21.0)(yaml@2.9.1):
-    dependencies:
-      lightningcss: 1.32.0
-      picomatch: 4.0.4
-      postcss: 8.5.13
-      rolldown: 1.0.0-rc.17
-      tinyglobby: 0.2.16
-    optionalDependencies:
-      '@types/node': 25.9.8
-      esbuild: 0.27.7
-      fsevents: 2.3.3
-      tsx: 4.21.0
-      yaml: 2.9.1
-
   vitest@4.1.11(@opentelemetry/api@1.9.1)(@types/node@24.12.3)(@vitest/coverage-v8@4.1.11)(vite@7.3.2(@types/node@24.12.3)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.9.1)):
     dependencies:
       '@vitest/expect': 4.1.11
@@ -9092,35 +9157,6 @@ snapshots:
     optionalDependencies:
       '@opentelemetry/api': 1.9.1
       '@types/node': 24.12.3
-      '@vitest/coverage-v8': 4.1.11(vitest@4.1.11)
-    transitivePeerDependencies:
-      - msw
-
-  vitest@4.1.11(@opentelemetry/api@1.9.1)(@types/node@25.9.8)(@vitest/coverage-v8@4.1.11)(vite@8.0.10(@types/node@25.9.8)(esbuild@0.27.7)(tsx@4.21.0)(yaml@2.9.1)):
-    dependencies:
-      '@vitest/expect': 4.1.11
-      '@vitest/mocker': 4.1.11(vite@8.0.10(@types/node@25.9.8)(esbuild@0.27.7)(tsx@4.21.0)(yaml@2.9.1))
-      '@vitest/pretty-format': 4.1.11
-      '@vitest/runner': 4.1.11
-      '@vitest/snapshot': 4.1.11
-      '@vitest/spy': 4.1.11
-      '@vitest/utils': 4.1.11
-      es-module-lexer: 2.3.2
-      expect-type: 1.4.0
-      magic-string: 0.30.21
-      obug: 2.2.1
-      pathe: 2.0.3
-      picomatch: 4.0.4
-      std-env: 4.3.0
-      tinybench: 2.9.0
-      tinyexec: 1.3.1
-      tinyglobby: 0.2.16
-      tinyrainbow: 3.2.0
-      vite: 8.0.10(@types/node@25.9.8)(esbuild@0.27.7)(tsx@4.21.0)(yaml@2.9.1)
-      why-is-node-running: 2.3.0
-    optionalDependencies:
-      '@opentelemetry/api': 1.9.1
-      '@types/node': 25.9.8
       '@vitest/coverage-v8': 4.1.11(vitest@4.1.11)
     transitivePeerDependencies:
       - msw
