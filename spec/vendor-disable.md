@@ -2,6 +2,25 @@
 
 ## 产品规则
 
+### v3.17.1 同步约束
+
+- 上游新增独立 Server 设备标识：`createServerHostServices` 与 `packages/server/src/stdioDeviceMid.ts`
+  都会调用 `ensureTelemetryDeviceMid()` 生成/写入 `telemetry-state.json` 并注入 `X-Device-Mid`。
+  `ZCODE_TELEMETRY_ENABLED = false` 时源头不调用、不生成、不写盘、不带头；实现函数与既有多调用点保留。
+- 上游新增手机来源会话遥测（PC 代手机上报 `message_completion` / `agent_step`）：
+  `RemoteConversationTelemetry` 通道与 `remoteConversationTelemetry` capability 保留，但 server
+  capability 恒 `false`、Host 不订阅、Main 不派发；`zcodeAgentService` 不构造远端遥测 emitter。
+- 上游新增 `ui_mode` 遥测维度与 `SyncTelemetryContext` 平台通道：遥测关闭时不构造 payload、
+  不安装 preload 桥、不注册 Main handler、不订阅 store。
+- 上游把渲染层本地 TTFT 改为默认开启并新增 CLI 侧 `local-ttft/recorder.ts`：遥测关闭时渲染层
+  保持早退（不起 1 秒批次定时器与首字延迟采样），CLI 不安装采样；OTLP exporter 仍由
+  `OTLP_DIAGNOSTIC_EXPORT_DISABLED` 关断。
+- 上游新增官方内置插件 `zcode-site` 与 `official-command-endpoint` 本地代理：归入
+  `ZCODE_SITES_DISABLED = true`，不产出插件定义、不创建代理端点、不挂载 Sites 面板；
+  插件包、命令与协议保留。
+- 上游删除 `Remote{Mcp,Plugin,Skill}SyncDialog.tsx` 并改为 Data Sync 页面：接受删除，
+  Data Sync 由 `spec/remote-disable.md` 的 `DATA_SYNC_DISABLED` 收口。
+
 ### v3.16.1 同步约束
 
 - 上游新增插件生命周期遥测管道（Host → Main → TelemetryCore 的 `PluginTelemetry`、
@@ -49,8 +68,9 @@ Desktop 固定 offer(alwaysOn) → Host 配置 owner ← SettingService 用户�
 | `CODING_PLAN_DISABLED`              | `true`  | 套餐域：界面、服务边界、启动账号恢复               |
 | `REMOTE_ROLLOUT_DISABLED`           | `true`  | 远端灰度配置（含套餐侧 `dynamicWorkflow`）         |
 | `MARKETPLACE_AUTO_REFRESH_DISABLED` | `true`  | 官方商店进入页面时的目录自动刷新                   |
-| `ZCODE_TELEMETRY_ENABLED`           | `false` | 数仓事件与 ARMS RUM 出网                           |
+| `ZCODE_TELEMETRY_ENABLED`           | `false` | 数仓事件、ARMS RUM 出网、设备标识与本地 TTFT 采样  |
 | `MEMORY_DIAGNOSTICS_ENABLED`        | `false` | 内存诊断采样定时器                                 |
+| `ZCODE_SITES_DISABLED`              | `true`  | 官方内置站点插件 `zcode-site` 与 official-command 代理 |
 
 远程 workspace、手机远控与消息平台 Bot 的硬禁用由 `spec/remote-disable.md` 单独约束，
 与上表是相互独立的轴。

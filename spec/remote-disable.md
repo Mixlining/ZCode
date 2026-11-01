@@ -6,6 +6,18 @@ v3.15.1 新增的 Server 类型远程 workspace 同样受 `REMOTE_WORKSPACE_DISA
 
 v3.16.1 新增的 Source Server 启动重连批次、`SourceServerConnectionManager` / `SourceServerDirectory`、`remoteDevices` 设置页、`useSourceServerUpdateNotifications` 订阅与 Web `/remote/*` 路由全部属于远程域：不构造、不订阅、不显示、404，详见 `spec/upstream-3.16.1-merge.md`。
 
+v3.17.1 新增的手机推送、手机日志拉取、Data Sync 与 provisioning lane 同样属于远程域：
+
+- 手机推送：`MobilePushConnection` 的 60 秒 `setInterval` 资格轮询与 `/api/v1/remote/notification/*`
+  上报在 `PHONE_REMOTE_DISABLED` 下不启动；不接 `onMobilePushRun` / `onMobilePushEvent`，
+  不注册 `powerMonitor` 恢复刷新与退出 dispose。
+- 手机日志：`PullMobileLogs` 命令入口直接返回，不创建 `MobileLogSink`、不落盘 `logs/mobile`。
+- Data Sync：新增 `DATA_SYNC_DISABLED = true`；`IUserConfigSyncService` 与
+  `IDeviceSyncStateService` 不注册，Data Sync 页面与入口不挂载，跨进程调用点在调用前用常量判断。
+- provisioning lane 与 `IDeviceSyncStateService` 的注册与构造保持在
+  `REMOTE_WORKSPACE_DISABLED` 守卫内。
+- `attachRemoteWorkspaceSessionHost` 仍无调用方；Source Server 服务集合与启动重连继续不构造。
+
 本构建只支持**本机桌面单机**形态：一个窗口对应一个 window-scoped Local Host，只服务本地
 workspace。不再提供手机远控、远程 workspace（SSH / WSL / Docker）与消息平台 Bot
 （Telegram / 微信 / 飞书 Lark）能力，也不为它们保留任何常驻进程、定时器、长轮询、
@@ -17,8 +29,9 @@ WebSocket 重连、跨进程锁心跳或空闲状态缓存。
 | 常量                        | 值     | 负责的范围                                                      |
 | --------------------------- | ------ | --------------------------------------------------------------- |
 | `BOTS_DISABLED`             | `true` | 消息平台 Bot 域：服务装配、启动预热、投递与远端桥接             |
-| `PHONE_REMOTE_DISABLED`     | `true` | 手机远控链路：外部 relay 附件接管、`web-remote-replayable` 通道 |
+| `PHONE_REMOTE_DISABLED`     | `true` | 手机远控链路：外部 relay 附件接管、`web-remote-replayable` 通道、推送与移动端日志拉取 |
 | `REMOTE_WORKSPACE_DISABLED` | `true` | 远程 workspace：连接注册表、远程服务集合、远程运行资产下载      |
+| `DATA_SYNC_DISABLED`        | `true` | Data Sync：跨设备配置同步服务、页面与协议通道                   |
 
 与 `CODING_PLAN_DISABLED` 等既有常量一致：组件、服务、协议与 i18n 文案**全部保留**，只加守卫。
 保留实现不是为了将来恢复（这些能力永不恢复），而是为了降低同步上游的成本：
