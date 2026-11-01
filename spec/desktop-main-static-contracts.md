@@ -27,6 +27,8 @@
 - Electron 与 electron-builder 缓存按 runner OS 和桌面依赖恢复。预热工作流会真实打包一次，因此 Electron 二进制与 electron-builder 的 nsis/winCodeSign 工具都在默认分支侧填好；发布工作流保留冷启动降级保存，使默认分支条目缺失时已下载的文件仍能缓存。缓存 action 会跳过空目录。
 - GitHub 按 ref 隔离缓存：run 只能读取「自身 ref」与「默认分支」两处条目，不同 tag 之间互不可见，且 tag 触发的 run 会把条目写进隔离作用域（实测 ref 形如 `refs/heads/refs/tags/<tag>`）。共享条目必须位于默认分支（`dev`）才能被任意 tag 读取，该作用域由预热工作流独占。
 - 预热工作流的默认分支守卫用 `github.ref_name == github.event.repository.default_branch`，不把分支名写死在 workflow 里。`repository.default_branch` 是 push 与 `workflow_dispatch` 载荷里 `Repository` 的必填字段，因此该判定是确定性的：默认分支上为真，手动选到 tag 或其他分支时为假、job 跳过，不会把条目写进无人复用的作用域。首次运行的 `Cache not found` 是冷缓存提示；已保存的相同 key 可在同一 ref 或默认分支内恢复。
+- 预热工作流的 push 触发路径为根 `pnpm-lock.yaml`、`mise.toml`、`packages/desktop/package.json`、`packages/desktop/electron-builder.config.js` 与工作流自身。前三个是缓存 key 输入；`electron-builder.config.js` 决定实际打包内容与缓存工具链，变更时重跑，让 warm 继续充当默认分支上的打包链路 canary。大版本同步（数千文件）时 GitHub 的 path filter 只检查前 3,000 个文件，合并后应手动 dispatch 一次。
+- pnpm hoisted 布局下，electron-builder 的 pnpm collector 会把桌面 `dependencies` 里的 `@zcode/*` 工作区 `link:` 包判为缺失。`electron-builder.config.js` 的 `allowMissingDependencies` 因此按桌面 `package.json` 的 `@zcode/*` 依赖动态生成豁免名单；这些包是源码包，由 tsup 打进 `out/` 且被 `files` 排除，第三方生产依赖仍保持 fail-closed。
 
 ### 缓存作用域与命中验收
 

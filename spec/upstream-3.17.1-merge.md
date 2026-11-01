@@ -192,6 +192,12 @@ export const ZCODE_SITES_DISABLED = true;
 
 验证：`pnpm typecheck`、Desktop Main `tsc --noEmit`、`pnpm lint`（0 error / 6 warning）、`pnpm fmt:check`、`pnpm architecture:check --changed`、`git diff --check`、`pnpm test:engineering` 全部通过。
 
+## CI 打包修复
+
+- 预热构建在 CLI bootstrap 的 `tsc` 阶段失败：`v4-bridge.ts` 的 `queuedTurnExecutions` 在 `CODING_PLAN_DISABLED` 下为 `null`，合并时 `deleteSession` 误用了非可选链。已改为 `?.delete`。
+- 随后 electron-builder 在收集生产依赖时把 4 个 `@zcode/*` 工作区 `link:` 包判为缺失，并被 `allowMissingDependencies: false` 判为失败。这些包是 private 源码包，由 tsup 打进 `out/`，且 `files` 明确排除 `node_modules/@zcode/**`；改为按桌面 `package.json` 的 `@zcode/*` 依赖动态生成 `allowMissingDependencies` 豁免名单，第三方生产依赖仍保持 fail-closed。
+- 预热工作流的 push 路径加入 `packages/desktop/electron-builder.config.js`，使打包配置变更也能在默认分支上重跑 warm；大版本同步后仍建议手动 dispatch 一次。
+
 ## 人工验收（本轮不执行）
 
 1. 冷启动后无 ARMS 初始化、无遥测请求、无 `telemetry-state.json` 写入、无 `X-Device-Mid` 请求头。

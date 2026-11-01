@@ -9,6 +9,8 @@ on:
   workflow_dispatch:
   push:
     # 按路径收窄：前三个必须与缓存 key 的输入完全一致，key 变了才有必要重跑。
+    # electron-builder.config.js 决定实际打包内容与缓存工具链，变更时同样重跑，
+    # 让 warm 继续充当默认分支上的打包链路 canary。
     # 最后一项是工作流自身，使它在首次落地或被修改时自动预热一次——
     # 否则依赖未变但缓存已被清空／尚未建立时，只能靠手动 dispatch 才不会让下一个 tag 冷启动。
     # 是否默认分支由 job 守卫判断，不把分支名写死在两处。
@@ -16,6 +18,7 @@ on:
       - pnpm-lock.yaml
       - mise.toml
       - packages/desktop/package.json
+      - packages/desktop/electron-builder.config.js
       - .github/workflows/warm-windows-caches.yml
 
 permissions:

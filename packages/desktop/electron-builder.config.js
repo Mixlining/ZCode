@@ -92,7 +92,14 @@ const requireFromConfig = createRequire(import.meta.url);
 let nsisInstallSectionPatched = false;
 let nsisInstallSectionOriginalSource = null;
 let nsisInstallSectionPath = null;
-const desktopElectronVersion = requireFromConfig("./package.json").devDependencies.electron;
+const desktopPackageJson = requireFromConfig("./package.json");
+const desktopElectronVersion = desktopPackageJson.devDependencies.electron;
+// 工作区源码包由 tsup 打进 out/，且 files 明确排除 node_modules/@zcode/**。electron-builder
+// 的 pnpm collector 在 pnpm 11 hoisted 布局下会把它们的 link: 依赖判为缺失；只豁免这些
+// 私有工作区包，第三方生产依赖仍保持 fail-closed。
+const workspaceDependencyNames = Object.keys(desktopPackageJson.dependencies ?? {}).filter((name) =>
+  name.startsWith("@zcode/"),
+);
 const asarCliPath = resolve(
   dirname(requireFromConfig.resolve("@electron/asar/package.json")),
   "bin",
@@ -880,8 +887,9 @@ export default {
     })),
   ],
   // pnpm 依赖图不完整时禁止仅记录警告并继续生成安装包；afterPack 只能补齐可解析依赖，
-  // collector 已确认缺失的生产依赖必须在打包阶段停止。
-  allowMissingDependencies: false,
+  // collector 已确认缺失的生产依赖必须在打包阶段停止。工作区 @zcode/* 包是源码包，
+  // 由 tsup 打进 out/ 且被 files 排除，不属于缺失；其余依赖仍 fail-closed。
+  allowMissingDependencies: workspaceDependencyNames,
   // postinstall 会先优先复用 node-pty 自带的 Windows 预编译产物，其他平台再按需 electron-rebuild。
   // 打包阶段统一复用安装时准备好的原生文件，避免 electron-builder 再触发一轮不受控的本地编译。
   npmRebuild: false,
