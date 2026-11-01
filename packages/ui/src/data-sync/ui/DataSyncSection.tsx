@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRightLeft, Info, LoaderCircle, Plug, RotateCcw, Server, Upload } from "lucide-react";
 import type { DeviceSyncState, SourceServerManagementSnapshot } from "@zcode/shared";
+import { DATA_SYNC_DISABLED } from "@zcode/shared";
 import type {
   DeviceAdditionReturnTarget,
   RemoteConnectionOpenPreference,
@@ -105,6 +106,8 @@ function isSameDay(left: number, right: number): boolean {
 }
 
 export function DataSyncSection(props: DataSyncSectionProps) {
+  // Data Sync 硬禁用：不挂载页面、不订阅设备同步状态、不发起连接向导。
+  if (DATA_SYNC_DISABLED) return null;
   const { intl, locale } = useZCodeIntl();
   const now = props.now ?? Date.now;
   const devices = useMemo(() => buildDataSyncDevices(props.snapshot), [props.snapshot]);

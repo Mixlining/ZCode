@@ -105,6 +105,18 @@ export const PHONE_REMOTE_DISABLED: boolean = true;
 // 详见 spec/remote-disable.md。
 export const REMOTE_WORKSPACE_DISABLED: boolean = true;
 
+// 硬禁用：Data Sync（跨设备配置同步）。它把技能、MCP、插件、子代理、命令与钩子同步到远端
+// 设备，本构建只做本机单机形态，没有合法的同步目标。禁用后不注册 IUserConfigSyncService /
+// IDeviceSyncStateService，不挂载 Data Sync 页面与入口；协议通道与实现保留供上游同步。
+// 详见 spec/remote-disable.md。
+export const DATA_SYNC_DISABLED: boolean = true;
+
+// 硬禁用：ZCode Sites 官方内置插件。插件命令经 official-command-endpoint 代理访问
+// /api/v1/sites，并依赖厂商官方鉴权；本构建只支持自带 API Key 接入。禁用后不产出
+// zcode-site 内置插件定义、不创建代理端点、不挂载 Sites 面板；插件包与协议保留。
+// 详见 spec/vendor-disable.md。
+export const ZCODE_SITES_DISABLED: boolean = true;
+
 /** 数仓事件上报端点：由运行时环境变量提供，未配置即停用，构建产物不内嵌。 */
 export const ZCODE_TELEMETRY_REPORT_ENDPOINT =
   typeof process !== "undefined" ? (process.env.ZCODE_TELEMETRY_REPORT_ENDPOINT ?? "") : "";

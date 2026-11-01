@@ -62,14 +62,14 @@ Desktop 固定 offer(alwaysOn) → Host 配置 owner ← SettingService 用户�
 这条规则由 `packages/shared/src/env.ts` 里的常量表达。它们都是**编译期硬编码**的布尔常量，
 不读取运行时环境变量，因此部署环境注入端点也无法重新启用：
 
-| 常量                                | 值      | 负责的范围                                         |
-| ----------------------------------- | ------- | -------------------------------------------------- |
-| `ZCODE_VENDOR_ACTIONS_DISABLED`     | `true`  | 社区、反馈工单与附件、分享、产品文档与更新日志外链 |
-| `CODING_PLAN_DISABLED`              | `true`  | 套餐域：界面、服务边界、启动账号恢复               |
-| `REMOTE_ROLLOUT_DISABLED`           | `true`  | 远端灰度配置（含套餐侧 `dynamicWorkflow`）         |
-| `MARKETPLACE_AUTO_REFRESH_DISABLED` | `true`  | 官方商店进入页面时的目录自动刷新                   |
-| `ZCODE_TELEMETRY_ENABLED`           | `false` | 数仓事件、ARMS RUM 出网、设备标识与本地 TTFT 采样  |
-| `MEMORY_DIAGNOSTICS_ENABLED`        | `false` | 内存诊断采样定时器                                 |
+| 常量                                | 值      | 负责的范围                                             |
+| ----------------------------------- | ------- | ------------------------------------------------------ |
+| `ZCODE_VENDOR_ACTIONS_DISABLED`     | `true`  | 社区、反馈工单与附件、分享、产品文档与更新日志外链     |
+| `CODING_PLAN_DISABLED`              | `true`  | 套餐域：界面、服务边界、启动账号恢复                   |
+| `REMOTE_ROLLOUT_DISABLED`           | `true`  | 远端灰度配置（含套餐侧 `dynamicWorkflow`）             |
+| `MARKETPLACE_AUTO_REFRESH_DISABLED` | `true`  | 官方商店进入页面时的目录自动刷新                       |
+| `ZCODE_TELEMETRY_ENABLED`           | `false` | 数仓事件、ARMS RUM 出网、设备标识与本地 TTFT 采样      |
+| `MEMORY_DIAGNOSTICS_ENABLED`        | `false` | 内存诊断采样定时器                                     |
 | `ZCODE_SITES_DISABLED`              | `true`  | 官方内置站点插件 `zcode-site` 与 official-command 代理 |
 
 远程 workspace、手机远控与消息平台 Bot 的硬禁用由 `spec/remote-disable.md` 单独约束，

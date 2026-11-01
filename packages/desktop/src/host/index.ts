@@ -1942,6 +1942,7 @@ async function createWindowRemoteConnectionHandle(params: {
       // SSH/WSL/Docker 也会复用兼容的旧 Source；所有 Server 都须声明能力才订阅新增事件。
       telemetrySupported: connection.serverInfo.capabilities.processResourceTelemetry === true,
       remoteConversationTelemetrySupported:
+        ZCODE_TELEMETRY_ENABLED &&
         connection.serverInfo.capabilities.remoteConversationTelemetry === true,
       environmentKey: resolveResourceTelemetryEnvironmentKey(
         params.target,

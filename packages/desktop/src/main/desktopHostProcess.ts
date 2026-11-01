@@ -13,7 +13,6 @@ import {
   type HostSessionCreateTelemetryResponse,
   type HostPluginTelemetryResponse,
   type ProviderProvisioningLaneStatus,
-  type RemoteTarget,
   type TaskRealtimeHostDeliveryKind,
   type WorkspacePurpose,
   formatZCodeHostProcessName,
@@ -390,6 +389,8 @@ export function spawnHostProcess(
     }
 
     if (result.data.type === HostResponseTypes.RemoteConversationTelemetry) {
+      // 遥测硬关闭：手机来源会话遥测不出网，也不做跨进程转发。
+      if (!ZCODE_TELEMETRY_ENABLED) return;
       dependencies.onRemoteConversationTelemetry?.(result.data);
       return;
     }

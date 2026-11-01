@@ -34,6 +34,7 @@ import {
   SERVER_REMOTE_PROTOCOL_VERSION,
   ZCODE_RPC_HOST_CAPABILITY_HEADER,
   ZCODE_COMPATIBILITY_MANIFEST,
+  ZCODE_TELEMETRY_ENABLED,
   ZCODE_VERSION,
   type BotProvider,
   type ServerRemoteInfo,
@@ -197,7 +198,8 @@ function createServerInfo(options: HttpServerOptions): ServerRemoteInfo {
       websocketRpc: true,
       ...(options.virtualProjects ? { virtualProjects: true } : {}),
       processResourceTelemetry: true,
-      remoteConversationTelemetry: true,
+      // 遥测硬禁用：不广告手机来源会话遥测能力，Host 据此不订阅、Main 不派发。
+      remoteConversationTelemetry: ZCODE_TELEMETRY_ENABLED,
     },
   });
 }

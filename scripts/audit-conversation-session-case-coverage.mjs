@@ -1921,7 +1921,10 @@ async function main() {
     ].map((path) => readFile(resolve(REPO_ROOT, path), "utf8")),
   );
 
-61564  errors.push(...formalAdmissionAudit.errors);
+  const errors = await inspectCoverageMatrices(REPO_ROOT);
+  const formalAdmission = await inspectConversationSessionFormalAdmission(formalAdmissionRoot);
+  const formalAdmissionAudit = buildFormalAdmissionAuditIntegration(formalAdmission);
+  errors.push(...formalAdmissionAudit.errors);
   const automationSpecs = parseAutomationSpecs(coverageMatrix);
   const faultAutomationSpecs = parseAutomationSpecs(faultCoverageMatrix);
   const mainCaseRows = parseRowsById(mainCatalog, /^[A-J]\d{2}$/);

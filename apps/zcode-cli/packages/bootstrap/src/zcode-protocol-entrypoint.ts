@@ -11,6 +11,7 @@ import {
 } from "@zcode/adapters/mcp";
 import {
   zcodeProtocolNotifications,
+  ZCODE_SITES_DISABLED,
   ZCODE_TELEMETRY_ENABLED,
   type ZCodeMcpResourceSample,
   type ZCodeMcpTelemetryEvent,
@@ -248,16 +249,20 @@ export async function runZCodeProtocolAgent(
     // 官方插件命令进程的代理端点（技术方案 5.8）：CLI 不持有凭证，端点每个请求向 host 现取
     // 身份头后转发给 zcode-server。和官方 MCP 用同一个 origin 表达式与网络配置。
     const endpointEnv = options.env ?? process.env;
-    officialCommandEndpoint = createOfficialCommandEndpoint({
-      resolveHeaders: createOfficialCommandAuthHeadersPort({
-        resolveContext: () => officialMcpAuthContext,
-        logger,
-      }).resolveHeaders,
-      resolveZCodeApiOrigin,
-      appVersion: endpointEnv.ZCODE_APP_VERSION?.trim() || options.version,
-      fetch: createMcpTransportFetch({ env: endpointEnv, network: configResult.config.network }),
-      logger,
-    });
+    // ZCode Sites 硬禁用：不创建 official-command 代理端点，不监听本地端口，
+    // 也不为任何 session 注入官方插件命令环境。
+    officialCommandEndpoint = ZCODE_SITES_DISABLED
+      ? undefined
+      : createOfficialCommandEndpoint({
+          resolveHeaders: createOfficialCommandAuthHeadersPort({
+            resolveContext: () => officialMcpAuthContext,
+            logger,
+          }).resolveHeaders,
+          resolveZCodeApiOrigin,
+          appVersion: endpointEnv.ZCODE_APP_VERSION?.trim() || options.version,
+          fetch: createMcpTransportFetch({ env: endpointEnv, network: configResult.config.network }),
+          logger,
+        });
     const activeOfficialCommandEndpoint = officialCommandEndpoint;
     // MCP elicitation 归属到协议 server 的会话；pool 先于 server 创建，端口延迟绑定。
     let elicitationServer: {
@@ -334,8 +339,10 @@ export async function runZCodeProtocolAgent(
               }
             : {}),
           providerEndpointRoutingPort,
-          officialCommandEnv: (sessionId, workspace) =>
-            activeOfficialCommandEndpoint.envForSession(sessionId, workspace),
+          officialCommandEnv: activeOfficialCommandEndpoint
+            ? (sessionId, workspace) =>
+                activeOfficialCommandEndpoint.envForSession(sessionId, workspace)
+            : undefined,
           sourceTitle: "electron",
           onToolExecResource: (params) =>
             connection.send({ method: zcodeProtocolNotifications.toolExecResource, params }),

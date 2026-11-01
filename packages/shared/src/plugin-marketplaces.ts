@@ -1,3 +1,5 @@
+import { ZCODE_SITES_DISABLED } from "./env.js";
+
 export interface DefaultPluginMarketplace {
   id: string;
   source: string;
@@ -17,7 +19,7 @@ export const ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID = "zcode-plugins-official";
 export const CLAUDE_OFFICIAL_PLUGIN_MARKETPLACE_ID = "claude-plugins-official";
 
 /** Settings 三类资源发现共用；Bootstrap 单测与官方 definition 的 defaultEnabled 机械对照。 */
-export const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS: ReadonlySet<string> = new Set([
+const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS_BASE: readonly string[] = [
   "browser-use@zcode-plugins-official",
   "image-search@zcode-plugins-official",
   "documents@zcode-plugins-official",
@@ -38,7 +40,17 @@ export const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS: ReadonlySet<string> = new Set(
   // 电脑控制回退为默认关闭，故 computer-use 不在此名单内。
   // 该集合必须与 official-plugin-definitions.ts 里标了 defaultEnabled 的插件逐一对应，
   // bootstrap 的「Settings 默认启用集合与 CLI 的官方插件声明一致」单测机械对照两者。
-]);
+];
+
+// ZCode Sites 硬禁用：站点插件不再产出内置定义，默认启用集合必须同步移除，
+// 否则 Settings 与 CLI 的声明会漂移。
+export const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS: ReadonlySet<string> = new Set(
+  ZCODE_SITES_DISABLED
+    ? DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS_BASE.filter(
+        (pluginId) => pluginId !== "zcode-site@zcode-plugins-official",
+      )
+    : DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS_BASE,
+);
 
 // 默认补种列表。Claude 官方市场（CLAUDE_OFFICIAL_PLUGIN_MARKETPLACE_ID）不在其中：
 // 它只作为可手动添加的个人来源，用户移除后不补种。

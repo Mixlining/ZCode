@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { BlocksIcon, CableIcon, ChevronDown, UploadCloud, WandIcon } from "lucide-react";
 import type { DeviceSyncResult } from "@zcode/shared";
+import { DATA_SYNC_DISABLED } from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
 import {
   DropdownMenu,
@@ -44,7 +45,8 @@ export function useDataSyncEntry(
   options: { onPushFinished?(result: DeviceSyncResult): void | Promise<void> } = {},
 ): { available: boolean; open(request: DataSyncEntryRequest): void; dialog: ReactNode } {
   const request = useOptionalPlatform()?.requestSourceSettingsAttachment;
-  const available = Boolean(request);
+  // Data Sync 硬禁用：入口不可用，不挂载对话框、不请求 Source settings 附件。
+  const available = !DATA_SYNC_DISABLED && Boolean(request);
   const [current, setCurrent] = useState<DataSyncEntryRequest | null>(null);
   const onPushFinishedRef = useRef(options.onPushFinished);
   onPushFinishedRef.current = options.onPushFinished;

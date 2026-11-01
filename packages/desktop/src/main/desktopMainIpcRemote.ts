@@ -402,11 +402,13 @@ export function registerRemoteIpcHandlers(options: {
     });
   });
 
-  ipcMain.on(PlatformChannels.SyncTelemetryContext, (event, context: unknown) => {
+  ipcMain.on(PlatformChannels.SyncTelemetryContext, (_event, context: unknown) => {
+    // 遥测硬关闭：先判再解析，不写入 renderer 上下文。
+    if (!ZCODE_TELEMETRY_ENABLED) return;
     const result = telemetryRendererContextSchema.safeParse(context);
     if (!result.success) return;
     options.appTelemetryRuntime.syncRendererContext({
-      rendererId: event.sender.id,
+      rendererId: _event.sender.id,
       context: result.data,
     });
   });

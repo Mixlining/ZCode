@@ -47,7 +47,7 @@ import {
   isConversationSharePath,
   resolveConversationShareCodeFromPath,
 } from "./share/conversationShareRoute.js";
-import { PHONE_REMOTE_DISABLED, ZCODE_VENDOR_ACTIONS_DISABLED } from "@zcode/shared";
+import { PHONE_REMOTE_DISABLED } from "@zcode/shared";
 import type {
   WebRemoteControlFailure,
   WebRemoteControlFailureReason,

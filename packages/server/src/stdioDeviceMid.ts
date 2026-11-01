@@ -1,4 +1,5 @@
 import { ensureTelemetryDeviceMid } from "@zcode/services/node";
+import { ZCODE_TELEMETRY_ENABLED } from "@zcode/shared";
 
 export interface EnsureRemoteServerDeviceMidOptions {
   /** 仅测试注入；生产固定使用 services 的 ensureTelemetryDeviceMid。 */
@@ -21,6 +22,9 @@ export interface EnsureRemoteServerDeviceMidOptions {
 export async function ensureRemoteServerDeviceMid(
   options: EnsureRemoteServerDeviceMidOptions,
 ): Promise<string | undefined> {
+  // 遥测硬禁用：不生成设备标识、不写 telemetry-state.json、不注入 X-Device-Mid。
+  // 原调用保留；本构建没有官方套餐与计费查询，缺该 header 没有消费方。
+  if (!ZCODE_TELEMETRY_ENABLED) return undefined;
   const ensureDeviceMid = options.ensureDeviceMid ?? ensureTelemetryDeviceMid;
   try {
     return await ensureDeviceMid();

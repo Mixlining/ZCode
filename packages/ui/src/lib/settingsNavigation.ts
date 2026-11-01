@@ -52,6 +52,9 @@ const HIDDEN_SETTINGS_SECTIONS = new Set<SettingsSectionId>([
   // 远程设备属远程 workspace 硬禁用域：导航不出现，跳转由 resolveSettingsSection 回落。
   // 实现、文案与页面保留，仅从入口层移除（见 spec/remote-disable.md）。
   "remoteDevices",
+  // 数据同步属 Data Sync 硬禁用域：导航不出现，跳转回落；页面组件另有 DATA_SYNC_DISABLED
+  // 早退，实现、文案与页面保留（见 spec/remote-disable.md）。
+  "dataSync",
 ]);
 
 export interface SettingsSectionIntentEventDetail {

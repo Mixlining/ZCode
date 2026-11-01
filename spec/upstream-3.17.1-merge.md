@@ -15,29 +15,29 @@
 
 `git merge-tree --write-tree dev a60ba6a7` 预演：412 个冲突（161 内容冲突 + 251 modify/delete）。
 
-| 冲突类别                                 | 数量 | 备注                                                                 |
-| ---------------------------------------- | ---: | -------------------------------------------------------------------- |
-| 上游删除、dev 修改                      |  249 | 246 个测试/E2E/夹具；3 个 `Remote{Mcp,Plugin,Skill}SyncDialog.tsx`   |
-| dev 删除、上游修改                      |    2 | `appARMSBootstrap.ts`、`.vscode/settings.json`，保持删除             |
-| 内容冲突：`docs/`                       |   39 | 测试覆盖矩阵与测试文档取上游                                         |
-| 内容冲突：Desktop E2E/夹具              |   69 | 取上游                                                               |
-| 内容冲突：Desktop 源码                  |   10 | 手工裁决并回填守卫                                                   |
-| 内容冲突：UI / CLI / services / shared  |   32 | 手工裁决并回填守卫                                                   |
-| 内容冲突：根清单与治理文件              |    6 | `package.json`、`architecture-policy.yaml`、`pnpm-lock.yaml`、`.husky/pre-push`、`AGENTS.md`、`.agents` |
-| 内容冲突：第三方/许可证                  |    3 | `NOTICE.md`、`THIRD-PARTY-NOTICES.md`、`third-party/*` 取上游        |
+| 冲突类别                               | 数量 | 备注                                                                                                    |
+| -------------------------------------- | ---: | ------------------------------------------------------------------------------------------------------- |
+| 上游删除、dev 修改                     |  249 | 246 个测试/E2E/夹具；3 个 `Remote{Mcp,Plugin,Skill}SyncDialog.tsx`                                      |
+| dev 删除、上游修改                     |    2 | `appARMSBootstrap.ts`、`.vscode/settings.json`，保持删除                                                |
+| 内容冲突：`docs/`                      |   39 | 测试覆盖矩阵与测试文档取上游                                                                            |
+| 内容冲突：Desktop E2E/夹具             |   69 | 取上游                                                                                                  |
+| 内容冲突：Desktop 源码                 |   10 | 手工裁决并回填守卫                                                                                      |
+| 内容冲突：UI / CLI / services / shared |   32 | 手工裁决并回填守卫                                                                                      |
+| 内容冲突：根清单与治理文件             |    6 | `package.json`、`architecture-policy.yaml`、`pnpm-lock.yaml`、`.husky/pre-push`、`AGENTS.md`、`.agents` |
+| 内容冲突：第三方/许可证                |    3 | `NOTICE.md`、`THIRD-PARTY-NOTICES.md`、`third-party/*` 取上游                                           |
 
 与本仓库产品边界相关的新增出网/常驻链路（v3.16.2 时不存在）：
 
-| 领域         | 上游新增                                                                                                                                  | 与本仓库的关系                                         |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| 设备标识     | `createServerHostServices` 新增 `ensureTelemetryDeviceMid()`；`packages/server/src/stdioDeviceMid.ts` 新增独立 Server stdio 入口的同样调用 | `ZCODE_TELEMETRY_ENABLED=false` 下不生成、不写、不带头 |
-| 会话遥测     | 手机来源会话遥测：`RemoteConversationTelemetry` 通道、`remoteConversationTelemetry` capability、Host 订阅、Main dispatcher                    | `ZCODE_TELEMETRY_ENABLED=false` 下三层源头关断         |
+| 领域         | 上游新增                                                                                                                                   | 与本仓库的关系                                               |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
+| 设备标识     | `createServerHostServices` 新增 `ensureTelemetryDeviceMid()`；`packages/server/src/stdioDeviceMid.ts` 新增独立 Server stdio 入口的同样调用 | `ZCODE_TELEMETRY_ENABLED=false` 下不生成、不写、不带头       |
+| 会话遥测     | 手机来源会话遥测：`RemoteConversationTelemetry` 通道、`remoteConversationTelemetry` capability、Host 订阅、Main dispatcher                 | `ZCODE_TELEMETRY_ENABLED=false` 下三层源头关断               |
 | 手机推送     | `MobilePushConnection` 启动即 `setInterval(60s)` 轮询 `/api/v1/remote/notification/*`                                                      | `PHONE_REMOTE_DISABLED=true` 下不调用 `startNotifications()` |
-| 手机日志     | `PullMobileLogs` 命令、移动端日志分片拉取与 `logs/mobile` 落盘                                                                            | `PHONE_REMOTE_DISABLED=true` 下命令入口直接返回        |
-| Data Sync    | `IUserConfigSyncService`、`IDeviceSyncStateService`、Data Sync 页面与协议通道                                                              | `DATA_SYNC_DISABLED=true` 下不注册、不进入             |
-| ZCode Sites  | 官方内置插件 `zcode-site`、`official-command-endpoint` 本地代理（`/api/v1/sites`）                                                        | `ZCODE_SITES_DISABLED=true` 下不加载插件、不建代理     |
-| ui_mode 遥测 | `ui_mode` 维度、`SyncTelemetryContext` 平台通道、preload/Main handler、Root 订阅                                                          | `ZCODE_TELEMETRY_ENABLED=false` 下不构造、不发 IPC     |
-| 本地 TTFT    | 渲染层 `local-ttft/initialize.ts` 默认开启；CLI 新增 `zcode-protocol-v4/local-ttft/recorder.ts`                                          | `ZCODE_TELEMETRY_ENABLED=false` 下保持早退             |
+| 手机日志     | `PullMobileLogs` 命令、移动端日志分片拉取与 `logs/mobile` 落盘                                                                             | `PHONE_REMOTE_DISABLED=true` 下命令入口直接返回              |
+| Data Sync    | `IUserConfigSyncService`、`IDeviceSyncStateService`、Data Sync 页面与协议通道                                                              | `DATA_SYNC_DISABLED=true` 下不注册、不进入                   |
+| ZCode Sites  | 官方内置插件 `zcode-site`、`official-command-endpoint` 本地代理（`/api/v1/sites`）                                                         | `ZCODE_SITES_DISABLED=true` 下不加载插件、不建代理           |
+| ui_mode 遥测 | `ui_mode` 维度、`SyncTelemetryContext` 平台通道、preload/Main handler、Root 订阅                                                           | `ZCODE_TELEMETRY_ENABLED=false` 下不构造、不发 IPC           |
+| 本地 TTFT    | 渲染层 `local-ttft/initialize.ts` 默认开启；CLI 新增 `zcode-protocol-v4/local-ttft/recorder.ts`                                            | `ZCODE_TELEMETRY_ENABLED=false` 下保持早退                   |
 
 ## 已定产品决策
 
@@ -54,35 +54,35 @@
 
 所有判定使用 `packages/shared/src/env.ts` 的编译期常量，不读取运行时环境变量，不以超时兜底。
 
-| 链路          | 不构造（源头）                                                                                                       | 不注册 / 不订阅                                                                 | 不进入 / 纵深防御                                                                                                            |
-| ------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| 设备标识      | `packages/services/src/node.ts` `createServerHostServices` 内 `ensureTelemetryDeviceMid` 调用包进 `ZCODE_TELEMETRY_ENABLED` | —                                                                               | `packages/server/src/stdioDeviceMid.ts` 在 `ZCODE_TELEMETRY_ENABLED=false` 时直接返回 `undefined`                            |
-| 会话遥测      | `packages/services/src/zcode-agent/zcodeAgentService.ts` 不构造远端遥测 emitter                                       | `packages/desktop/src/host/hostServiceResourceTelemetry.ts` 不订阅；`host/index.ts` capability 表达式同时带常量 | `packages/desktop/src/main/desktopHostProcess.ts` 丢弃 `RemoteConversationTelemetry`；`main/index.ts` 不派发                    |
-| 手机推送      | `packages/desktop/src/main/index.ts` 不调用 `startNotifications()`，不接 `onMobilePushRun` / `onMobilePushEvent`      | 不注册 `powerMonitor.on("resume")` 推送刷新；`will-quit` 不挂推送 dispose        | `webRemoteControlManager` 在 `PHONE_REMOTE_DISABLED` 下仍不构造（既有守卫）                                                   |
-| 手机日志      | `main/index.ts` 不创建 `MobileLogSink`                                                                                | 不注册 mobile-log 通道                                                          | `desktopCommandHandlers.ts` 的 `PullMobileLogs` 入口直接返回                                                                  |
-| Data Sync     | `services/src/node.ts` 不注册 `IUserConfigSyncService`；`host/index.ts` 不注册 `IDeviceSyncStateService`             | `remoteWorkspaceServiceCollection.ts` 的注册保留在远程守卫内                     | UI Data Sync 入口不挂载；跨进程调用点在调用前用常量判断                                                                       |
-| ZCode Sites   | `official-plugin-definitions.ts` 不产出 `zcode-site` 内置插件定义                                                     | `zcode-protocol-entrypoint.ts` 不创建 `officialCommandEndpoint`                 | UI Sites 面板入口不挂载；`plugin-marketplaces.ts` 的内置 ID 保留但不会被加载                                                  |
-| ui_mode 遥测  | `packages/ui/src/lib/appTelemetry.ts` 的 `useInterfaceModeTelemetry` 在遥测关闭时直接返回                              | preload 不安装 `syncTelemetryContext` 桥                                          | `desktopMainIpcRemote.ts` 的 handler 直接丢弃                                                                                 |
-| 本地 TTFT     | 渲染层 `local-ttft/initialize.ts` 在遥测关闭时返回空清理函数，不起 1s 定时器                                          | CLI `local-ttft/recorder.ts` 不安装采样                                                | OTLP exporter 继续由 `OTLP_DIAGNOSTIC_EXPORT_DISABLED` 关断                                                                   |
+| 链路         | 不构造（源头）                                                                                                              | 不注册 / 不订阅                                                                                                 | 不进入 / 纵深防御                                                                                            |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| 设备标识     | `packages/services/src/node.ts` `createServerHostServices` 内 `ensureTelemetryDeviceMid` 调用包进 `ZCODE_TELEMETRY_ENABLED` | —                                                                                                               | `packages/server/src/stdioDeviceMid.ts` 在 `ZCODE_TELEMETRY_ENABLED=false` 时直接返回 `undefined`            |
+| 会话遥测     | `packages/services/src/zcode-agent/zcodeAgentService.ts` 不构造远端遥测 emitter                                             | `packages/desktop/src/host/hostServiceResourceTelemetry.ts` 不订阅；`host/index.ts` capability 表达式同时带常量 | `packages/desktop/src/main/desktopHostProcess.ts` 丢弃 `RemoteConversationTelemetry`；`main/index.ts` 不派发 |
+| 手机推送     | `packages/desktop/src/main/index.ts` 不调用 `startNotifications()`，不接 `onMobilePushRun` / `onMobilePushEvent`            | 不注册 `powerMonitor.on("resume")` 推送刷新；`will-quit` 不挂推送 dispose                                       | `webRemoteControlManager` 在 `PHONE_REMOTE_DISABLED` 下仍不构造（既有守卫）                                  |
+| 手机日志     | `main/index.ts` 不创建 `MobileLogSink`                                                                                      | 不注册 mobile-log 通道                                                                                          | `desktopCommandHandlers.ts` 的 `PullMobileLogs` 入口直接返回                                                 |
+| Data Sync    | `services/src/node.ts` 不注册 `IUserConfigSyncService`；`host/index.ts` 不注册 `IDeviceSyncStateService`                    | `remoteWorkspaceServiceCollection.ts` 的注册保留在远程守卫内                                                    | UI Data Sync 入口不挂载；跨进程调用点在调用前用常量判断                                                      |
+| ZCode Sites  | `official-plugin-definitions.ts` 不产出 `zcode-site` 内置插件定义                                                           | `zcode-protocol-entrypoint.ts` 不创建 `officialCommandEndpoint`                                                 | UI Sites 面板入口不挂载；`plugin-marketplaces.ts` 的内置 ID 保留但不会被加载                                 |
+| ui_mode 遥测 | `packages/ui/src/lib/appTelemetry.ts` 的 `useInterfaceModeTelemetry` 在遥测关闭时直接返回                                   | preload 不安装 `syncTelemetryContext` 桥                                                                        | `desktopMainIpcRemote.ts` 的 handler 直接丢弃                                                                |
+| 本地 TTFT    | 渲染层 `local-ttft/initialize.ts` 在遥测关闭时返回空清理函数，不起 1s 定时器                                                | CLI `local-ttft/recorder.ts` 不安装采样                                                                         | OTLP exporter 继续由 `OTLP_DIAGNOSTIC_EXPORT_DISABLED` 关断                                                  |
 
 ## 冲突裁决
 
-| 文件 / 类别                                                                 | 裁决                                                                                                                          |
-| --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `packages/shared/src/env.ts`                                                | 上游本次未改；保留 dev 的十个策略常量并新增 `DATA_SYNC_DISABLED`、`ZCODE_SITES_DISABLED`                                     |
-| `packages/desktop/src/main/appARMSBootstrap.ts`、`.vscode/settings.json`    | 保持 dev 删除（ARMS 白名单 / 仓库无关编辑器配置）                                                                             |
-| 上游删除的 246 个测试/E2E/夹具                                              | 接受删除                                                                                                                      |
-| `Remote{Mcp,Plugin,Skill}SyncDialog.tsx`                                    | 接受上游删除；新 Data Sync 入口由 `DATA_SYNC_DISABLED` 关断                                                                   |
-| `docs/testing/*`、`docs/superpowers/*`、其它 `docs/` 冲突                   | 取上游；`spec/*` 保持 dev                                                                                                     |
-| `AGENTS.md`                                                                 | 两侧保留：上游新增条款 + dev 硬禁用规则；验证章节改为「静态检查 + 工程测试」                                                  |
-| 根 `package.json`                                                           | 取上游脚本全集；保留 dev 仍被引用的脚本；版本改 3.17.1                                                                        |
-| `packages/desktop/package.json`、`pnpm-workspace.yaml`、`mise.toml`         | 保留 dev 工具链 pin；吸收上游新增依赖，不改 workspace 配置                                                                     |
-| `architecture-policy.yaml`                                                  | 取上游 150 条 + 回填 dev 的 5 条独有条目与守卫例外；重新生成 `scripts/architecture/upstream-snapshot.json`                     |
-| `.husky/pre-push`                                                           | 取上游（捕获 push stdin）                                                                                                     |
-| `packages/desktop/scripts/r3-remote-spec-inventory.mjs`                     | 取上游（dev 未改；无 `harness/remote` 时检查跳过）                                                                            |
-| `pnpm-lock.yaml`                                                            | 不接受任一侧，删除后用 pnpm 11.27.1 重新生成                                                                                  |
-| `third-party/*`、`NOTICE.md`、`THIRD-PARTY-NOTICES.md`                      | 取上游                                                                                                                        |
-| Desktop E2E / fixtures 冲突                                                 | 取上游                                                                                                                        |
+| 文件 / 类别                                                              | 裁决                                                                                                       |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `packages/shared/src/env.ts`                                             | 上游本次未改；保留 dev 的十个策略常量并新增 `DATA_SYNC_DISABLED`、`ZCODE_SITES_DISABLED`                   |
+| `packages/desktop/src/main/appARMSBootstrap.ts`、`.vscode/settings.json` | 保持 dev 删除（ARMS 白名单 / 仓库无关编辑器配置）                                                          |
+| 上游删除的 246 个测试/E2E/夹具                                           | 接受删除                                                                                                   |
+| `Remote{Mcp,Plugin,Skill}SyncDialog.tsx`                                 | 接受上游删除；新 Data Sync 入口由 `DATA_SYNC_DISABLED` 关断                                                |
+| `docs/testing/*`、`docs/superpowers/*`、其它 `docs/` 冲突                | 取上游；`spec/*` 保持 dev                                                                                  |
+| `AGENTS.md`                                                              | 两侧保留：上游新增条款 + dev 硬禁用规则；验证章节改为「静态检查 + 工程测试」                               |
+| 根 `package.json`                                                        | 取上游脚本全集；保留 dev 仍被引用的脚本；版本改 3.17.1                                                     |
+| `packages/desktop/package.json`、`pnpm-workspace.yaml`、`mise.toml`      | 保留 dev 工具链 pin；吸收上游新增依赖，不改 workspace 配置                                                 |
+| `architecture-policy.yaml`                                               | 取上游 150 条 + 回填 dev 的 5 条独有条目与守卫例外；重新生成 `scripts/architecture/upstream-snapshot.json` |
+| `.husky/pre-push`                                                        | 取上游（捕获 push stdin）                                                                                  |
+| `packages/desktop/scripts/r3-remote-spec-inventory.mjs`                  | 取上游（dev 未改；无 `harness/remote` 时检查跳过）                                                         |
+| `pnpm-lock.yaml`                                                         | 不接受任一侧，删除后用 pnpm 11.27.1 重新生成                                                               |
+| `third-party/*`、`NOTICE.md`、`THIRD-PARTY-NOTICES.md`                   | 取上游                                                                                                     |
+| Desktop E2E / fixtures 冲突                                              | 取上游                                                                                                     |
 
 ## 收尾提交改动清单
 
@@ -101,26 +101,26 @@ export const ZCODE_SITES_DISABLED = true;
 
 ### 守卫恢复
 
-| 位置                                                                 | 动作                                                                                                                       |
-| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `packages/services/src/node.ts`                                      | `createServerHostServices` 的 `ensureTelemetryDeviceMid()` 包进 `ZCODE_TELEMETRY_ENABLED`；`createLocalServices` 的 `IUserConfigSyncService` 注册包进 `DATA_SYNC_DISABLED` |
-| `packages/server/src/stdioDeviceMid.ts`                              | `ZCODE_TELEMETRY_ENABLED=false` 时直接返回 `undefined`                                                                      |
-| `packages/services/src/zcode-agent/zcodeAgentService.ts`             | 远端会话遥测 emitter 不在禁用时构造                                                                                        |
-| `packages/desktop/src/host/hostServiceResourceTelemetry.ts`          | 顶部 `if (!ZCODE_TELEMETRY_ENABLED) return`，不订阅远端会话遥测                                                             |
-| `packages/desktop/src/host/index.ts`                                 | capability 表达式追加 `ZCODE_TELEMETRY_ENABLED`；`IDeviceSyncStateService` 注册包进 `DATA_SYNC_DISABLED`；远程服务集合与 provisioning lane 保持在 `REMOTE_WORKSPACE_DISABLED` 内 |
-| `packages/desktop/src/host/remoteWorkspaceServiceCollection.ts`      | `IUserConfigSyncService` / `IBotsService` 注册保持在禁用守卫内                                                               |
-| `packages/desktop/src/main/desktopHostProcess.ts`                    | 丢弃 `HostResponseTypes.RemoteConversationTelemetry`                                                                        |
-| `packages/desktop/src/main/index.ts`                                 | 不构造远端遥测 dispatcher、不接线；`startNotifications()`、`onMobilePushRun`、`onMobilePushEvent`、`powerMonitor` 推送刷新与 `will-quit` dispose 包进 `PHONE_REMOTE_DISABLED`；`MobileLogSink` 不创建；`webRemoteControlManager` 保持不构造 |
-| `packages/desktop/src/main/desktopCommandHandlers.ts`                | `PullMobileLogs` 入口在 `PHONE_REMOTE_DISABLED` 下返回中性值                                                                |
-| `packages/desktop/src/main/desktopMainIpcRemote.ts`                  | `SyncTelemetryContext` handler 在 `ZCODE_TELEMETRY_ENABLED=false` 下直接丢弃；远程探测 IPC 保持中性                         |
-| `packages/desktop/src/preload/index.ts`                              | 遥测关闭时不安装 `syncTelemetryContext` 桥                                                                                  |
-| `packages/ui/src/lib/appTelemetry.ts`                                | `useInterfaceModeTelemetry` 顶部 `if (!ZCODE_TELEMETRY_ENABLED) return;`                                                     |
-| `packages/desktop/src/renderer/src/local-ttft/initialize.ts`         | 遥测关闭时返回空清理函数，不设 `observer.enabled`、不起 1s 定时器                                                            |
-| `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/local-ttft/recorder.ts` | 遥测关闭时不安装采样                                                                                             |
-| `apps/zcode-cli/packages/bootstrap/src/app/official-plugin-definitions.ts` | `ZCODE_SITES_DISABLED` 下不产出 `zcode-site` 定义                                                                       |
-| `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-entrypoint.ts` | `ZCODE_SITES_DISABLED` 下不创建 official command endpoint                                                                   |
-| `packages/ui/src/app-shell/*`                                         | Sites 内置面板入口在 `ZCODE_SITES_DISABLED` 下不挂载                                                                        |
-| `packages/ui/src/data-sync/*` 与其入口                              | Data Sync 页面与入口在 `DATA_SYNC_DISABLED` 下不挂载                                                                        |
+| 位置                                                                             | 动作                                                                                                                                                                                                                                        |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/services/src/node.ts`                                                  | `createServerHostServices` 的 `ensureTelemetryDeviceMid()` 包进 `ZCODE_TELEMETRY_ENABLED`；`createLocalServices` 的 `IUserConfigSyncService` 注册包进 `DATA_SYNC_DISABLED`                                                                  |
+| `packages/server/src/stdioDeviceMid.ts`                                          | `ZCODE_TELEMETRY_ENABLED=false` 时直接返回 `undefined`                                                                                                                                                                                      |
+| `packages/services/src/zcode-agent/zcodeAgentService.ts`                         | 远端会话遥测 emitter 不在禁用时构造                                                                                                                                                                                                         |
+| `packages/desktop/src/host/hostServiceResourceTelemetry.ts`                      | 顶部 `if (!ZCODE_TELEMETRY_ENABLED) return`，不订阅远端会话遥测                                                                                                                                                                             |
+| `packages/desktop/src/host/index.ts`                                             | capability 表达式追加 `ZCODE_TELEMETRY_ENABLED`；`IDeviceSyncStateService` 注册包进 `DATA_SYNC_DISABLED`；远程服务集合与 provisioning lane 保持在 `REMOTE_WORKSPACE_DISABLED` 内                                                            |
+| `packages/desktop/src/host/remoteWorkspaceServiceCollection.ts`                  | `IUserConfigSyncService` / `IBotsService` 注册保持在禁用守卫内                                                                                                                                                                              |
+| `packages/desktop/src/main/desktopHostProcess.ts`                                | 丢弃 `HostResponseTypes.RemoteConversationTelemetry`                                                                                                                                                                                        |
+| `packages/desktop/src/main/index.ts`                                             | 不构造远端遥测 dispatcher、不接线；`startNotifications()`、`onMobilePushRun`、`onMobilePushEvent`、`powerMonitor` 推送刷新与 `will-quit` dispose 包进 `PHONE_REMOTE_DISABLED`；`MobileLogSink` 不创建；`webRemoteControlManager` 保持不构造 |
+| `packages/desktop/src/main/desktopCommandHandlers.ts`                            | `PullMobileLogs` 入口在 `PHONE_REMOTE_DISABLED` 下返回中性值                                                                                                                                                                                |
+| `packages/desktop/src/main/desktopMainIpcRemote.ts`                              | `SyncTelemetryContext` handler 在 `ZCODE_TELEMETRY_ENABLED=false` 下直接丢弃；远程探测 IPC 保持中性                                                                                                                                         |
+| `packages/desktop/src/preload/index.ts`                                          | 遥测关闭时不安装 `syncTelemetryContext` 桥                                                                                                                                                                                                  |
+| `packages/ui/src/lib/appTelemetry.ts`                                            | `useInterfaceModeTelemetry` 顶部 `if (!ZCODE_TELEMETRY_ENABLED) return;`                                                                                                                                                                    |
+| `packages/desktop/src/renderer/src/local-ttft/initialize.ts`                     | 遥测关闭时返回空清理函数，不设 `observer.enabled`、不起 1s 定时器                                                                                                                                                                           |
+| `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/local-ttft/recorder.ts` | 遥测关闭时不安装采样                                                                                                                                                                                                                        |
+| `apps/zcode-cli/packages/bootstrap/src/app/official-plugin-definitions.ts`       | `ZCODE_SITES_DISABLED` 下不产出 `zcode-site` 定义                                                                                                                                                                                           |
+| `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-entrypoint.ts`             | `ZCODE_SITES_DISABLED` 下不创建 official command endpoint                                                                                                                                                                                   |
+| `packages/ui/src/app-shell/*`                                                    | Sites 内置面板入口在 `ZCODE_SITES_DISABLED` 下不挂载                                                                                                                                                                                        |
+| `packages/ui/src/data-sync/*` 与其入口                                           | Data Sync 页面与入口在 `DATA_SYNC_DISABLED` 下不挂载                                                                                                                                                                                        |
 
 ### 既有守卫复核
 

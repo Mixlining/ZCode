@@ -42,6 +42,7 @@ import {
   buildLocalMediaPreviewUrl,
   CODING_PLAN_DISABLED,
   DATA_SYNC_DISABLED,
+  ZCODE_TELEMETRY_ENABLED,
   type DynamicWorkflowMode,
   type ProviderProvisioningSourceTrigger,
 } from "@zcode/shared";
@@ -3313,17 +3314,21 @@ export async function createServerHostServices(options: {
     buildServerRemoteWorkspaceIdentity({ serverId: options.sourceServerId, workspacePath: "/" }),
   );
   if (!projectStorageHostId) throw new Error("Invalid Source Server storage identity");
-  // Bug 原因：billing/balance 把 X-Device-Mid 当必填，而独立 Server 主机没有 Desktop main 写设备身份，
-  // buildZCodeSourceHeaders() 又只读不生成。原修复只放在旧 stdio entry，SSH/WSL/Docker 的 Core 与
-  // Lite HTTP 入口共用本装配却没有确保，首次 Start Plan 权益查询返回 400，Start 模型被判为不可用。
-  // 收口到本装配，所有独立 Server 入口在创建 services 前得到本机自己的 deviceMid；失败只告警、不阻断启动、不伪造 ID。
-  await ensureTelemetryDeviceMid().catch((error: unknown) => {
-    createServiceLogger("server-host").warn(
-      undefined,
-      "deviceMid 初始化失败，ZCode endpoint 请求将不带 X-Device-Mid:",
-      error instanceof Error ? error.message : String(error),
-    );
-  });
+  // 遥测硬禁用：不生成设备标识、不写 telemetry-state.json、不注入 X-Device-Mid。
+  // 原调用与 billing/balance 说明保留；本构建没有官方套餐与计费查询，缺该 header 没有消费方。
+  if (ZCODE_TELEMETRY_ENABLED) {
+    // Bug 原因：billing/balance 把 X-Device-Mid 当必填，而独立 Server 主机没有 Desktop main 写设备身份，
+    // buildZCodeSourceHeaders() 又只读不生成。原修复只放在旧 stdio entry，SSH/WSL/Docker 的 Core 与
+    // Lite HTTP 入口共用本装配却没有确保，首次 Start Plan 权益查询返回 400，Start 模型被判为不可用。
+    // 收口到本装配，所有独立 Server 入口在创建 services 前得到本机自己的 deviceMid；失败只告警、不阻断启动、不伪造 ID。
+    await ensureTelemetryDeviceMid().catch((error: unknown) => {
+      createServiceLogger("server-host").warn(
+        undefined,
+        "deviceMid 初始化失败，ZCode endpoint 请求将不带 X-Device-Mid:",
+        error instanceof Error ? error.message : String(error),
+      );
+    });
+  }
   await migrateApplicationStorage(await createSettingService().get(), projectStorageHostId);
   const workspaceAliasRepo = new SourceServerWorkspaceAliasRepo();
   const workspaceIdentityMapper = new SourceServerWorkspaceIdentityMapper();

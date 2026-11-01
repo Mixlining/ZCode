@@ -43,6 +43,7 @@ import {
   net,
   protocol,
   session,
+  shell,
   webContents,
 } from "electron";
 import { randomUUID } from "node:crypto";
@@ -1588,8 +1589,10 @@ async function executeDesktopCommandForApp(
     },
     credentialsDir: getCredentialsDir(),
     currentApplicationLocale,
-    pullMobileLogs: (windowId) =>
-      pullAndExportMobileLogs(windowId, {
+    pullMobileLogs: async (windowId) => {
+      // 手机远控硬禁用：管理器不构造时不拉取移动端日志，也不创建 logs/mobile。
+      if (!webRemoteControlManager) return;
+      await pullAndExportMobileLogs(windowId, {
         findTarget: (id) => webRemoteControlManager.findMobileLogPullTarget(id),
         pull: (id, query, onShard) => webRemoteControlManager.pullMobileLogs(id, query, onShard),
         exportDir: getExportLogDir(),
@@ -1604,7 +1607,8 @@ async function executeDesktopCommandForApp(
         },
         showItemInFolder: (path) => shell.showItemInFolder(path),
         logger,
-      }),
+      });
+    },
   });
 }
 
@@ -1976,6 +1980,7 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
             void appTelemetryCore.reportEvent(message.event).catch(() => {});
           },
           onRemoteConversationTelemetry: (message) => {
+            if (!ZCODE_TELEMETRY_ENABLED) return;
             void reportRemoteConversationTelemetry(message.event);
           },
           onSessionCreateTelemetry: (message) => {

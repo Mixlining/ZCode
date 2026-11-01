@@ -861,18 +861,17 @@ export function SessionPane({
         ? EMPTY_SHARE_ITEMS
         : shareRenderUnits
           ? buildConversationShareItems(shareRenderUnits, {
-            assistantEmptyPreview: intl.formatMessage({
-              id: "chat.turnNavigator.emptyAssistant",
-            }),
-            assistantRunningPreview: intl.formatMessage({
-              id: "chat.turnNavigator.runningAssistant",
-            }),
-            userFallbackPreview: intl.formatMessage({
-              id: "chat.turnNavigator.userFallback",
-            }),
-            }),
-          })
-        : [],
+              assistantEmptyPreview: intl.formatMessage({
+                id: "chat.turnNavigator.emptyAssistant",
+              }),
+              assistantRunningPreview: intl.formatMessage({
+                id: "chat.turnNavigator.runningAssistant",
+              }),
+              userFallbackPreview: intl.formatMessage({
+                id: "chat.turnNavigator.userFallback",
+              }),
+            })
+          : [],
     [intl, shareRenderUnits],
   );
   const eligibleShareItems = useMemo(

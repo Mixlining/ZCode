@@ -83,7 +83,8 @@ export function toTelemetryUiMode(mode: InterfaceMode | undefined): TelemetryUiM
 export function useInterfaceModeTelemetry(platform: IPlatformService, enabled: boolean): void {
   const store = useContext(StoreContext);
   useLayoutEffect(() => {
-    if (!enabled || !store || !platform.syncTelemetryContext) return;
+    // 遥测硬关闭：不订阅 interfaceMode，也不发 SyncTelemetryContext IPC。
+    if (!ZCODE_TELEMETRY_ENABLED || !enabled || !store || !platform.syncTelemetryContext) return;
     const sync = () => {
       try {
         platform.syncTelemetryContext?.({

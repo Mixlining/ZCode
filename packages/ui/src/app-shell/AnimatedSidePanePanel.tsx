@@ -17,6 +17,7 @@ import {
 import { horizontalListSortingStrategy, SortableContext } from "@dnd-kit/sortable";
 import {
   isRemoteWorkspaceIdentity,
+  ZCODE_SITES_DISABLED,
   type BrowserViewScreenshotSurfacePreparePayload,
   type GitChangeSourceId,
 } from "@zcode/shared";
@@ -542,7 +543,9 @@ export function AnimatedSidePanePanel({
     mobileOverlay,
   });
   // Sites 面板是会话级 UI 插件，和辅助对话同样需要正式会话；远端工作区不支持插件面板。
+  // ZCode Sites 硬禁用：不再挂载官方插件面板入口。
   const canOpenSites =
+    !ZCODE_SITES_DISABLED &&
     canOpenSelectionSideConversation &&
     !workspaceRemoteSessionId &&
     !isRemoteWorkspaceIdentity(workspaceIdentity ?? "");

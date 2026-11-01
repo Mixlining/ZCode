@@ -5,6 +5,7 @@ import {
   buildZCodeEndpointUrls,
   DEFAULT_ZCODE_ENDPOINT_ORIGIN,
   DesktopCommandIds,
+  PHONE_REMOTE_DISABLED,
   ZCODE_VENDOR_ACTIONS_DISABLED,
   REWARDS_PARTITION,
   TEST_ZCODE_ENDPOINT_ORIGIN,
@@ -633,6 +634,8 @@ export async function executeDesktopCommand(options: {
       await exportLogs();
       return;
     case DesktopCommandIds.PullMobileLogs:
+      // 手机远控硬禁用：不连接移动端、不拉取日志、不创建 logs/mobile 落盘目录。
+      if (PHONE_REMOTE_DISABLED) return;
       await options.pullMobileLogs?.(targetWindow?.id);
       return;
     case DesktopCommandIds.ToggleDevTools:
