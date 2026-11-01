@@ -195,10 +195,23 @@ it("Windows afterExtract 继续从 appOutDir 根目录保留 Electron 原始许�
   }
 });
 
-it("缺失生产依赖时打包必须失败", async () => {
+it("缺失生产依赖时打包必须失败，仅豁免工作区源码包", async () => {
   const { default: config } = await import("../electron-builder.config.js");
+  const desktopPackage = JSON.parse(
+    await readFile(new URL("../package.json", import.meta.url), "utf8"),
+  ) as { dependencies?: Record<string, string> };
+  const workspaceDependencies = Object.keys(desktopPackage.dependencies ?? {}).filter((name) =>
+    name.startsWith("@zcode/"),
+  );
+  const allowMissing = config.allowMissingDependencies;
 
-  expect(config.allowMissingDependencies).toBe(false);
+  // 工作区源码包由 tsup 打进 out/ 且被 files 排除，不属于缺失依赖；
+  // 其余第三方生产依赖仍必须让打包失败（不能整体放行）。
+  expect(Array.isArray(allowMissing)).toBe(true);
+  expect(allowMissing).toEqual(workspaceDependencies);
+  if (Array.isArray(allowMissing)) {
+    expect(allowMissing.every((name) => name.startsWith("@zcode/"))).toBe(true);
+  }
 });
 
 it("Windows 打包关闭 Node Inspector，保留 Agent 所需的 RunAsNode", async () => {
