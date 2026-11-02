@@ -91,19 +91,12 @@ export async function resolveDiffBase(
   ]);
   const viaUpstream = upstream && (await pick(upstream, `upstream ${upstream}`, true));
   if (viaUpstream) return viaUpstream;
-  // 架构检查优先 origin/staging，其次 origin/HEAD；
-  // 否则长期分支会把 staging 尚未合入 main 的历史差异误算成本分支新增。
+  // 架构检查优先集成分支 origin/dev，其次 origin/HEAD；
+  // 否则长期分支会把 dev 尚未合入 main 的历史差异误算成本分支新增。
   const originHead =
     (await gitOut(cwd, ["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"])) ?? null;
   const existing = new Set();
-  for (const ref of [
-    "origin/staging",
-    originHead,
-    "origin/main",
-    "origin/master",
-    "main",
-    "master",
-  ]) {
+  for (const ref of ["origin/dev", originHead, "origin/main", "origin/master", "main", "master"]) {
     if (ref && (await hasCommit(cwd, ref))) existing.add(ref);
   }
   const ref = selectDefaultBranchRef({

@@ -175,9 +175,9 @@ for (const kind of ["unstaged", "staged", "untracked"]) {
   });
 }
 
-test("Push 使用 remote SHA；新分支使用 staging 共同祖先；手动模式使用 upstream", async (t) => {
+test("Push 使用 remote SHA；新分支使用 dev 共同祖先；手动模式使用 upstream", async (t) => {
   const { write, git, base, invoke, hook } = await fixture(t);
-  await git("update-ref", "refs/remotes/origin/staging", base);
+  await git("update-ref", "refs/remotes/origin/dev", base);
   await git("update-ref", "refs/remotes/origin/main", base);
   await git("config", "branch.main.remote", "origin");
   await git("config", "branch.main.merge", "refs/heads/main");
@@ -212,13 +212,24 @@ test("无基线、无效基线、非 HEAD 推送均报错；删除 ref 不测试
   assert.match(deleted.stdout, /无选中测试/u);
 });
 
+test("首推只认集成分支 origin/dev，不从 origin/main 猜测基线", async (t) => {
+  const { write, git, base, invoke, hook } = await fixture(t);
+  await git("update-ref", "refs/remotes/origin/main", base);
+  await write("source.mjs", "export const value = 2;");
+  await git("add", ".");
+  await git("commit", "-m", "task");
+  const result = await invoke(["--scope", "push"], await hook(zero));
+  assert.equal(result.code, 2);
+  assert.match(result.stderr, /origin\/dev/u);
+});
+
 test("合并集成带入的改动正常参与官方选择", async (t) => {
   const { write, git, base, invoke } = await fixture(t);
   await git("checkout", "-b", "integration");
   await write("source.mjs", "export const value = 2;");
   await git("add", ".");
   await git("commit", "-m", "integration change");
-  await git("update-ref", "refs/remotes/origin/staging", "HEAD");
+  await git("update-ref", "refs/remotes/origin/dev", "HEAD");
   await git("checkout", "main");
   await write("feature.txt", "feature");
   await git("add", ".");
@@ -350,7 +361,7 @@ test("真实 git push 在配置触发全量时继续推送，不执行工程测�
   await assert.rejects(readFile(join(root, "selected")), { code: "ENOENT" });
 });
 
-test("Push 显式 ref 优先于 hook 基线，首次推送也不依赖 staging", async (t) => {
+test("Push 显式 ref 优先于 hook 基线，首次推送也不依赖 dev", async (t) => {
   const { write, git, base, invoke, hook } = await fixture(t);
   await git("branch", "comparison-ref", base);
   await write("source.mjs", "export const value = 2;");
