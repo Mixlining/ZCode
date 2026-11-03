@@ -179,6 +179,8 @@ interface DraftPrewarmCurrent {
   settled: boolean;
   completion: Promise<void>;
   retiring: boolean;
+  /** 本次草稿 session 的终结清理是否已通知，避免 discard/retire 重入时重复执行。 */
+  sessionClosed: boolean;
   /** 本代是第几次退避重试的产物；0 表示首发。 */
   retryAttempt: number;
 }
@@ -208,23 +210,28 @@ class DraftSessionPrewarmCoordinator {
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private dispatchCommand: DispatchCommand;
   private resolveInitialConfig: (() => Partial<SessionConfigState> | undefined) | undefined;
+  private onSessionClosed: ((sessionId: string) => void) | undefined;
 
   constructor(
     private readonly workspaceKey: string,
     dispatchCommand: DispatchCommand,
     resolveInitialConfig: (() => Partial<SessionConfigState> | undefined) | undefined,
+    onSessionClosed: ((sessionId: string) => void) | undefined,
     private readonly onEmpty: () => void,
   ) {
     this.dispatchCommand = dispatchCommand;
     this.resolveInitialConfig = resolveInitialConfig;
+    this.onSessionClosed = onSessionClosed;
   }
 
   update(
     dispatchCommand: DispatchCommand,
     resolveInitialConfig: (() => Partial<SessionConfigState> | undefined) | undefined,
+    onSessionClosed: ((sessionId: string) => void) | undefined,
   ): void {
     this.dispatchCommand = dispatchCommand;
     this.resolveInitialConfig = resolveInitialConfig;
+    this.onSessionClosed = onSessionClosed;
   }
 
   async waitForSession(
@@ -428,12 +435,14 @@ class DraftSessionPrewarmCoordinator {
             if (this.current !== current || current.binding !== binding) {
               return;
             }
+            const sessionId = binding.sessionId;
             current.controller.markDiscarded();
             current.binding = null;
             this.blockedInvalidationVersion = current.invalidationVersion;
             const retainers = [...current.retainers];
             current.retainers.clear();
             for (const invalidate of retainers) invalidate();
+            this.notifySessionClosed(current, sessionId);
             this.emitBindings();
           },
         };
@@ -466,6 +475,7 @@ class DraftSessionPrewarmCoordinator {
       settled: false,
       completion,
       retiring: false,
+      sessionClosed: false,
       retryAttempt,
     };
     this.current = current;
@@ -476,6 +486,8 @@ class DraftSessionPrewarmCoordinator {
     if (!current || current.retiring) {
       return;
     }
+    // binding 在下面会被清空；先捕获 sessionId，保证无页面/无订阅的回收也能清理上下文。
+    const sessionId = current.binding?.sessionId ?? null;
     this.clearRetryTimer();
     current.retiring = true;
     current.binding = null;
@@ -483,11 +495,19 @@ class DraftSessionPrewarmCoordinator {
     const retainers = [...current.retainers];
     for (const invalidate of retainers) invalidate();
     current.retainers.clear();
+    // 先释放 session，再清 UI 上下文；清理回调即使抛错也不能跳过后端回收。
     current.controller.dispose();
+    this.notifySessionClosed(current, sessionId);
     this.emitBindings();
     if (current.settled) {
       this.current = null;
     }
+  }
+
+  private notifySessionClosed(current: DraftPrewarmCurrent, sessionId: string | null): void {
+    if (!sessionId || current.sessionClosed) return;
+    current.sessionClosed = true;
+    this.onSessionClosed?.(sessionId);
   }
 
   private emitBindings(): void {
@@ -521,6 +541,7 @@ function getDraftSessionPrewarmCoordinator(params: {
   transportIdentity: unknown;
   dispatchCommand: DispatchCommand;
   resolveInitialConfig: (() => Partial<SessionConfigState> | undefined) | undefined;
+  onSessionClosed?: (sessionId: string) => void;
 }): DraftSessionPrewarmCoordinator {
   let transportCoordinators = draftPrewarmCoordinatorsByTransport.get(params.transportIdentity);
   if (!transportCoordinators) {
@@ -534,6 +555,7 @@ function getDraftSessionPrewarmCoordinator(params: {
       params.workspaceKey,
       params.dispatchCommand,
       params.resolveInitialConfig,
+      params.onSessionClosed,
       () => {
         if (transportCoordinators?.get(ownerKey) !== coordinator) {
           return;
@@ -562,6 +584,8 @@ export function useDraftSessionPrewarm(params: {
   dispatchCommand: DispatchCommand;
   /** 预热会话初始 config（全局「上次选择」，同步解析）；让投影首帧即全局、不闪。 */
   resolveInitialConfig?: () => Partial<SessionConfigState> | undefined;
+  /** 草稿 session 终结（retire/discard/dispose）时清理窗口级上下文；promote 不调用。 */
+  onSessionClosed?: (sessionId: string) => void;
 }): DraftSessionPrewarm {
   const {
     enabled,
@@ -571,6 +595,7 @@ export function useDraftSessionPrewarm(params: {
     invalidationVersion = 0,
     dispatchCommand,
     resolveInitialConfig,
+    onSessionClosed,
   } = params;
   // workspace/pane/transport 共同定义逻辑 owner：同 owner 重挂复用 single-flight，transport
   // 换代仍生成新 coordinator，确保旧 session 的清理不会误走新 transport。
@@ -586,12 +611,13 @@ export function useDraftSessionPrewarm(params: {
         transportIdentity,
         dispatchCommand,
         resolveInitialConfig,
+        onSessionClosed,
       }),
     [owner],
   );
   useLayoutEffect(() => {
-    coordinator.update(dispatchCommand, resolveInitialConfig);
-  }, [coordinator, dispatchCommand, resolveInitialConfig]);
+    coordinator.update(dispatchCommand, resolveInitialConfig, onSessionClosed);
+  }, [coordinator, dispatchCommand, resolveInitialConfig, onSessionClosed]);
   const generation = useMemo(() => ({ owner }), [enabled, invalidationVersion, owner]);
   const [ready, setReady] = useState<{
     generation: typeof generation;

@@ -33,6 +33,15 @@ CLI fork 正文提交 → Host project repository 归属事务 → ACK → Rende
 - 复核新增/移动的网络、定时器、订阅、缓存、进程启动及官方鉴权调用，核对开关引用与已发布迁移未回退。
 - 上游 MCP 鉴权运行时夹具传入当前服务未公开的 `mcpStatusIdleTimeoutMs`，导致根类型检查失败；移除该参数，并将夹具退出等待预算对齐现有 60 秒控制面回收阈值，不向生产构造选项新增测试参数。
 
+## 已知上游回归（不本地修复）
+
+- 冷启动 sessions-index 首帧由 CLI 按 `time_updated desc, id desc` 输出，协议声明 sessions 无序，Host `seedMissingRowsFromInitialSnapshot` 按数组顺序分批写入，没有 parent 拓扑排序；列表还有 `limit: 200`，父任务可能不在首帧。
+- v3.17.2 的 `admitTaskIdentity` 新增 fork 父优先分支。子任务先到且父行缺失时，`discoveredProject` 返回 null，随后写入 `host_id=local`、`project_id=NULL`、`handoff_pending |= OWNERSHIP_DECIDED`；local early-return 使后续父到达、delta、重启和快照重放都不再补归属。
+- `initializeLegacyTaskIdentity` 只处理 `host_id IS NULL`，`repairRemoteTaskOwnership` 只处理 remote（本构建还受 `REMOTE_WORKSPACE_DISABLED` 短路），因此 local 子任务会持久保留未归类；父缺失时 `execution_directories` 继承也为空。
+- 对照 3.17.1：旧 `admitTaskIdentity` 对 `host_id IS NULL` 无条件使用 `uniqueRootProject`，唯一 root 项目场景会把子任务归位。该问题因此是 upstream v3.17.2 的条件性回归，不是 dev 定制化引入；dev 合并只是继承，并额外加了不影响 local 的远端守卫。
+- 决策（2026-11-03）：dev 不本地 workaround，等待上游修复后合并；不改 `legacy-tasks.ts` / `taskIndexRepo.ts`，不新增迁移、兜底扫描或测试。影响为冷导入 fork 子任务显示在工作区级任务区、项目树/计数缺失，且执行目录快照丢失；无数据丢失或崩溃。
+- 另：上游 v3.17.2 的草稿上下文回收 P3 已在 dev 本地修复（`DraftSessionPrewarmCoordinator` 的 session 级终结回调），见 `docs/plugins/draft-mcp-ui-session-spec.md` 的「草稿上下文回收修复（2026-11-03）」；后续同步上游时保留该清理路径，不要仅依赖页面 retain 释放。
+
 ## 验收场景
 
 静态核对所有正反路径；下列运行时场景留作人工专项验收，本任务不启动应用：

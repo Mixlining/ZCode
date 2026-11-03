@@ -63,6 +63,7 @@ import type {
 } from "@zcode/shared/zcode-protocol-v4";
 import { logger } from "@/logger.js";
 import {
+  clearPluginUiModelContexts,
   PluginUiSessionProvider,
   registerPluginUiPaneSession,
   useOpenPluginUi,
@@ -3220,6 +3221,17 @@ export function SessionPane({
   // ── 草稿态 v4 draft session 预热（m5）──
   // pane 未绑定会话时后台建 phase=draft 会话作预热载体：配置写 CAS 直达、首发复用。
   // 对外绑定语义不变（shell activeTaskId 仍 null），预热会话只是 pane 内部 effective 订阅目标。
+  const handleDraftSessionClosed = useCallback(
+    (closedSessionId: string) => {
+      // 草稿 session 终结才清上下文；页面/容量淘汰和首发提升不经过这里。
+      clearPluginUiModelContexts({
+        workspacePath,
+        workspaceIdentity,
+        sessionId: closedSessionId,
+      });
+    },
+    [workspacePath, workspaceIdentity],
+  );
   const { binding: prewarmBinding, waitForSession: waitForDraftSession } = useDraftSessionPrewarm({
     enabled: sessionId === null && draftAgentStartupAllowed && !recoveringDraft,
     workspaceKey,
@@ -3231,6 +3243,7 @@ export function SessionPane({
     dispatchCommand,
     // 预热会话只消费当前 Root Composer Draft 的一次性初始化结果。
     resolveInitialConfig: resolveInitialDraftConfig,
+    onSessionClosed: handleDraftSessionClosed,
   });
   const prewarmBindingRef = useRef(prewarmBinding);
   prewarmBindingRef.current = prewarmBinding;

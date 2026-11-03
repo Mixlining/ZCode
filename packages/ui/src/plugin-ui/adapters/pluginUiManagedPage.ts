@@ -547,6 +547,7 @@ export function createPage(
   };
   function retainDraft() {
     releaseDraft ??= retainPluginUiSession(input.scope, () => {
+      // 权威清理由草稿 session owner 的终结回调执行；这里保留幂等兜底，页面自身只负责移除 task。
       clearPluginUiModelContexts(input.scope);
       pluginUiPages.removeTask(task);
     });

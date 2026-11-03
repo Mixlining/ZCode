@@ -3,6 +3,7 @@ import { buildPluginUiSessionKey, type PluginUiSessionScope } from "@/plugin-ui/
 import type { PluginUiModelContext } from "@/plugin-ui/domain/pluginUiModelContext.js";
 
 // 待发送上下文随 session 保存在窗口内；卸载 Composer 只撤销投递能力。
+// 草稿 session 的终结清理由 coordinator owner 执行；页面/连接失效不直接清理。
 const pending = new Map<string, readonly PluginUiModelContext[]>();
 const empty: readonly PluginUiModelContext[] = [];
 const listeners = new Set<() => void>();

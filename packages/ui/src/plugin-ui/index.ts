@@ -38,6 +38,7 @@ export {
   usePluginUiToolBinding,
 } from "./adapters/PluginUiProviders.js";
 export { usePluginUiModelContexts } from "./adapters/pluginUiModelContextEvents.js";
+export { clearPluginUiModelContexts } from "./adapters/pluginUiModelContextEvents.js";
 export { usePluginUiContextImages } from "./adapters/usePluginUiContextImages.js";
 export { PluginUiModelContextChip } from "./adapters/PluginUiModelContextChip.js";
 export { PluginUiFollowUpDialogHost } from "./components/PluginUiFollowUpDialogHost.js";

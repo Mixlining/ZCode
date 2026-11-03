@@ -109,7 +109,7 @@ flowchart TD
 ### 3. 草稿交互接线
 
 - 审批/问答弹窗、PluginUiSessionProvider、附件上传和 Composer 插件上下文改用有效插件 session。插件可用状态单独检查该 session 的 lease、snapshot 身份和 runtime 就绪状态；不改变聊天时间线在草稿态隐藏历史消息的规则。
-- 插件上下文按有效 session 隔离，返回草稿时保留，进入首次发送；新草稿不能继承旧上下文或附件。单个页面或 MCP 连接失效不清空待发送上下文；发送、任务删除或草稿 binding 失效才清理对应 session。
+- 插件上下文按有效 session 隔离，返回草稿时保留，进入首次发送；新草稿不能继承旧上下文或附件。单个页面或 MCP 连接失效不清空待发送上下文；发送、任务删除或草稿 binding 失效才清理对应 session。草稿 binding 失效的终结清理由草稿 session owner 执行，覆盖 coordinator 的 `retireCurrent`、`discard` 与 `dispose`，不依赖页面是否存活；页面关闭、不可见或容量淘汰本身不清空。
 - 继续动态查询现有动作 scope。pane 不活跃时，依赖 Composer 的动作使用原不可用反馈，不能把后台插件消息发送到当前其他会话。
 - 普通资源读取和工具调用不产生聊天回合。`ui/message`、sampling 和 follow-up 沿用已有能力、权限、手势与确认规则，不扩大插件权限。
 
@@ -188,9 +188,22 @@ Fable 对 `254113a332` 完成独立只读评审，核心链路符合方案；无
 
 保留以下非阻断边界，不据此扩大本轮修复：
 
-- 单页面草稿在页面失效、释放保活引用后再被回收，可能留下该死亡 session ID 的待发送上下文。该内容只驻留内存、不可见，归入既有 P3 上下文回收项。
+- ~~单页面草稿在页面失效、释放保活引用后再被回收，可能留下该死亡 session ID 的待发送上下文。~~ 2026-11-03 修复：草稿 session owner 在 `retireCurrent`、`discard` 与 `dispose` 终结路径清理对应上下文；页面失效/容量淘汰、普通切工作区和首发提升均保留上下文。既有“无页面正式会话的上下文回收”仍按单独 P3 跟踪，不在本次草稿 owner 修复范围内。
 - V4 删除在等待资源退订后才解除 App 事件订阅，等待期间仍可向 gateway 投递事件；旧 close 路径更早解除事件订阅。尚未发现功能影响，作为静态时序风险记录。
 - CLI 回归通过真实 gateway 与 facade spy 证明等待顺序，未执行真实 pool/adapter 的多 server 退订；页面回归未覆盖上述单页面孤儿路径。Electron 用例仍为 pending，未作为 CI 门禁。Windows/Linux 实机和真实模型 sampling 的未验证边界不变。
+
+### 草稿上下文回收修复（2026-11-03）
+
+- `DraftSessionPrewarmCoordinator` 增加 session 级终结回调：`retireCurrent`、`discard`、`dispose` 在草稿 session 终结时清理对应窗口级待发送上下文；`promote` 不清理，页面失效/容量淘汰/普通切工作区不清理。
+- 清理 scope 使用草稿 pane 的 `workspacePath`、`workspaceIdentity` 与有效草稿 sessionId，和 Composer 注册上下文时的逻辑键一致；不复用 `pluginUiPages.removeTask`，避免在 `destroy()` 同步栈内重入页面管理器。
+- 验收场景：
+  1. 草稿添加上下文，关闭页面或页面被容量淘汰但草稿 session 仍存活：返回草稿上下文保留。
+  2. 草稿添加上下文，切走工作区使 pane 卸载且无页面 retain/订阅：coordinator 回收 session 后新建草稿不继承旧上下文。
+  3. 草稿添加上下文，sendText 被拒/订阅错误触发 `discard`：新草稿不继承旧上下文。
+  4. 草稿添加上下文后首发提升：正式会话保留上下文。
+  5. 单个 MCP 页面/runtime 失效但 session 仍存活：其他插件待发送上下文保留；任务删除仍按既有事件清理。
+- 本次不新增 App 业务单测；按仓库规则执行根静态检查，人工验收按上述场景执行。无页面正式会话的上下文回收仍是单独 P3。
+- 2026-11-03 静态验证：使用 `.tmp/node-check-3.17.2/node-v24.21.0` 执行 `pnpm typecheck`、`pnpm lint`（0 warning / 0 error）、`pnpm fmt:check`、`pnpm architecture:check --changed`（0 violation / 0 baseline / 0 new）与 `git diff --check` 均通过；未启动应用、未运行 App 单测或 E2E。
 
 ### 完全访问修复验证
 
