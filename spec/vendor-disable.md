@@ -2,6 +2,17 @@
 
 ## 产品规则
 
+### v3.17.2 同步约束
+
+- 草稿 MCP 页面与设置页独立 `mcp-status` 探测复用本地插件能力，不能借新路由读取旧官方
+  OAuth/JWT 或恢复 Coding Plan 鉴权。`CODING_PLAN_DISABLED` 时 Host 不构造官方身份头解析器、
+  可信来源注册表与首次发放审计；反向鉴权请求直接返回既有 `official_auth_unavailable`。
+  凭证解析函数自身也在读取凭据前返回，不创建并发解析缓存。
+- 手动插件、自配 MCP 请求和本地草稿预热仍可用；Sites 的发现过滤、官方命令代理关断及
+  遥测关断保持。运行时人工验收：旧登录配置下进入 MCP 设置/打开草稿插件页面，不能读取或
+  发放官方身份头，也无官方鉴权与额度请求；自配 MCP 可按用户配置正常访问。
+- 本地 HTML 预览、fork 与会话重启的同步范围及验收见 `spec/upstream-3.17.2-merge.md`。
+
 ### v3.17.1 同步约束
 
 - 上游新增独立 Server 设备标识：`createServerHostServices` 与 `packages/server/src/stdioDeviceMid.ts`

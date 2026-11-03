@@ -2,6 +2,12 @@
 
 ## 产品规则
 
+v3.17.2 新增远端草稿项目门禁与 fork 归属修复实现，仍不授权远程入口或服务装配。
+`0010_remote_task_ownership` 保留登记、表级备份与原始校验输入，
+`REMOTE_WORKSPACE_DISABLED` 时业务 apply 源头返回，不扫描/改写历史远端任务归属。
+本地首次归属、fork 与合法未归类 NULL 语义保持；人工验收场景见
+`spec/upstream-3.17.2-merge.md`。
+
 v3.15.1 新增的 Server 类型远程 workspace 同样受 `REMOTE_WORKSPACE_DISABLED` 约束：连接入口、服务集合、topic resource relay、工作流设置推送及其对象构造和监听注册均不可绕过守卫。普通本机 Web server `/ws` 保留。新增远控与 Bot 实现保留供同步上游，但不恢复装配、预热、轮询或附件接管。
 
 v3.16.1 新增的 Source Server 启动重连批次、`SourceServerConnectionManager` / `SourceServerDirectory`、`remoteDevices` 设置页、`useSourceServerUpdateNotifications` 订阅与 Web `/remote/*` 路由全部属于远程域：不构造、不订阅、不显示、404，详见 `spec/upstream-3.16.1-merge.md`。

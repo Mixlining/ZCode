@@ -16,6 +16,7 @@
  * 请求 403。Off-Peak 仍走 API key 通道，这也是上面"逻辑等价但完全独立"的又一个理由。
  */
 import {
+  CODING_PLAN_DISABLED,
   OFFICIAL_MCP_AUTH_HEADER_NAMES,
   getModelProviderFamilySpec,
   zcodeProviderAccountAccessSchema,
@@ -295,6 +296,8 @@ export async function resolveOfficialMcpCredentials(
   deps: OfficialMcpCredentialResolverDeps,
   options: OfficialMcpCredentialResolveOptions = {},
 ): Promise<OfficialMcpCredentialOutcome> {
+  // 设置探测与草稿 MCP 都能请求身份头；套餐关闭时必须在读取旧 OAuth 凭据前返回。
+  if (CODING_PLAN_DISABLED) return fail("official_auth_unavailable");
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const identity = await readIdentitySnapshot(deps);
     if (!identity.ok) {
@@ -466,6 +469,9 @@ export function createOfficialMcpAuthHeadersResolver(deps: OfficialMcpCredential
     request?: OfficialMcpAuthHeadersRequestContext,
   ): Promise<OfficialMcpAuthHeadersOutcome>;
 } {
+  // 禁用域没有合法消费方，不为保留的解析器创建在途缓存。
+  if (CODING_PLAN_DISABLED)
+    return { resolveHeaders: async () => ({ ok: false, reason: "official_auth_unavailable" }) };
   // 两种消费方的解析结果不同（套餐可选与否），按模式分别合并在飞的请求。
   const pending = new Map<
     "plan-required" | "plan-optional",

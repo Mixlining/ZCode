@@ -1255,3 +1255,17 @@ MR !2897 手机文件导航：identity 的权威 session 映射与实际 service
 Host TaskIndexRepo 只读投影按用途选择列：listTaskMetas 不读取 searchable_text；queryTaskList 仅在有效非空搜索词需要正文摘要时读取该列。内部类型区分元数据与可选正文投影，不把裁剪结果断言成完整数据库行。CLI 事实、Host 组织态、正文索引写入与迁移均不改变。
 
 人工验收：大量历史任务下比较普通、置顶、归档列表的内容、排序、分页、删除过滤与标题优先级；空串/空白查询不读取正文列，中文、英文及正文搜索的命中和摘要保持一致。只运行静态检查，不执行单测/E2E。
+
+## 2026-10-26 fork 归属交接与远端历史空归属修复
+
+CLI 的 fork 提交与 Host 的项目归属是两个 owner 的独立提交。Host 收到成功或重复 fork ACK 后，按同 workspace 的父任务继承项目与固化执行目录，落库成功后才将 ACK 返回界面。项目 ID 不进入 CLI 协议。sessions-index 首次摄入使用同一父任务证据，不能仅凭目录猜 fork 项目；通知早于 ACK 和 ACK 重放均不得覆盖用户已修改的归属。
+
+```text
+CLI 提交 fork → Host 继承父任务组织态 → 返回 ACK → UI 打开
+      └─ sessions-index → 首次摄入继承同一父任务（顺序可交换）
+重启 → Host 迁移完成 → CLI 持久化父链 → 冷订阅历史正文
+```
+
+远端已有强制项目约束，历史 remote owner 的 NULL 行是未完成的交接。新增版本化数据迁移只修复可证明的归属：优先同 owner、同 workspace、同 root 的父任务；没有父引用的独立任务只能匹配唯一未删除单 root 项目。零或多匹配、外部父任务、断链不猜测、不自动创建项目。迁移只写 tasks.project_id 与首次判定位，保留正文镜像、时间、置顶、归档、未读和执行目录。后续 CLI 事实摄入可补齐晚到的父任务/项目证据。
+
+本地合法 NULL、已有非空归属及跨 owner 行不能被当前 Host 重分配。重复启动/摄入幂等。迁移使用现有 runner 和表级备份，旧 migration checksum 不变。
