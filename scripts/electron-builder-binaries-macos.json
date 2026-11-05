@@ -1,9 +1,9 @@
 {
-  "comment": "electron-builder 26.17 macOS 构建宿主所需的工具镜像资产。工具在构建机上执行并按宿主 process.arch 选择，与目标应用 --arch 无关；release/file/size/sha256 必须与 app-builder-lib/dmg-builder 内置值逐字一致。toolchain 记录 npm 包版本（dmg-builder 的 npm 版本 26.17.0，其 release tag 为 dmg-builder@1.2.5）。升级 electron-builder 时必须审查并更新本清单。",
+  "comment": "electron-builder 26.18 macOS 构建宿主所需的工具镜像资产。工具在构建机上执行并按宿主 process.arch 选择，与目标应用 --arch 无关；release/file/size/sha256 必须与 app-builder-lib/dmg-builder 内置值逐字一致。toolchain 记录 npm 包版本（dmg-builder 的 npm 版本 26.18.0，其 release tag 为 dmg-builder@1.2.5）。升级 electron-builder 时必须审查并更新本清单。",
   "toolchain": {
-    "electronBuilder": "26.17.0",
-    "appBuilderLib": "26.17.0",
-    "dmgBuilder": "26.17.0"
+    "electronBuilder": "26.18.0",
+    "appBuilderLib": "26.18.0",
+    "dmgBuilder": "26.18.0"
   },
   "hostAssets": {
     "darwin-arm64": [

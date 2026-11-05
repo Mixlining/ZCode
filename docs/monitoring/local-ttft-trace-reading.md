@@ -1,6 +1,9 @@
 # 怎么读一条本地 TTFT Trace
 
-Status: ready
+Status: retired (2026-11)
+
+> **2026-11 已退役**（`spec/dependency-upgrade-2026-11.md`）：本地 TTFT exporter 与 OTLP 导出
+> 已删除，`zcode-local-ttft` 不再产生新 Trace。本文保留为历史读图指南。
 
 [父合同](ttft-stage-telemetry.md) · [查询与诊断合同](local-ttft-queries.md) · [看板模板](dashboards/local-ttft.json) · [上线清单](local-ttft-rollout-checklist.md)
 

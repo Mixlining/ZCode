@@ -1,8 +1,8 @@
 # Monitoring 文档入口
 
 本目录保留 App/RUM、Conversation 业务事件、资源监控、产品专项埋点和测试监控。
-CLI Agent 的 OpenTelemetry 执行链路已独立到
-[`docs/trace/`](../trace/README.md)，不再与其他监控文档混放。
+第一方 OpenTelemetry 执行链路已于 2026-11 移除（`spec/dependency-upgrade-2026-11.md`），
+[`docs/trace/`](../trace/README.md) 仅作为历史设计资料保留。
 
 ## App、Renderer 与进程
 

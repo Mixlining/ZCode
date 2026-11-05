@@ -59,7 +59,7 @@
     "build": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.1"
+    "@modelcontextprotocol/sdk": "^1.32.2"
   },
   "zcodeCuaPlaceholder": true
 }

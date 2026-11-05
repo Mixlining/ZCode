@@ -7,8 +7,8 @@
 ## 范围
 
 首期只修改 Desktop Main 中公共 `TelemetryCore` 的 `/api/v1/event/report` 投递策略。
-Renderer 调用点、`IPlatformService`、IPC schema、事件 payload、ARMS、CLI OTLP telemetry 和
-Web/mobile `web-remote-replayable` 均保持不变。
+Renderer 调用点、`IPlatformService`、IPC schema、事件 payload、ARMS 和
+Web/mobile `web-remote-replayable` 均保持不变；CLI OTLP telemetry 已于 2026-11 移除。
 
 业务结果、toast、导航、登录/登出和任务执行均不得等待 telemetry。崩溃、强杀、断电、长期离线、
 事件源未生成以及持久化补发不在首期范围。

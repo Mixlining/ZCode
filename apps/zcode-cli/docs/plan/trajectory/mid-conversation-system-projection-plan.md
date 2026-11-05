@@ -1128,6 +1128,10 @@ Final provider-visible acceptance checklist:
 
 Fill this section during implementation:
 
+> 历史说明（2026-11）：下表中部分 `node_modules/.pnpm/...` 路径包含
+> `@opentelemetry+api@1.9.1` 依赖哈希，属于 2026-11 第一方 OTel 移除之前的历史执行证据；
+> 当前仓库已无第一方 OTel 依赖，这些命令不再按原路径复现。
+
 | Phase | Tests | Prompt-trajectory output | Review result |
 | --- | --- | --- | --- |
 | MCS0 | `node node_modules/.pnpm/vitest@4.1.5_@opentelemetry+api@1.9.1_@types+node@24.12.3_@vitest+coverage-v8@4.1.5_vit_ab68c939272bc583e30e7d15e0f45a30/node_modules/vitest/vitest.mjs run packages/core/tests/provider-request-messages.test.ts packages/core/tests/prompt-attachments.test.ts packages/core/tests/runtime-reminders.test.ts` PASS: 3 files / 31 tests. `pnpm --filter @zcode/core ... vitest` 当前因本地 `node_modules/.bin/vitest` 指向缺失包而失败，未安装依赖。`runtime-reminders.test.ts` 覆盖 todo reminder cadence/文案；prompt-trajectory 暂不硬造 10-turn TodoWrite cadence。 | `apps/zcode-cli/out/mid-conversation-system-projection-mcs0/sr9-runtime/trajectories/0001.anthropic_request_body.json`; `apps/zcode-cli/out/mid-conversation-system-projection-mcs0/sr12-attachments/trajectories/0001.anthropic_request_body.json`. 临时 mock fixtures 放在 `apps/zcode-cli/out/mid-conversation-system-projection-mcs0/fixtures/`，只用于 baseline evidence。 | 当前 baseline：Anthropic 派生体中 `skills_listing` / `currentDate` / `plan_mode active` / `output_style` 仍作为 user `<system-reminder>` content；follow-up 中 `output_style` 在真实 follow-up prompt 前；text file attachment 的 Read call/result 仍在真实 user `content[]` 内，URL resource 未被破坏。MCS0 不改实现代码，等待进入 MCS1。 |

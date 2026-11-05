@@ -1,6 +1,10 @@
 # CLI Agent Trace
 
-本目录定义 `apps/zcode-cli` 内部 Agent 的 OpenTelemetry 执行链路。文档分为核心规范和专题参考
+> **2026-11 更新：第一方 OTel 已移除**（`spec/dependency-upgrade-2026-11.md`）。
+> `@zcode/telemetry`、桌面 Main/Renderer 的 OTLP 导出链路与相关构建注入均已删除，CLI 只保留
+> no-op Telemetry Port。以下内容是历史设计资料，保留用于追溯，不再描述当前运行行为。
+
+本目录曾定义 `apps/zcode-cli` 内部 Agent 的 OpenTelemetry 执行链路。文档分为核心规范和专题参考
 两个层级：核心规范定义稳定的设计、边界和接入方式；专题参考展开底层概念、完整字段以及运行时与
 运维细节。
 
@@ -13,8 +17,9 @@
 | 专题参考 | [Span、Attribute、Event 与 Metric 字典](./reference/schema-reference.md) | 完整字段、枚举、缺失语义、兼容投影、事件和指标             |
 | 专题参考 | [Runtime、隐私、性能与 ARMS 参考](./reference/runtime-and-operations.md) | Runtime 生命周期、传播、脱敏、容量、测试、查询和 Dashboard |
 
-核心规范与专题参考共同描述当前实现：设计原则和业务接入以核心规范为准；字段定义、运行时行为和
-平台统计口径以相应专题参考为准；方法签名和类型约束以 TypeScript Contracts 为准。
+核心规范与专题参考共同描述 2026-11 之前的历史实现；设计原则和业务接入以核心规范为准；字段定义、运行时行为和
+平台统计口径以相应专题参考为准；方法签名和类型约束以 TypeScript Contracts 为准。当前实现只保留
+`NoopAgentExecutionTelemetry` 与 `prepareModelTelemetryEnv` 的 no-op 签名。
 
 ## 相邻但独立的本地观测
 

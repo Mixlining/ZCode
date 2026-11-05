@@ -4421,15 +4421,21 @@ RPN-16 回归（2026-09-16）：`remoteWorkspacePreparation.test.ts` 覆盖真�
 
 范围与 MODE-01～07 用例见 [模式验证矩阵](testing/general-coding-mode-verification.md)。新增桌面用例位于 `packages/desktop/test/e2e/ui-shell/general-coding-mode.test.ts`，覆盖设置偏好、入口隐藏和已有面板保留；已人工验收并转为 ui-shell 正式用例，尚未加入 Docker preset。对话展示由组件单测补充，验证状态以该矩阵为准。
 
-## TTFT01 — 本地发送阶段遥测
+## TTFT01～TTFT03 — 已退役（2026-11）
+
+> 2026-11 OTel 移除后，本地 TTFT 观测为 hard-disable no-op；OTLP receiver、fixture 与
+> `conversation-session-ttft-{stages,diagnostics,local-logs}.test.ts` 已删除，TTFT01/02/03
+> 不再作为 E2E 用例维护。以下内容为历史记录，仅用于追溯，不代表当前行为。
+
+### 历史记录：TTFT01 — 本地发送阶段遥测
 
 依据 [Ticket 01](issues/ttft-stage-telemetry/01-local-send-stage-observability.md) 已确认的验收场景：真实 Composer 正文、思考、工具先到，空 start、晚到正文、输出早于 ACK、受控阶段延迟；最终 OTLP Trace/Metric 为断言出口。状态 accepted，自动化候选 `conversation-session/manual-review/pending/conversation-session-ttft-stages.test.ts`；平台 ARMS 验收独立待验证。
 
-## TTFT02 — 复杂发送遥测
+### 历史记录：TTFT02 — 复杂发送遥测
 
 依据 Ticket 02 的已确认验收：排队及转正保留原输入；确认等待沿首次点击；引导隔离；retry attempt 同发送；失败/取消无成功耗时；准备子阶段；后台返回。全部以最终 OTLP 为出口，桌面本地 continuous，pending E2E 不自动晋升。远程/手机不采本地 TTFT，保留现有业务语义。
 
-## TTFT03 — 生产本地发送诊断
+### 历史记录：TTFT03 — 生产本地发送诊断
 
 accepted：不启用云端 TTFT，真实 Enter 提交仍在 App/CLI 本地文件生成关联阶段日志、
 首正文接收、Store 应用、DOM 提交与绘制估计；准备和模型等待可区分，正文不进入日志。

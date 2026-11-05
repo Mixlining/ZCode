@@ -262,9 +262,9 @@ renderer(UI)侧埋点,经 `reportArmsCustomEvent` → IPC → `armsRum.sendCusto
 - **工具终态细分**:`perf_ui_tool_call_detail` 只在工具完成/失败/拒绝且 `raw.result.perf` 存在时上报。Bash 带 `command_run_ms` / `first_output_ms` / `no_output_ms` / `timed_out` / `command_category` 等；Edit/Write 带 `fs_read_ms` / `fs_write_ms` / `patch_match_ms` / 文件大小等。subagent mirror 子工具额外带 `parent_tool_call_id` / `child_tool_call_id` / `child_session_id` / `agent_id` / `agent_type`,用于从父 `Agent` step 下钻到子工具耗时。
 - **逐步骤耗时**：`agent_step` 保持 `/report` 旧口径；ARMS **RUM Custom Event**
   仍只做每轮和工具终态低频归因，禁止把 `/report agent_step` 逐条镜像成 RUM 事件。
-  CLI Agent Loop 的 `zcode.agent.step` OTel Span 是另一套强类型执行 Trace，目标结构见
-  [CLI Agent Telemetry 开发指南](../trace/cli-agent-telemetry.md)，不经过 Renderer IPC，
-  也不复用旧 `agent_step` Schema。
+  CLI Agent Loop 的 `zcode.agent.step` OTel Span 曾是另一套强类型执行 Trace，目标结构见
+  [CLI Agent Telemetry 开发指南](../trace/cli-agent-telemetry.md)（2026-11 已移除，仅保留历史文档），
+  不经过 Renderer IPC，也不复用旧 `agent_step` Schema。
 - **流式停顿**:`value` 为真实 chunk 间隔(非阈值),阈值 `STREAM_STALL_REPORT_THRESHOLD_MS=3000` 仅作上报闸门。**工具调用期间不计入**:`tool_call`/`tool_call_update` 到达时 `clearStreamStallTracking`,工具后第一个正文 chunk 视为首个,不与工具前的 chunk 比较,避免把工具正常执行误判为停顿。chunk 间隔 >3s 的根因可能在上游(模型推理/网络),不一定是客户端渲染卡顿;但用户视角"界面长时间不动"可感知,故上报。后续据线上分布收紧阈值。`waiting_tool` 本期固定 `false`。
 - **渲染卡顿(longTask)**:由 ARMS Browser SDK 自动采集(`browserCollectors.longTask`),不在此手动埋点。主进程 `beforeReport` 会把 SDK `snapshots` 中的 top-5 LoAF/rAF attribution 提炼为低基数字段并合入同一条 longTask 的 `properties`: `loaf_script_count`、`loaf_top_duration_ms`、`loaf_top_invoker_type`、`loaf_top_share_pct`。不上报原始脚本名、URL、路径或源码片段;`snapshots` 缺失/解析失败时跳过,不影响原始 longTask 上报。
 

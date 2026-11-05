@@ -2,7 +2,10 @@
 
 ## 状态
 
-- 本文是 Electron Desktop Renderer 用户语义操作 Trace 的实现规范。
+- **2026-11 已移除**（`spec/dependency-upgrade-2026-11.md`）：`ui_action` Span、Renderer batch、
+  Main broker/exporter/IPC、灰度配置与 OTLP 导出均已删除；UI `runUserAction/startUserAction`
+  改为 no-op。本文保留为历史实现规范，不代表当前行为。
+- 本文原为 Electron Desktop Renderer 用户语义操作 Trace 的实现规范。
 - 只新增 `ui_action` Span；Web、手机、Host、CLI、RPC 与 ZCode Protocol 不接入。
 - `/event/report` 保持现有事件、字段与计数，不复用本 Catalog。
 

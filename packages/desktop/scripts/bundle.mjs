@@ -88,15 +88,7 @@ const artifactArchHintsByArch = {
 };
 const commandStdoutMaxBuffer = 64 * 1024 * 1024;
 const requiredRuntimeModules = [
-  "module-details-from-path",
   "pngjs",
-  // Bugfix: telemetry 的 OTLP exporter 在启动阶段依赖 sdk-metrics；开发态 hoist 会掩盖
-  // electron-builder 漏包。最终产物必须机械校验该闭包，禁止可生成但无法启动的安装包流出。
-  "@opentelemetry/sdk-metrics",
-  // 与 afterPack 注入名单同口径：校验 OTLP proto 导出链（exporter → otlp-transformer → protobufjs）完整进包，
-  // 缺包产物在打包阶段直接失败，而不是等安装后启动崩溃。
-  "@opentelemetry/exporter-trace-otlp-proto",
-  "@opentelemetry/exporter-metrics-otlp-proto",
   // Bugfix: @arms/rum-core 运行时会从 CJS 入口继续 require('@babel/runtime/helpers/*')。
   // 它把 @babel/runtime 挂在 peerDependencies，pnpm workspace 开发态通常能解析，
   // 但如果生产包没把该 peer 运行时带进 app.asar，已安装应用会在主进程启动阶段直接崩溃。
@@ -690,7 +682,7 @@ function verifyPackagedRuntimeDependencies(os, arch) {
 
   // pnpm hoisted 依赖布局下，electron-builder 可能把运行时代码本体装进 app.asar，
   // 却漏掉它真正解析时仍要去根 node_modules 找的子依赖。
-  // 之前这里漏过 module-details-from-path，这次又出现了 @fiahfy/icns 缺 pngjs，
+  // 之前这里出现过 @fiahfy/icns 缺 pngjs，
   // 结果都是安装包能生成，但用户启动后主进程才因为 Cannot find module 崩溃。
   // 这里在 bundle 后做一次机械校验，避免坏包继续流出去。
   const asarEntriesWithPackState = parseAsarListWithPackState(

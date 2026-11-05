@@ -1,4 +1,5 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -13,7 +14,7 @@ describe("prepareZCodeTelemetryEnv", () => {
     resetCapturedZCodeAgentTelemetryEnvForTest();
   });
 
-  it("从进程捕获区异步准备 identity，但不把 OTLP 凭据写回业务 env", async () => {
+  it("no-op 准备不再生成 device MID，也不写遥测状态文件", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-bootstrap-telemetry-"));
     try {
       const env: NodeJS.ProcessEnv = {
@@ -27,11 +28,8 @@ describe("prepareZCodeTelemetryEnv", () => {
 
       expect(prepared.OTEL_EXPORTER_OTLP_HEADERS).toBeUndefined();
       expect(prepared.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT).toBeUndefined();
-      expect(prepared.ZCODE_TELEMETRY_DEVICE_MID).toMatch(/^[0-9a-f-]{36}$/u);
-      const state = JSON.parse(
-        await readFile(join(root, "v2", "telemetry-state.json"), "utf8"),
-      ) as Record<string, unknown>;
-      expect(state.deviceMid).toBe(prepared.ZCODE_TELEMETRY_DEVICE_MID);
+      expect(prepared.ZCODE_TELEMETRY_DEVICE_MID).toBeUndefined();
+      expect(existsSync(join(root, "v2", "telemetry-state.json"))).toBe(false);
     } finally {
       await rm(root, { force: true, recursive: true });
     }

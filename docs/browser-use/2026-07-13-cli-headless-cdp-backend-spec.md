@@ -228,7 +228,7 @@ pnpm --dir apps/zcode-cli test:browser-headless:linux
   close；snapshot ref 由 adapter 持有 ElementHandle，不暴露给页面 `globalThis`。
 - context、browser 和 late launch cleanup 都执行有界等待；单个 Playwright close 悬空时继续其它
   session 资源清理，并由 CLI 最终 watchdog 防止未知 handle 永久保活进程。
-- 普通 Node bundle 延迟解析 pinned `playwright-core@1.59.1`；SEA collector 嵌入同一 package 的
+- 普通 Node bundle 延迟解析 pinned `playwright-core@1.64.1`（2026-11 起；历史 SEA 验收在 `1.59.1` 上完成）；SEA collector 嵌入同一 package 的
   465 个带 hash asset，并在用户 cache 中校验后解包。
 - 自动化覆盖 adapter 12 个 lifecycle/concurrency/cancel/timeout/generation/安全用例、CLI 参数与 prompt/TUI wiring、core
   manifest capability hiding、SEA asset contract。

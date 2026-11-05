@@ -92,7 +92,7 @@
     "@jridgewell/trace-mapping": "0.3.31",
     "@release-it/conventional-changelog": "^10.0.6",
     "@tanstack/react-virtual": "^3.13.23",
-    "@types/node": "^25.5.0",
+    "@types/node": "^25.9.9",
     "@zcode/zcode-cua": "workspace:*",
     "concurrently": "^9.1.2",
     "conventional-changelog-conventionalcommits": "^9.3.1",
@@ -103,21 +103,21 @@
     "jsdom": "^29.1.1",
     "knip": "^6.0.6",
     "oxfmt": "^0.41.0",
-    "oxlint": "^1.57.0",
+    "oxlint": "^1.91.0",
     "postject": "1.0.0-alpha.6",
     "release-it": "^19.2.4",
     "ts-morph": "^28.0.0",
     "tsx": "^4.19.4",
     "turbo": "^2.4.0",
-    "typescript": "^6.0.2",
+    "typescript": "^6.0.3",
     "vitest": "^4.1.1",
-    "yaml": "^2.9.0"
+    "yaml": "^2.9.1"
   },
   "peerDependencies": {
     "@tanstack/react-virtual": "^3.13.23"
   },
   "engines": {
-    "node": ">=24.21.0"
+    "node": ">=24.22.2"
   },
   "packageManager": "pnpm@11.27.1"
 }

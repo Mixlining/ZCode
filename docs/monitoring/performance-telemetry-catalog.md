@@ -1,15 +1,20 @@
 # 性能埋点事件字典
 
+> **2026-11 更新：第一方 OTel 已移除**（`spec/dependency-upgrade-2026-11.md`）。
+> 本文中的 CLI Agent OTLP Trace / Metric、`zcode-local-ttft` 与 `@zcode/telemetry` 通道均为
+> 历史记录，当前不再产生数据；保留本文用于追溯历史口径。
+
 > 跨通道速查清单，回答"性能相关埋点有哪些、各自上报什么"。
 > 详细口径与边界见 [performance-monitoring.md](./performance-monitoring.md)；本表只做索引与字段速查。
 > CLI Agent 模型 API OTel 统一观测见
-> [CLI Agent Telemetry 开发指南](../trace/cli-agent-telemetry.md)；部署侧配置 ARMS OTLP 后生效。
+> [CLI Agent Telemetry 开发指南](../trace/cli-agent-telemetry.md)（历史文档）；第一方 OTel 已于
+> 2026-11 移除，当前无 OTLP 出口。
 >
 > 数据分四条通道：
 >
 > - **ARMS（main 进程）**：`@arms/rum-electron` `sendCustom`，进程级稳定性 / 资源 / 网络；ZCode CLI 资源由 CLI 自采样后转交 main。
 > - **ARMS（renderer/UI）**：`reportArmsCustomEvent` → IPC → main `sendCustom`，`group=ui_perf`。
-> - **ARMS（CLI Agent）**：`@zcode/telemetry` → OTLP/HTTP protobuf，模型 Logical Call / Physical Attempt。
+> - **ARMS（CLI Agent）**：历史通道。`@zcode/telemetry` 已于 2026-11 改为 no-op，不再通过 OTLP/HTTP protobuf 上报模型 Logical Call / Physical Attempt。
 > - **`/report`（agent_trace）**：`reportAppTelemetryEvent`，消息链路质量与耗时，**非 ARMS**。
 >
 > **V4 接线规范**：聊天 `/report` 和 renderer ARMS 的恢复口径见
@@ -215,16 +220,16 @@ renderer 侧埋点，全采（100%）。
 `agent_step` 明细只保留在 `/report` 的 `agent_trace` 链路；ARMS RUM 不再逐 step
 双发，避免一条长消息按 step 数放大 IPC 和自定义事件量。RUM 侧通过
 `perf_ui_turn_breakdown.agent_step_cnt`、首 token、端到端、流式停顿和工具终态事件做低频归因。
-CLI 直接上报的 `zcode.agent.step` OTel Span 属于
-[CLI Agent Telemetry 开发指南](../trace/cli-agent-telemetry.md)，不经过这条 IPC/RUM 链路，
-也不等价于 `/report agent_step`。
+CLI 历史上直接上报的 `zcode.agent.step` OTel Span 属于
+[CLI Agent Telemetry 开发指南](../trace/cli-agent-telemetry.md)（2026-11 已移除），不经过这条
+IPC/RUM 链路，也不等价于 `/report agent_step`。
 `perf_ui_tool_call_detail` 只镜像带 `raw.result.perf` 的工具终态。subagent mirror 子工具会带父子关联字段，数仓拿到父 `Agent` 的 `tool_call_id` 后，可在 ARMS 中按 `parent_tool_call_id` 下钻子工具；非 subagent 工具这些字段为空。
 
 `command_name` 只允许公开命令 Registry 中的静态可执行文件名或 `empty` / `compound` /
 `other` 固定桶。`command_hash` 自 2026-07-27 起不再进入 RUM/ARMS：即使是截断 Hash，
 仍会制造高基数，并可能通过常见命令字典进行反查；该字段只保留在 CLI 本地结构化诊断
-对象中。CLI OTel Agent Trace 是工具可靠性的新主事实源，现有 RUM 事件短期双跑兼容，
-后续看板迁移完成后再下线重复字段/事件。
+对象中。CLI OTel Agent Trace 曾是工具可靠性的新主事实源；该通道已于 2026-11 移除，
+现有 RUM 事件继续作为唯一链路。
 
 `model` 与 `chat_error_banner.model_id` 共用同一条白名单：只允许 telemetry 显式白名单中的
 内置稳定模型 ID，自定义 provider 的模型（`custom:<providerId>:<modelName>` 编码值）、
@@ -329,7 +334,10 @@ Skill tool step 始终携带 `skill_name`（仅取通过遥测校验的已解析
 
 ---
 
-## 六、ARMS CLI Agent 模型 API（OTLP Trace）
+## 六、ARMS CLI Agent 模型 API（OTLP Trace，2026-11 已移除）
+
+> 本节为历史记录：`@zcode/telemetry` 已改为 no-op，不再创建 Provider/Exporter/队列，
+> 也不再产生 `zcode.model.call` / `zcode.model.attempt`。以下字段口径仅用于追溯旧数据。
 
 `service.name=zcode-cli-agent`，不走 Electron RUM `/rum/web/v2`，也不新增客户端数据库表。
 
@@ -340,17 +348,16 @@ Skill tool step 始终携带 `skill_name`（仅取通过遥测校验的已解析
 
 正常成功调用产生 1 Call + 1 Attempt；Adapter Retry 只增加 Attempt，Compaction SSE → HTTP fallback 产生两个通过 `previous_logical_call_id` 关联的 Call。所有事件都是 Terminal Span，不上报 Prompt、Header、Provider Options、工具内容或逐 SSE Chunk。
 
-默认 5 秒/100 条 gzip protobuf 批量，队列上限 2,000 条或 4MiB；未配置 OTLP 时 No-op。App RUM、SQLite Usage 和 `/report` 当前继续双写，待灰度对账后再决定长期替代范围。
+历史实现默认 5 秒/100 条 gzip protobuf 批量，队列上限 2,000 条或 4MiB；未配置 OTLP 时 No-op。该实现已于 2026-11 删除。
 
-实现：`apps/zcode-cli/packages/telemetry`、`apps/zcode-cli/packages/adapters/src/model/runner-status.ts`。
+历史实现：`apps/zcode-cli/packages/telemetry`、`apps/zcode-cli/packages/adapters/src/model/runner-status.ts`。
 
 ## 覆盖度与已知缺口
 
 - ✅ **稳定性 / 资源 / 网络**：进程级齐全（CPU / 内存 / GPU / crash / ANR / freeze / 退出码 / 网络分层耗时）。
 - ✅ **启动链路**：进程创建 → "能输入" 7 段拆分，可出分位。
 - ✅ **消息链路**：输入 → 首 token → `/report` 逐步骤 → 停顿 → 端到端 → 上下文压缩；
-  ARMS RUM 保持每轮/工具终态低频事件，CLI OTel Agent Turn Trace 独立演进。
-- ✅ **CLI 模型 API**：主 Agent/Subagent/Workflow、Compaction、Sidecar 和工具内模型调用均形成 Call/Attempt；流量、成功率、耗时、Token/Cache、Retry/Fallback 和脱敏错误可在 ARMS 聚合。
-- ⚠️ **CLI 模型看板待部署**：代码已支持标准 OTLP 注入，但仓库不内置 ARMS OTLP 凭据；Workspace 看板、告警和 RUM/SQLite 对账仍需部署侧灰度完成。
+  ARMS RUM 保持每轮/工具终态低频事件。CLI OTel Agent Turn Trace 已于 2026-11 移除。
+- ⚠️ **CLI 模型 API**：历史 OTLP Call/Attempt 通道已移除，当前无新数据；旧数据仅可查询历史窗口。
 - ⚠️ **末帧渲染未覆盖**：`message_completion.duration_ms` / `time_to_first_token` 终点是 `task_complete` 到达 handler 的时刻，**不含 React 重渲染 → 浏览器 paint 上屏**那段；用户视角"渲染完"的延迟仍是盲区。
 - ⚠️ **资源不归因到消息**：资源采样 5min 聚合，无法回答"发某条消息时 CPU/内存的尖峰"。

@@ -816,7 +816,7 @@ nodes:
 
   - id: "capability.renderer-user-action-trace"
     kind: "capability"
-    label: "Desktop Renderer semantic user action trace"
+    label: "Desktop Renderer semantic user action trace (removed; no-op API)"
     aliases:
       - "renderer action trace"
       - "ui_action"
@@ -826,12 +826,11 @@ nodes:
     codeSeeds:
       - symbol: "USER_ACTION_CATALOG"
         file: "packages/ui/src/lib/userActionTraceCatalog.ts"
-      - symbol: "RendererUserActionTelemetry"
+      - symbol: "runUserAction"
         file: "packages/ui/src/lib/userActionTelemetry.ts"
-      - symbol: "createRendererActionTraceBroker"
-        file: "packages/desktop/src/main/rendererActionTraceBroker.ts"
     invariants:
-      - "Only Electron Desktop Renderer creates ui_action spans; Web/mobile remain no-op."
+      - "2026-11 OTel removal: ui_action spans, renderer batches, Main broker/exporter/IPC and rollout config are deleted."
+      - "runUserAction/startUserAction keep their public signatures but are no-op; only the local catalog remains for feature/action validation."
       - "Host, CLI, RPC and ZCode Protocol receive no trace changes."
       - "Product /event/report remains unchanged and separate."
 
@@ -3521,10 +3520,12 @@ nodes:
 
   - id: "service.cli-agent-telemetry"
     kind: "service"
-    label: "ZCode CLI agent OTLP telemetry"
+    label: "ZCode CLI agent telemetry (no-op; first-party OTel removed)"
     codeSeeds:
-      - symbol: "AgentExecutionTelemetryRuntime"
+      - symbol: "NoopAgentExecutionTelemetry"
         file: "apps/zcode-cli/packages/telemetry/src/agent-trace-runtime.ts"
+      - symbol: "prepareModelTelemetryEnv"
+        file: "apps/zcode-cli/packages/telemetry/src/bootstrap.ts"
       - symbol: "RuntimeTelemetryFacade"
         file: "apps/zcode-cli/packages/core/src/telemetry/runtime-telemetry.ts"
 
@@ -6483,12 +6484,12 @@ edges:
     to: "service.cli-agent-telemetry"
     type: "reports-agent-runtime-traces-through"
     rank: "must-inspect"
-    condition: "CLI agent OTLP traces remain distinct from product /report, ARMS/RUM, local logs, and local App Usage."
+    condition: "First-party OTel is removed; CLI only keeps no-op telemetry interfaces and the ai@6 transitive @opentelemetry/api dependency. It remains distinct from product /report, ARMS/RUM, local logs, and local App Usage."
   - from: "capability.renderer-user-action-trace"
     to: "capability.data-observability"
     type: "specializes-renderer-observability-within"
     rank: "must-inspect"
-    condition: "Renderer ui_action uses a compiled catalog and bounded Desktop-only export; it does not reuse or mutate /event/report."
+    condition: "Renderer ui_action export is removed; the compiled catalog and no-op runUserAction/startUserAction remain, and they do not reuse or mutate /event/report."
   - from: "capability.data-observability"
     to: "capability.zcode-data-size-telemetry"
     type: "contains"

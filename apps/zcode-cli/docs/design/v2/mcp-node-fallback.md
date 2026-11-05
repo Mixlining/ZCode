@@ -154,7 +154,7 @@ On POSIX only the exact key `PATH` is used.
 
 - **Native addons.** Electron's module ABI differs from Node's. N-API addons work; NAN-style addons
   built for Node fail to load. Users who need them must install Node.js.
-- **Node version.** It is the Electron Node version (Electron 44 = Node 24.21). Servers that need a
+- **Node version.** It is the Electron Node version (Electron 44 = Node 24.22). Servers that need a
   newer Node must use a system Node.
 - **Windows nested `spawn("node")` without a shell.** `CreateProcess` finds only `node.exe`, not
   `node.cmd`. Top-level commands work (cross-spawn), and shells, npm bin shims and `.cmd` chains work.

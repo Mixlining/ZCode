@@ -1,6 +1,10 @@
 # 本地 TTFT 上线与 ARMS 验收清单
 
-Status: in-progress
+Status: retired (2026-11)
+
+> **2026-11 已退役**（`spec/dependency-upgrade-2026-11.md`）：桌面本地 TTFT 观测固定为 no-op，
+> `localTtftExporter`、OTLP receiver/fixture、TTFT E2E 与构建期 OTLP 注入均已删除。
+> 本文保留为历史上线记录，阶段 1~4 不再执行。
 
 [父合同](ttft-stage-telemetry.md) · [查询与诊断合同](local-ttft-queries.md) · [看板模板](dashboards/local-ttft.json) · [怎么读一条 Trace](local-ttft-trace-reading.md) · [平台验收证据](local-ttft-platform-evidence.json) · [Ticket 01](../issues/ttft-stage-telemetry/01-local-send-stage-observability.md) · [Ticket 02](../issues/ttft-stage-telemetry/02-queued-retry-and-failure-diagnostics.md)
 
@@ -8,7 +12,7 @@ Status: in-progress
 
 **2026-09-15：阶段 0 已完成**，新 service `zcode-local-ttft` 的 Trace 与 Metric 在北京 ARMS 可查，分位数、瀑布关联、标签与诊断口径全部核对通过，实测数据见 [local-ttft-platform-evidence.json](local-ttft-platform-evidence.json)。本地 OTLP 证据见 [local-ttft-evidence.json](local-ttft-evidence.json)、[local-ttft-diagnostics-evidence.json](local-ttft-diagnostics-evidence.json)。阶段 1~3 仍未完成。
 
-## 现状
+## 现状（2026-11 前历史记录）
 
 | 门       | 现状                                                                                                                                                                                            | 由谁打开                                                           |
 | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
@@ -39,19 +43,20 @@ Status: in-progress
 
 副作用：本次向生产遥测库写入 12 次发送的受控样本，可按 `provider="e2e-deepseek"`、`model="deepseek-v4-flash"` 识别排除，这两个标签不会出现在真实用户样本中。
 
-## 阶段 1：让打包版带上写入配置
+## 阶段 1（历史）：让打包版带上写入配置
 
 需要 CI 变量权限（发布/CI owner）。
 
-- [ ] 确认 CI 变量在目标构建上可用。`resolveBuildPackagedAgentTelemetryEnv`（`packages/desktop/tsup.config.ts:84`）要求 endpoint 与 headers 成对出现、生产必须 HTTPS，release 分支/tag 缺失会直接让构建失败。变量到位时桌面 main 自动获得 metrics 出口，**不需要新增构建配置**。
-- [ ] 出一个 dev/preview 包，从 Finder / 开始菜单启动验证一次。安装包启动时没有 shell 环境变量，历史上 Agent 因此静默落入 Noop，注释见 `packages/desktop/src/main/desktopRuntimeEnv.ts:213`。这是阶段 0 唯一没覆盖到的写入路径：阶段 0 走的是运行时 env 注入。
-- [x] ~~若阶段 0 发现 metrics 需要独立接入点，先完成注入通道改动再打包。~~ 阶段 0 已确认同一 base 收 metrics，无需改动。
+- [x] ~~确认 CI 变量在目标构建上可用。~~ 2026-11 起 `resolveBuildPackagedAgentTelemetryEnv`
+      与 `ZCODE_PACKAGED_AGENT_OTEL_*` 构建期注入已删除，本项不再执行。
+- [ ] 出一个 dev/preview 包，从 Finder / 开始菜单启动验证一次。安装包启动时没有 shell 环境变量，历史上 Agent 因此静默落入 Noop，注释见 `packages/desktop/src/main/desktopRuntimeEnv.ts`（该注入逻辑现已删除）。这是阶段 0 唯一没覆盖到的写入路径：阶段 0 走的是运行时 env 注入。
+- [x] ~~若阶段 0 发现 metrics 需要独立接入点，先完成注入通道改动再打包。~~ 阶段 0 已确认同一 base 收 metrics，无需改动；该通道现已随 OTel 移除删除。
 
-## 阶段 2：开灰度
+## 阶段 2（历史）：开灰度
 
-- [ ] 服务端 `GET /api/v1/client/configs` 返回 `data.configs.rendererActionTrace.localTtftEnabled = true`（解析见 `packages/desktop/src/main/rendererActionTraceRollout.ts:53`）。请求携带 `app_version` 与 `platform`，可按版本/平台圈人。
+- [x] ~~服务端 `GET /api/v1/client/configs` 返回 `data.configs.rendererActionTrace.localTtftEnabled = true`。~~ `rendererActionTraceRollout.ts` 已随 OTel 移除删除，本项不再执行。
 - [ ] 从小人群起步。灰度内是有界全量采集、不主动抽样，先按阶段 3 观察量再扩。
-- [ ] 内部验证用 `ZCODE_LOCAL_TTFT_ENABLED=1` 单机强开（`packages/desktop/src/main/rendererActionTraceIpc.ts:123`），不动线上配置。
+- [x] ~~内部验证用 `ZCODE_LOCAL_TTFT_ENABLED=1` 单机强开。~~ `rendererActionTraceIpc.ts` 已删除，本项不再执行。
 - [ ] 确认开灰度后旧业务 completion、RUM TTFT 与发送漏斗的计数口径没有变化。
 
 ## 阶段 3：容量、费用与保留期
@@ -59,7 +64,7 @@ Status: in-progress
 扩大灰度前的门槛，全部需要在 ARMS 上核实，文档里的估算不能替代。
 
 - [ ] 序列量：10 Histogram + 2 Counter，15 个显式桶 + `+Inf` + sum/count，理论上限约 46,592 条序列/同资源组。另需检查后端资源标签映射与是否产生 overflow 序列。
-- [ ] cardinality 未顶上限：每个 instrument 上限 256、provider/model 最多 16 组（`packages/desktop/src/main/localTtftExporter.ts:71`）。顶到上限会归入 `other`，等于丢失区分度。
+- [ ] cardinality 未顶上限：每个 instrument 上限 256、provider/model 最多 16 组（历史实现 `localTtftExporter.ts` 已删除）。顶到上限会归入 `other`，等于丢失区分度。
 - [ ] `zcode.local_ttft.dropped` 在线上为 0；非 0 说明队列或容量边界需要调整，按 reason 区分队列满、去重容量、传输超时与截断。
 - [ ] 保留期达到目标：明细 7 天、聚合 ≥30 天，并给出实际费用估算。该项在父合同中标为待核验的部署条件。
 
@@ -69,9 +74,12 @@ Status: in-progress
 - [ ] 默认体验视图带 `quality="complete"` 与 `visibility="foreground"`；`missing`、`clock_invalid` 与 observation 系列只进诊断视图。observation 系列的标签是该阶段观察当时的状态，不代表消息最终持续前台，混入会污染默认分布。
 - [ ] 每张分位数图配同过滤、同时间窗的 `_count`。不相加 P95，也不用总 P95 减模型 P95 推导阶段。
 
-## 本地复现入口
+## 本地复现入口（已退役）
 
-不接真实 ARMS 时的本地出口验证走 [查询合同的本地复现](local-ttft-queries.md#本地复现)：先起 `packages/desktop/scripts/ttft-otlp-receiver.mjs`（仅监听 localhost:14318），再跑 `conversation-session-ttft-stages` / `conversation-session-ttft-diagnostics` 两个候选用例。这条路径只证明最终 OTLP 出口合同，不构成平台验收。
+2026-11 起 `ttft-otlp-receiver.mjs` 与 `conversation-session-ttft-{stages,diagnostics,local-logs}.test.ts`
+已删除，原本地复现路径不再可执行。历史说明保留为：
+不接真实 ARMS 时的本地出口验证走 [查询合同的本地复现](local-ttft-queries.md#本地复现已退役)，
+这条路径只证明最终 OTLP 出口合同，不构成平台验收。
 
 ## 未纳入本清单
 

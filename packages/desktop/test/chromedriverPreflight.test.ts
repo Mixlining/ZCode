@@ -12,7 +12,7 @@ const roots: string[] = [];
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
-const chromiumVersion = "152.0.7977.130";
+const chromiumVersion = "152.0.7977.169";
 it("目标平台精确驱动存在时直接使用，不查询其他补丁", async () => {
   const resolveBuild = vi.fn();
   expect(
@@ -68,7 +68,7 @@ it("缓存保存安装器真实路径，离线阶段验证版本与平台后读�
   roots.push(cacheDir);
   const executablePath = join(cacheDir, "actual-driver");
   await writeFile(executablePath, "fixture");
-  const input = { cacheDir, electronVersion: "44.7.0", platform: "linux" };
+  const input = { cacheDir, electronVersion: "44.10.2", platform: "linux" };
   await prepareChromedriver({
     ...input,
     resolveBuild: async () => "152.0.7977.82",
@@ -77,7 +77,7 @@ it("缓存保存安装器真实路径，离线阶段验证版本与平台后读�
   expect(await cachedChromedriverPath(input)).toBe(executablePath);
   await expect(cachedChromedriverPath({ ...input, electronVersion: "41.0.3" })).rejects.toThrow();
   await expect(cachedChromedriverPath({ ...input, platform: "mac_arm" })).rejects.toThrow();
-  const metadata = join(cacheDir, "zcode-chromedriver-44.7.0-linux.json");
+  const metadata = join(cacheDir, "zcode-chromedriver-44.10.2-linux.json");
   const record = JSON.parse(await readFile(metadata, "utf8"));
   await writeFile(metadata, JSON.stringify({ ...record, chromiumVersion: "153.0.8000.1" }));
   await expect(cachedChromedriverPath(input)).rejects.toThrow("cache identity mismatch");
@@ -88,7 +88,7 @@ it("缓存保存安装器真实路径，离线阶段验证版本与平台后读�
 it("安装失败不发布缓存", async () => {
   const cacheDir = await mkdtemp(join(tmpdir(), "zcode-driver-"));
   roots.push(cacheDir);
-  const input = { cacheDir, electronVersion: "44.7.0", platform: "linux" };
+  const input = { cacheDir, electronVersion: "44.10.2", platform: "linux" };
   await expect(
     prepareChromedriver({
       ...input,

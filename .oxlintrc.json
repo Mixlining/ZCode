@@ -49,6 +49,39 @@
       }
     },
     {
+      // oxlint 1.91 起 max-lines 实际覆盖 TypeScript；以下为升级前已存在的存量大文件，
+      // 拆分不属于本次依赖升级范围，先降为告警并保留行数约束。
+      "files": [
+        "**/packages/desktop/src/main/taskRealtimeBus.ts",
+        "**/packages/services/src/conversation-share/conversationShareService.ts",
+        "**/packages/services/src/model-provider/legacyZCodeConfigProviderReader.ts",
+        "**/packages/services/src/zcode-agent/zcodeAgentService.ts",
+        "**/packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts",
+        "**/packages/shared/src/bots.ts",
+        "**/packages/shared/src/conversation-telemetry/conversationTelemetryEngine.ts",
+        "**/packages/shared/src/conversation-telemetry/messageTelemetry.ts",
+        "**/packages/shared/src/zcode-protocol/index.ts",
+        "**/packages/shared/src/zcode-task-types-core.ts",
+        "**/packages/ui/src/SettingsPage.tsx",
+        "**/packages/ui/src/browser-use/UnifiedBrowserView.tsx",
+        "**/packages/ui/src/lib/zcodeSessionProjection.ts",
+        "**/packages/ui/src/settingsPageHelpers.tsx",
+        "**/packages/ui/src/store/zcodeSessionStoreTaskSlice.ts",
+        "**/packages/ui/src/v4/ConversationComposer.tsx",
+        "**/packages/ui/src/v4/ConversationRowView.tsx",
+        "**/packages/ui/src/v4/ConversationShareConfirmationDock.tsx",
+        "**/packages/ui/src/v4/ConversationShareReadonlyTimeline.tsx",
+        "**/packages/ui/src/v4/ConversationStatusPanel.tsx",
+        "**/packages/ui/src/v4/ConversationTimeline.tsx",
+        "**/packages/ui/src/v4/SessionPane.tsx",
+        "**/packages/ui/src/v4/composer/V4ComposerToolbar.tsx",
+        "**/packages/ui/src/v4/composer/useComposerAttachments.ts"
+      ],
+      "rules": {
+        "max-lines": ["warn", { "max": 800, "skipBlankLines": true, "skipComments": true }]
+      }
+    },
+    {
       // 远端连接流程沿用上游存量实现；拆分会打散同一次连接生命周期的状态 owner，暂不按行数拆分。
       "files": ["**/packages/ui/src/remote-connection-flow/index.ts"],
       "rules": {

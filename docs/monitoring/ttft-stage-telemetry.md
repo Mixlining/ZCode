@@ -1,10 +1,15 @@
 # 桌面本地消息 TTFT 分阶段遥测
 
-Status: ready-for-agent
+Status: retired (2026-11)
+
+> **2026-11 已退役**（`spec/dependency-upgrade-2026-11.md`）：`packages/desktop/src/renderer/src/local-ttft/initialize.ts`
+> 已改为 hard-disable no-op，桌面 Main 的 local TTFT exporter、OTLP receiver/fixture 与
+> local-logs E2E 均已删除。本文保留为历史设计资料；`packages/shared/src/local-ttft/contract.ts`
+> 协议契约仍保留，但不再有生产者。
 
 Issue-Tracker: local-markdown
 
-## 生产本地诊断（2026-10）
+## 历史：生产本地诊断（2026-10）
 
 桌面本地 continuous 发送默认记录本地 TTFT，不依赖灰度、OTLP 配置或上传成功。
 复用本节以下的观测事实和关联，不改变已接纳输入、排队、请求重试或内容投影。
@@ -215,6 +220,10 @@ flowchart TD
 
 ## Testing Decisions
 
+> 2026-11 起 `packages/desktop/scripts/ttft-otlp-receiver.mjs`、
+> `packages/desktop/test/e2e/helpers/ttft-otlp-fixture.ts` 与 TTFT E2E 用例已删除；
+> 以下测试边界仅作为历史设计记录。
+
 ### 主要测试边界
 
 以“真实桌面 Composer 发送输入，到最终 OTLP 接收端解码出的 Trace 和 Metric”为最高测试边界。真实经过 Renderer、窗口 Host、CLI 和会话内容回传，使用可控模型回放及本地测试 OTLP 接收器，检查外部可观察的时间线和最终导出合同，而不是断言某个私有函数被调用了几次。
@@ -269,7 +278,9 @@ flowchart TD
 - 实现评审必须明确记录阶段挂点、时钟对齐方案及误差界限、阶段容量与截断策略、Metric 分桶和标签组合。这些是受本 spec 约束的工程细化项，不应回退为重新访谈已确认的产品范围。
 - 保留期、ARMS 权限和容量仍属待核验的部署条件；不能把文档中存在接入示例当成线上已经配置的证据。
 
-## Ticket 01 实现合同（2026-09-14）
+## Ticket 01 实现合同（2026-09-14，历史）
+
+> 2026-11 已随第一方 OTel 移除；以下合同不再生效。
 
 Renderer 是一次发送观测的唯一 owner；CLI 只记录有界、无正文的阶段事实，通过实际 continuous 内容帧携带。Main 只验证、批量导出已完成的事实，不保存业务状态。命令的可选 `ttft` 上下文冻结启用决策和关联 ID；旧调用缺省关闭。不会改变 Agent Trace 的上下文或采样。
 

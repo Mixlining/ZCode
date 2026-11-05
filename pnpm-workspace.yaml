@@ -33,10 +33,10 @@ allowBuilds:
   ssh2: true
   unsafe-pointer: true
 overrides:
-  "@electron/rebuild>node-abi": 4.37.0
-  electron-to-chromium: 1.5.452
-  react: 19.2.7
-  react-dom: 19.2.7
+  "@electron/rebuild>node-abi": 4.40.0
+  electron-to-chromium: 1.5.477
+  react: 19.3.1
+  react-dom: 19.3.1
 patchedDependencies:
   "@aiden0z/pptx-renderer@1.2.4": patches/@aiden0z__pptx-renderer@1.2.4.patch
   "@arms/rum-electron@0.0.3": patches/@arms__rum-electron@0.0.3.patch

@@ -24,8 +24,9 @@
 - 上游新增 `ui_mode` 遥测维度与 `SyncTelemetryContext` 平台通道：遥测关闭时不构造 payload、
   不安装 preload 桥、不注册 Main handler、不订阅 store。
 - 上游把渲染层本地 TTFT 改为默认开启并新增 CLI 侧 `local-ttft/recorder.ts`：遥测关闭时渲染层
-  保持早退（不起 1 秒批次定时器与首字延迟采样），CLI 不安装采样；OTLP exporter 仍由
-  `OTLP_DIAGNOSTIC_EXPORT_DISABLED` 关断。
+  保持早退（不起 1 秒批次定时器与首字延迟采样），CLI 不安装采样。2026-11 起该链路更进一步：
+  第一方 OTel 实现整体移除，渲染层 `local-ttft/initialize.ts` 固定为 no-op，OTLP exporter 与
+  `OTLP_DIAGNOSTIC_EXPORT_DISABLED` 不再存在。见下文「2026-11 第一方 OTel 移除」。
 - 上游新增官方内置插件 `zcode-site` 与 `official-command-endpoint` 本地代理：归入
   `ZCODE_SITES_DISABLED = true`。插件发现层按 `ZCODE_SITE_PLUGIN_ID` 与 manifest 名过滤
   official roots / cache / `installed_plugins.json` 所有来源，已安装或已启用记录不会恢复
@@ -56,7 +57,7 @@
 - 营销触达及营销资产归入 `ZCODE_VENDOR_ACTIONS_DISABLED`：不装配服务或资产 registry，不挂载营销 Provider，不启动轮询、online/visibility 监听或 MutationObserver，不请求营销内容及行为上报。
 - Highspeed 加速卡归入 `CODING_PLAN_DISABLED`：不装配服务，不进入 prepareTurn 自动领卡、健康检查、权益恢复及 UI 调用。
 - 历史 Highspeed metadata 不得重新打开分享入口；关闭该能力时，轨迹组件不注册加速卡 store 监听。官方端点路由在工厂入口返回，不创建配置读取器、HTTP adapter 或缓存；自配模型继续使用原始端点。
-- 打包新增的 OTLP endpoint/headers 注入不能绕过 `ZCODE_TELEMETRY_ENABLED = false`；Host 与 CLI 均不构造 exporter、采样器或队列。已删除的 ARMS 专用模块不恢复。
+- 打包新增的 OTLP endpoint/headers 注入不能绕过 `ZCODE_TELEMETRY_ENABLED = false`；Host 与 CLI 均不构造 exporter、采样器或队列。已删除的 ARMS 专用模块不恢复。2026-11 起第一方 OTel 已整体移除，构建期 OTLP 注入与 Host/CLI exporter 不再存在。
 - 打包 Desktop 固定提供动态工作流 `alwaysOn`；上游 `offeredMode` 表示开放状态，SettingService 持久化的 `userMode` 决定最终模式，允许用户选择 disabled/onDemand/alwaysOn。开发模式保持现有环境覆盖语义，远端灰度始终禁用。
 - 保留上游测试源码，但安装、pre-push 与验证流程只执行静态检查，不隐式运行单测、E2E 或应用构建。
 
@@ -242,6 +243,13 @@ Main 与 scheduler 的消息类型由 shared 统一声明，历史协议导入�
 说明。唯一例外是 `MEMORY_DIAGNOSTICS_ENABLED`——它不是产品能力开关，而是排查内存增长时的
 本地取证开关，默认保持 `false`，需要取证时才临时置 `true`。
 
+另一类例外是 **2026-11 第一方 OTel 移除**（`spec/dependency-upgrade-2026-11.md` T5）：
+桌面与 CLI 的第一方 `@opentelemetry` 声明、SDK、exporter 及运行时实现已删除，
+`@zcode/telemetry` 与 UI 的 user action wrapper 只保留 no-op 接口。`ai@6` 传递的
+`@opentelemetry/api` 是已记录例外；不得重新引入第一方 OTel 声明、SDK、exporter、队列、
+定时导出或构建期 OTLP 注入。这些被删除的 OTel 文件是对「保留禁用实现」规则的**显式例外**，
+删除理由与清单见 `spec/dependency-upgrade-2026-11.md`，不是重新清理其他禁用实现的先例。
+
 ### 为什么保留实现而不是删掉
 
 被禁用能力的实现代码、组件、协议与 i18n 文案**保留**。理由不是留待恢复，而是**降低同步上游的
@@ -251,10 +259,13 @@ Main 与 scheduler 的消息类型由 shared 统一声明，历史协议导入�
 由此产生三条修改约束：
 
 1. **不要删除被禁用能力的实现文件。** 认为「反正不用」而清理掉，是下一轮合并冲突的来源。
-   已删除的文件仅限以下三类，其余一律保留：ARMS 启动与专用共享源文件
+   已删除的文件仅限以下四类，其余一律保留：ARMS 启动与专用共享源文件
    （`appARMSBootstrap.ts`、`armsEventRedaction.ts`、`armsUserIdentity.ts`、
    `armsRumShared.*`——ARMS 属另一条产品线，按要求整体删除，含其编译产物）、
-   `useOffPeakTaskNotifications.ts`（闲时任务通知 hook），以及仓库无关的
+   `useOffPeakTaskNotifications.ts`（闲时任务通知 hook）、2026-11 OTel 移除清单
+   （`localTtft*`、`rendererActionTrace*`、`rendererActionTrace.ts`、CLI
+   `otlp-exporter.ts` / `agent-metrics.ts` / `agent-trace-support.ts` 等，详见
+   `spec/dependency-upgrade-2026-11.md`），以及仓库无关的
    `.vscode/*` 与 `third-party/upstream/*.txt`。
 2. **守卫写成「常量 + 原逻辑并列」，不要为了简洁重排原逻辑结构。** 守卫只是新增分支，
    原逻辑保持原本的写法与顺序，上游 diff 才能落在原逻辑上并被干净合并。
@@ -331,6 +342,20 @@ ARMS browser bootstrap/init 与已删除启动模块相同，均不纳入本构�
    命中项只能是既有保留实现，不能把 claude 加回默认列表。
 
 ## 变动历史
+
+### 2026-11 第一方 OTel 移除（显式例外）
+
+- **决策**：移除桌面与 CLI 的全部第一方 `@opentelemetry` 声明与运行时实现；`@zcode/telemetry`
+  与 UI `runUserAction/startUserAction` 保留包名/接口，改为 no-op。`ai@6` 传递的
+  `@opentelemetry/api` 与 desktop `react-scan` 的 dev-only 链作为已记录例外保留。
+- **依据**：`spec/dependency-upgrade-2026-11.md` T5。此前 OTel 导出被
+  `OTLP_DIAGNOSTIC_EXPORT_DISABLED` / `ZCODE_TELEMETRY_ENABLED` 守卫；守卫下的实现仍会占用
+  构建依赖与打包闭包，因此本轮按用户要求整体删除，而不是继续保留第二套禁用实现。
+- **不变的部分**：`ZCODE_TELEMETRY_ENABLED = false`、ARMS 现状、手机远控/远程 workspace/
+  Data Sync/Sites/Bots 等既有硬禁用域不变；`packages/shared/src/local-ttft/contract.ts`
+  协议契约、`flushLocalTtftLogs()` 与 CLI device-MID 的其他生产者/消费者保留。
+- **验收（静态）**：源码与 manifest 中第一方 `@opentelemetry` 命中为 0；no-op 路径不创建
+  定时器、队列、轮询或网络调用；不启动应用、不运行 E2E/制品构建。
 
 ### 2026-10-21 动态工作流不再读服务端与环境变量，缺省「通过命令启用」
 

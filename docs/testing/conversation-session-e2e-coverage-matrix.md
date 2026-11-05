@@ -4210,17 +4210,23 @@ SILENTDB-01～08 场景已按用户确认语义接纳，定义见 `docs/working-
 
 范围与 MODE-01～07 用例见 [模式验证矩阵](general-coding-mode-verification.md)。新增桌面用例位于 `packages/desktop/test/e2e/ui-shell/general-coding-mode.test.ts`，覆盖设置偏好、入口隐藏和已有面板保留；已人工验收并转为 ui-shell 正式用例，尚未加入 Docker preset。对话展示由组件单测补充，验证状态以该矩阵为准。
 
-## TTFT01 — 本地发送阶段遥测
+## TTFT01～TTFT03 — 已退役（2026-11）
+
+> 2026-11 OTel 移除后，本地 TTFT 观测为 hard-disable no-op；OTLP receiver、fixture 与
+> `conversation-session-ttft-{stages,diagnostics,local-logs}.test.ts` 已删除，TTFT01/02/03
+> 不再作为 E2E 用例维护。以下内容为历史记录，仅用于追溯，不代表当前行为。
+
+### 历史记录：TTFT01 — 本地发送阶段遥测
 
 依据 [Ticket 01](../issues/ttft-stage-telemetry/01-local-send-stage-observability.md) 已确认的验收场景：真实 Composer 正文、思考、工具先到，空 start、晚到正文、输出早于 ACK、受控阶段延迟；最终 OTLP Trace/Metric 为断言出口。状态 accepted，自动化候选 `conversation-session/manual-review/pending/conversation-session-ttft-stages.test.ts`；平台 ARMS 验收独立待验证。
 
-## TTFT02 — 复杂发送归因
+### 历史记录：TTFT02 — 复杂发送归因
 
 Ticket 02 已确认排队/转正、二次确认、立即引导隔离、重试后输出、失败取消、准备延迟和后台返回；复用 TTFT01 receiver 和 case-local replay。状态 accepted / pending，候选 `conversation-session/manual-review/pending/conversation-session-ttft-diagnostics.test.ts`。时钟/乱序/进程中断与资源上限由受控接口测试补齐；真实平台和跨平台证据独立记录。
 
 TTFT02（2026-09-14）：pending候选已在macOS真实Electron通过6/6，最终OTLP验证6根/6总样本/36主阶段；TTFT01回归3/3。准备延迟、队列、确认、guide、retry、failure/cancel和后台恢复均有断言；跨平台/ARMS未验收，未promotion。受控SIGSTOP/SIGCONT/SIGKILL与时钟/并集/去重/截断见issue证据，不能算其他OS实机覆盖。
 
-## TTFT03 — 生产本地日志
+### 历史记录：TTFT03 — 生产本地日志
 
 候选 `conversation-session/manual-review/pending/conversation-session-ttft-local-logs.test.ts`，
 验证云端关闭时真实 Enter → App/CLI 日志 → 正文 DOM/绘制估计；状态 pending，未晋升。
@@ -5228,8 +5234,6 @@ WRL01（`pending-promotion-contract-release-state-1-1-20261016-02001f1247`）1/1
 | conversation-session | `test/e2e/conversation-session/conversation-session-tool-history-order.test.ts`                                              | PROMOTED                | `pending-resume-52cd-g-25-isolated-20261019` / `pending-resume-52cd-g-25-default-20261019`                                                                                                                                                                                                         |
 | conversation-session | `test/e2e/conversation-session/conversation-session-tool-stage-grouping-live-transition.test.ts`                             | PROMOTED                | `pending-resume-52cd-g-24-isolated-20261019` / `pending-resume-52cd-g-24-default-20261019`                                                                                                                                                                                                         |
 | conversation-session | `test/e2e/conversation-session/conversation-session-toolsearch-local-feedback.test.ts`                                       | PASSED                  | `pending-promotion-formal-isolated-23-20261019` / `pending-promotion-formal-default-23-20261019`                                                                                                                                                                                                   |
-| conversation-session | `test/e2e/conversation-session/conversation-session-ttft-diagnostics.test.ts`                                                | PROMOTED                | `pending-resume-52cd-g-22-isolated-20261019` / `pending-resume-52cd-g-22-default-20261019`                                                                                                                                                                                                         |
-| conversation-session | `test/e2e/conversation-session/conversation-session-ttft-stages.test.ts`                                                     | PROMOTED                | `pending-resume-52cd-g-21-isolated-20261019` / `pending-resume-52cd-g-21-default-20261019`                                                                                                                                                                                                         |
 | conversation-session | `test/e2e/conversation-session/conversation-session-turn-error-history-activity.test.ts`                                     | PASSED                  | `pending-promotion-formal-isolated-20-20261019` / `pending-promotion-formal-default-20-20261019`                                                                                                                                                                                                   |
 | conversation-session | `test/e2e/conversation-session/conversation-session-turn-error-queue-preserved.test.ts`                                      | PROMOTED                | `pending-resume-52cd-k-19-isolated-20261019` / `pending-resume-52cd-k-19-default-20261019`                                                                                                                                                                                                         |
 | conversation-session | `test/e2e/conversation-session/conversation-session-turn-steer-probe.test.ts`                                                | PASSED                  | `pending-promotion-formal-isolated-18-20261019` / `pending-promotion-formal-default-18-20261019`                                                                                                                                                                                                   |

@@ -1,12 +1,18 @@
 # 本地 TTFT 查询与验收
 
-Status: in-progress
+Status: retired (2026-11)
+
+> **2026-11 已退役**（`spec/dependency-upgrade-2026-11.md`）：桌面本地 TTFT 观测固定为 no-op，
+> `localTtftExporter`、OTLP receiver/fixture 与 TTFT E2E 均已删除，`zcode-local-ttft`
+> 不再产生新数据。本文与下方证据保留为历史记录。
 
 [父合同](ttft-stage-telemetry.md) · [Grafana 看板模板](dashboards/local-ttft.json) · [怎么读一条 Trace](local-ttft-trace-reading.md) · [上线清单](local-ttft-rollout-checklist.md)
 
 本地 OTLP 数据验证与 ARMS 平台验收分别记录。北京 ARMS 项目可查询既有 zcode-cli-agent / zcode-desktop-renderer Trace 和自定义 Metric。2026-09-15 已完成新 service `zcode-local-ttft` 的平台验收：Trace 与 Metric 入库、分位数查询、瀑布关联与诊断口径均核对通过，见[平台验收证据](local-ttft-platform-evidence.json)。仍未完成：控制台界面瀑布目视确认、打包版编译注入写入路径、7 天 Trace / 30 天 Metric 保留及实际费用。
 
-## 接入
+## 接入（历史）
+
+> 以下接入、灰度与指标口径均为 2026-11 前的历史实现，当前不再生效。
 
 沿用 `OTEL_EXPORTER_OTLP_ENDPOINT` 及各 signal 的 endpoint/headers；不要将写入密钥放进看板。灰度由既有 client configs 的 `rendererActionTrace.localTtftEnabled` 布尔值控制，缺省 false，旧 Trace 的 enabled/sampleRatio 不决定新 TTFT 采样。应用本地诊断可设置 `ZCODE_LOCAL_TTFT_ENABLED=1`；不改变旧 Renderer/Agent Trace 抽样。
 
@@ -52,21 +58,16 @@ Trace service.name 为 `zcode-local-ttft`。以 `observation_id` 精确过滤得
 
 时钟校准通过已有 command query RPC 返回 CLI 收发单调 epoch 时间，与 Renderer 往返区间给出 offset/error。最大允许误差 10 ms、有效期 60 秒；发送不等待校准，过期或缺失时明确标记。校准除随传输握手刷新外，Renderer 收到 CLI 检查点或实际内容帧且校准已过期时也会重新探测，保证排队或慢发送在首输出前拥有有效校准；同一在途探测不重复发起。跨进程有效阶段按 interval 对账，缺失阶段不伪装执行过。模型请求只保留整体边界，不猜测服务内部网络、排队、推理拆分。
 
-## 本地复现
+## 本地复现（已退役）
 
-TTFT E2E 的 worker 在启动 Electron 前自动启动隔离 OTLP 接收器，监听 loopback 随机端口，最多保留 512 批；当前 worker 的 App/Host/CLI 继承该出口与本地诊断开关，退出时关闭接收器并恢复环境。用例读取同一地址，不依赖预先运行的固定端口服务。执行命令：
+2026-11 起 `packages/desktop/scripts/ttft-otlp-receiver.mjs`、
+`packages/desktop/test/e2e/helpers/ttft-otlp-fixture.ts` 与
+`conversation-session-ttft-{stages,diagnostics,local-logs}.test.ts` 已删除，本节原有命令不再可执行。
+历史验收结果仍保留：TTFT stages/diagnostics 曾在 macOS 真实 Electron 中通过并写入本地 OTLP
+接收器；对应证据见 [平台验收证据](local-ttft-platform-evidence.json) 与
+[本地出口证据](local-ttft-evidence.json)。这些结果只证明 2026-11 之前的实现，不代表当前行为。
 
-```sh
-ZCODE_E2E_MANUAL_REVIEW=1 \
-E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json,packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-ttft-stages.json \
-pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/conversation-session/conversation-session-ttft-stages.test.ts'
-```
-
-手工诊断仍可单独运行 `node packages/desktop/scripts/ttft-otlp-receiver.mjs`，默认监听 localhost:14318，再给手动启动的应用设置 `ZCODE_LOCAL_TTFT_ENABLED=1` 与 `OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:14318`。
-
-该候选用例操作真实 Composer，断言最后收到的 protobuf Trace/Metric。第二场景在唯一的公开 transport seam 注入 250ms 命令延迟与 7s ACK 延迟；模型 fixture 在 250ms 首思考、8s 首正文，检查 root 在 ACK/terminal 之前到达且已知延迟归因正确。fault seam 只在 E2E build 生效，不生成伪造事实。
-
-## 当前平台定位
+## 当前平台定位（历史）
 
 - region：`cn-beijing`
 - project：`arms-project-placeholder`
@@ -134,6 +135,6 @@ Renderer 点击总时钟和 CLI 阶段均为各自单调时钟；对齐仍是 RT
 
 ### 复验
 
-将上方命令中的 spec 和 case-local fixture 换为 `conversation-session-ttft-diagnostics`；仍复用同一个 `ttft-otlp-receiver.mjs`。候选包含真实 user-config Hook（300ms）、HTTP 503→成功回放、HTTP400、队列/确认/引导以及真实窗口最小化/恢复。性能文件在该 run 的 `ttft-diagnostics-performance.json`，只表示测试期间观测值，不是灰度关闭/开启的 A/B 开销结论。macOS受控进程测试使用真实 SIGSTOP/SIGCONT/SIGKILL；Windows跳过信号测试，须另补平台证据。
+将上方命令中的 spec 和 case-local fixture 换为 `conversation-session-ttft-diagnostics`；仍复用同一个 `ttft-otlp-receiver.mjs`。以上为历史记录：receiver、fixture 与两个候选用例均已删除。历史候选包含真实 user-config Hook（300ms）、HTTP 503→成功回放、HTTP400、队列/确认/引导以及真实窗口最小化/恢复。性能文件在该 run 的 `ttft-diagnostics-performance.json`，只表示测试期间观测值，不是灰度关闭/开启的 A/B 开销结论。macOS受控进程测试使用真实 SIGSTOP/SIGCONT/SIGKILL；Windows跳过信号测试，须另补平台证据。
 
 2026-09-15 平台验收：`conversation-session-ttft-stages`（2 次，各 3/3 通过）与 `conversation-session-ttft-diagnostics`（6/6 通过）共 12 次发送的样本写入北京 ARMS 并全部可查。`records` 按 kind 齐全，`excluded` 区分 cancelled/failed/guided，`attempt` 按 role+outcome 区分失败重试与首输出，`no_output.wait` 与 8 个 `preparation` 子阶段均有样本，默认体验过滤（`quality="complete",visibility="foreground"`）返回 idle 4 条、queued 1 条。明细与聚合在 run 结束时即可查（上界 <5s）。全部返回值见[平台验收证据](local-ttft-platform-evidence.json)。控制台界面瀑布目视、保留与费用配置仍未核验。

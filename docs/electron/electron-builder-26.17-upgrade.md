@@ -1,5 +1,10 @@
 # Electron Builder 26.17 升级规格
 
+## 当前 pin（2026-11）
+
+- `electron-builder` 为 `^26.18.0`（解析 `26.18.0`），`electron-updater` 为 `^6.8.11`（解析 `6.8.11`）。
+- 本文记录的 `26.17.0` / `6.8.10` 升级与验收证据属于历史记录。26.18.0 复用同一组 macOS 工具镜像资产（`7zip@1.0.0`、`dmg-builder@1.2.5`），`scripts/electron-builder-binaries-macos.json` 的 toolchain 已同步到 `26.18.0`。
+
 ## 目标
 
 基于 Electron 44.7.0 已验证分支，精确升级桌面打包与更新工具链：

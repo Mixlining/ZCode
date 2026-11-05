@@ -19,9 +19,9 @@ const MANIFEST = JSON.parse(
 );
 
 const TOOLCHAIN_FIXTURE = {
-  electronBuilder: "26.17.0",
-  appBuilderLib: "26.17.0",
-  dmgBuilder: "26.17.0",
+  electronBuilder: "26.18.0",
+  appBuilderLib: "26.18.0",
+  dmgBuilder: "26.18.0",
 };
 
 function startServer(handler) {

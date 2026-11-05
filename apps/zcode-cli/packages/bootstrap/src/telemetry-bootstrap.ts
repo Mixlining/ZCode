@@ -6,8 +6,9 @@ import {
 } from "@zcode/telemetry";
 
 /**
- * 官方 CLI 异步入口在创建同步 App 之前调用；只把准备出的 device MID 放回业务 env，
- * OTLP Header 等私密配置仍保留在进程内捕获区，不进入 Tool/MCP 子进程环境。
+ * CLI 异步入口在创建同步 App 之前调用本函数以保留既有启动边界。
+ * 2026-11 OTel 移除后这里是 no-op：不生成 device MID、不创建 Owner、
+ * 不回写 OTLP 凭据；仅保留 env 捕获与清理边界。
  */
 export async function prepareZCodeTelemetryEnv(
   env: NodeJS.ProcessEnv = process.env,

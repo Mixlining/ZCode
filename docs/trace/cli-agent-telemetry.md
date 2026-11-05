@@ -1,6 +1,10 @@
 # CLI Agent Telemetry 设计与开发规范
 
-> 状态：当前实现规范。
+> **2026-11 更新：第一方 OTel 已移除**（`spec/dependency-upgrade-2026-11.md`）。
+> 本文保留为历史设计资料；CLI 当前只提供 no-op Telemetry Port，不创建 Provider、Exporter、
+> 队列或定时器，也不再解析 OTLP endpoint/header。
+>
+> 状态：历史实现规范（2026-11 前）。
 >
 > Telemetry Schema Version：6。
 >

@@ -15,7 +15,7 @@
 
 ## 约定
 
-- Node 固定为 `24.21.0`，与 `apps/zcode-cli/.node-version` 保持一致。
+- Node 固定为 `24.22.2`，与 `apps/zcode-cli/.node-version` 保持一致。
 - pnpm 固定为 `11.27.1`，与 `apps/zcode-cli/package.json` 的 `packageManager` 保持一致。
 - Electron 安装阶段通过 `ELECTRON_MIRROR=https://github.com/electron/electron/releases/download/` 从官方 GitHub Releases 下载。
 - 任务入口仍调用根目录 `package.json` 中已有脚本，避免 desktop / web / agent 的启动语义分叉。

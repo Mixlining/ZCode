@@ -33,7 +33,8 @@ desktop tsup（main、host、preload）与 desktop vite（renderer）的 define
 
 - 未注入 define 的环境（测试、其他 bundle）得到关闭值；vitest 为测试注入固定的事件上报端点，以便验证上报链路。
 - 自动更新在 Desktop Main 启动时判定：`ZCODE_PRODUCT_FLAVOR === "production" && ZCODE_AUTO_UPDATE_ENABLED`。
-- Agent 的 OTLP 遥测沿用既有机制，由打包环境的 `ZCODE_PACKAGED_AGENT_OTEL_*` 注入，不在本文件范围内。
+- Agent 的第一方 OTel 遥测已按 `spec/dependency-upgrade-2026-11.md` 移除，不再存在
+  `ZCODE_PACKAGED_AGENT_OTEL_*` 构建期注入或 Main → Host → Agent 的 OTLP 配置传递。
 
 ## 验收
 

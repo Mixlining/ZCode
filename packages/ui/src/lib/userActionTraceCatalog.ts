@@ -1,4 +1,8 @@
-import type { RendererActionTraceGroup } from "@zcode/shared";
+/**
+ * 2026-11 OTel 移除后，catalog 仍作为 UI 操作的功能/动作白名单保留；
+ * group 改为本地字面量联合，不再依赖已删除的 @zcode/shared renderer trace 契约。
+ */
+export type UserActionCatalogGroup = "core" | "settings";
 
 export const CORE_USER_ACTION_FEATURES = {
   "workspace.local.lifecycle": ["open", "switch", "close"],
@@ -109,7 +113,7 @@ export type UserActionOperationKind =
 export interface UserActionCatalogEntry {
   featureId: UserActionFeatureId;
   action: string;
-  group: Extract<RendererActionTraceGroup, "core" | "settings">;
+  group: UserActionCatalogGroup;
   operationKind: UserActionOperationKind;
   surface: string;
   timeoutMs: number;

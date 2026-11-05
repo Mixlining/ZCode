@@ -1,6 +1,10 @@
 # Runtime、隐私、性能与 ARMS 参考
 
-> 本文定义 CLI Agent Telemetry Runtime 的生命周期、传播、隐私、性能、测试和 ARMS 运维约束。
+> **2026-11 更新：第一方 OTel 已移除**（`spec/dependency-upgrade-2026-11.md`）。
+> 本文仅保留为历史运行与运维资料；CLI 不再创建 AgentTelemetryRuntimeOwner、Provider、
+> Exporter、队列或定时器。
+
+> 本文定义 2026-11 之前 CLI Agent Telemetry Runtime 的生命周期、传播、隐私、性能、测试和 ARMS 运维约束。
 > 整体设计与接入方式见 [CLI Agent Telemetry 设计与开发规范](../cli-agent-telemetry.md)；字段定义见
 > [Schema 字典](./schema-reference.md)。
 

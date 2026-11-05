@@ -12,7 +12,7 @@ import { basename, join, relative, sep } from "node:path";
 import { downloadPrebuiltArchive } from "../../../scripts/prebuilt-binary-download.mjs";
 import { extractPrebuiltArchive } from "../../../scripts/prebuilt-binary-extract.mjs";
 
-// engines.node 必须接受 Electron 自带的 Node（Electron 44 = Node 24.21）；升级时同步更新摘要。
+// engines.node 必须接受 Electron 自带的 Node（Electron 44 = Node 24.22）；升级时同步更新摘要。
 export const BUNDLED_NPM_VERSION = "12.2.0";
 export const BUNDLED_NPM_INTEGRITY =
   "sha512-ZsJjKpTnlmSXOLLXiU1xDCzC4Wlok4IwZmh/aw2KUuXytU7q6qMv/cUT7MoeSf95Slwuw/lRXYefGzGCspHPNQ==";

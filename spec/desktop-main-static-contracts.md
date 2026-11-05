@@ -20,7 +20,7 @@
 - `.github/workflows/check.yml` 的 Typecheck job 先运行现有根 `pnpm typecheck`，再在同一 job 运行 Desktop Main 的 `tsc --noEmit`。后一步依赖前一步生成的 shared/services 声明；两步必须顺序执行，不新增桌面制品构建。
 - Windows 发布工作流在现有根类型检查之后也执行 Main 的无输出检查，避免长时间打包之后才发现 Main 类型错误。
 - CLI bootstrap 的本地 `tsc --noEmit` 虽通过，但它依赖多个 CLI workspace 包的 `dist/*.d.ts`。这些声明不入库，干净的 CI 安装又跳过构建脚本；本次不能把该命令直接作为 PR 门禁。保持 CLI 构建/类型检查策略不变，待建立无产物的依赖解析入口后再加入。
-- 三个 workflow 都通过 `jdx/mise-action` 读取根目录 `mise.toml`，固定 Node `24.21.0` 和 pnpm `11.27.1`；这是项目工具链版本。GitHub Action 自身的 Node runtime 独立于项目 Node，应使用支持 Node 24 的 checkout、cache 和 artifact action。
+- 三个 workflow 都通过 `jdx/mise-action` 读取根目录 `mise.toml`，固定 Node `24.22.2` 和 pnpm `11.27.1`；这是项目工具链版本。GitHub Action 自身的 Node runtime 独立于项目 Node，应使用支持 Node 24 的 checkout、cache 和 artifact action。
 - pnpm store 的 key 由 runner OS、根 `pnpm-lock.yaml` 哈希与根 `mise.toml` 哈希共同决定。`mise.toml` 组件代表 store 布局版本：pnpm store 按主版本分子目录，若只对 lockfile 取哈希，工具链升级而 lockfile 未变时会得到「精确命中但布局不兼容」的死缓存，且 `cache-hit == 'true'` 会永久跳过保存。三个 workflow 的该 key 公式必须逐字符一致。
 - Linux store 由 `.github/workflows/check.yml` 的矩阵 job 写入。恢复与保存分开：依赖安装成功后立即保存 store，使后续类型检查失败也不会丢失已下载依赖。矩阵 job 并发争用同一 key 时允许一个 job 保存，其他 job 复用已存在条目。
 - Windows store 由默认分支上的 `.github/workflows/warm-windows-caches.yml` 独占写入，Windows 发布工作流只恢复、不保存。每个 tag 各存一份 store 会在 tag 作用域堆积同一 key 的重复副本，顶穿仓库 10 GB 上限并挤掉默认分支的有效条目。

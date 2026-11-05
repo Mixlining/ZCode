@@ -1,6 +1,9 @@
 # OpenTelemetry 概念与 ZCode 取舍
 
-> 本文说明 CLI Agent Trace 使用的 OpenTelemetry 概念、结构关系和 ZCode 建模约束。整体设计
+> **2026-11 更新：第一方 OTel 已移除**（`spec/dependency-upgrade-2026-11.md`）。
+> 本文仅保留为历史概念资料，不再代表当前实现。
+
+> 本文说明 CLI Agent Trace 历史上使用的 OpenTelemetry 概念、结构关系和 ZCode 建模约束。整体设计
 > 与接入方式见 [CLI Agent Telemetry 设计与开发规范](../cli-agent-telemetry.md)。
 
 ## 1. 总体模型

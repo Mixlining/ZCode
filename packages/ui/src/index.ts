@@ -100,13 +100,7 @@ export {
   subscribeToUiFontSizeStorageChanges,
 } from "./lib/uiFontSize.js";
 export { reportUiLaunchToInput } from "./lib/uiPerfArmsTelemetry.js";
-export {
-  RendererUserActionTelemetry,
-  runUserAction,
-  runUserActionAsync,
-  setUserActionTelemetry,
-  startUserAction,
-} from "./lib/userActionTelemetry.js";
+export { runUserAction, runUserActionAsync, startUserAction } from "./lib/userActionTelemetry.js";
 export {
   CORE_USER_ACTION_FEATURES,
   SETTINGS_USER_ACTION_FEATURES,

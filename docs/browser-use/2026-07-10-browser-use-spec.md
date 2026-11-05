@@ -490,7 +490,11 @@ backend 后续复用同一个 Playwright command/result 与归一化函数，不
 
 2026-07-10 对 Playwright `1.57.0`—`1.61.1` 的 injected runtime 做字符串集合和真实页面行为比对，
 代表性 role/name/state/shadow DOM 输出在 `playwright-core@1.59.1` 上符合本节合同；`1.61.1` 会额外输出
-`[invalid]`，因此 IAB 固定使用 `1.59.1`，不追随最新版漂移。随后使用 Electron `41.0.3` 的真实
+`[invalid]`。该轮因此固定使用 `1.59.1`，以下结果保留为历史证据。
+
+2026-11 依赖升级把 IAB 的 `playwright-core` 精确 pin 更新到 `1.64.1`。`1.64.1` 相对 `1.59.1` 的
+`ariaSnapshot` 输出差异属于本轮接受的残余风险；静态检查不覆盖浏览器行为，需要在后续浏览器验收中复核。
+随后使用 Electron `41.0.3` 的真实
 `webContents.debugger` 与 Chromium site isolation 复验：主文档
 heading、open shadow root 内 button、跨站 OOPIF 内 heading/button 均进入同一 ARIA 文本；hidden 文本、HTML
 dump 与内部 ref 均未进入结果。复验同时发现 OOPIF 导航时 target 注册晚于 iframe node frameId 的竞态，IAB

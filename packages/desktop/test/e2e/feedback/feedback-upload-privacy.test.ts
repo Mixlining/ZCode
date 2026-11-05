@@ -141,7 +141,10 @@ describe("反馈上传授权（manual review）", () => {
       for await (const [index, field] of requestFields.entries()) {
         await expect(field).toHaveAttribute("required");
         await expect(field).toHaveAttribute("aria-required", "true");
-        await expect(field).toHaveAttribute("aria-label", fieldLabels[index]);
+        // toHaveAttribute 的重载不接受 undefined；noUncheckedIndexedAccess 下先收窄标签。
+        const label = fieldLabels[index];
+        if (!label) throw new Error(`缺少第 ${index} 个字段的标签`);
+        await expect(field).toHaveAttribute("aria-label", label);
       }
       await expect(
         dialog.$(`button=${locale === "zh-CN" ? "提交需求" : "Submit request"}`),
