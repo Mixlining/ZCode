@@ -9,6 +9,9 @@ overrides:
   electron-to-chromium: 1.5.477
   react: 19.3.1
   react-dom: 19.3.1
+  '@modelcontextprotocol/client>zod': 4.6.7
+  '@modelcontextprotocol/core>zod': 4.6.7
+  '@modelcontextprotocol/server>zod': 4.6.7
 
 patchedDependencies:
   '@ai-sdk/anthropic@3.0.81': d3a7c381eba7f5157f765a0528003af17cf84544911dfb7412c7800168e01c18
@@ -12991,9 +12994,6 @@ packages:
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
-  zod@4.6.5:
-    resolution: {integrity: sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==}
-
   zod@4.6.7:
     resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
 
@@ -14714,11 +14714,11 @@ snapshots:
       eventsource-parser: 3.1.0
       jose: 6.2.2
       pkce-challenge: 5.0.1
-      zod: 4.6.5
+      zod: 4.6.7
 
   '@modelcontextprotocol/core@2.4.0':
     dependencies:
-      zod: 4.6.5
+      zod: 4.6.7
 
   '@modelcontextprotocol/ext-apps@2.0.4(@modelcontextprotocol/client@2.4.0)(@modelcontextprotocol/core@2.4.0)(@modelcontextprotocol/server@2.4.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(zod@4.6.7)':
     dependencies:
@@ -14778,7 +14778,7 @@ snapshots:
   '@modelcontextprotocol/server@2.4.0':
     dependencies:
       '@modelcontextprotocol/core': 2.4.0
-      zod: 4.6.5
+      zod: 4.6.7
 
   '@mswjs/interceptors@0.41.3':
     dependencies:
@@ -22050,7 +22050,7 @@ snapshots:
   normalize-package-data@6.0.2:
     dependencies:
       hosted-git-info: 7.0.2
-      semver: 7.7.4
+      semver: 7.8.6
       validate-npm-package-license: 3.0.4
 
   normalize-package-data@7.0.1:
@@ -25529,8 +25529,6 @@ snapshots:
   zod@3.23.8: {}
 
   zod@3.25.76: {}
-
-  zod@4.6.5: {}
 
   zod@4.6.7: {}
 

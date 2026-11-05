@@ -23,3 +23,10 @@ supportedArchitectures:
   libc:
     - current
     - glibc
+
+overrides:
+  # 与根 workspace 同口径：避免 MCP 2.4.0 的嵌套 zod 4.6.5 与工作区 4.6.7
+  # 产生 StandardSchema/ZodRawShape 双重类型。contracts 的 zod 3 不受影响。
+  "@modelcontextprotocol/client>zod": 4.6.7
+  "@modelcontextprotocol/core>zod": 4.6.7
+  "@modelcontextprotocol/server>zod": 4.6.7

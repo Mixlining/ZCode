@@ -159,6 +159,21 @@
 - `apps/zcode-cli/packages/tui/package.json` 的 React/React DOM 精确 pin 更新到 `19.3.1`；其 `ws: 8.18.0` 与 `@types/react: 19.2.0` 属 CLI 独立工具链，本轮保持不动并记录。
 - `apps/zcode-cli/packages/debug/package.json` 的 Vite 7 / `@vitejs/plugin-react` 5 保持不动。
 
+#### T3.1 MCP 2.4.0 的 zod 收口
+
+`@modelcontextprotocol/client/core/server@2.4.0` 声明 `zod: ^4.2.0`。旧 lockfile 会把它们的嵌套 zod 保留在 `4.6.5`，而工作区第一方包已升到 `4.6.7`，从而在 `src/mcp/server.ts` 的 `registerTool` 重载中出现 `StandardSchemaWithJSON` 与 `ZodRawShape` 双重 zod 类型不兼容，导致 `@zcode/android-emulator-plugin` / `@zcode/ios-simulator-plugin` 的 `tsc && build-mcp.mjs` 失败。
+
+修复：
+
+- 在根 `pnpm-workspace.yaml` 与 `apps/zcode-cli/pnpm-workspace.yaml` 同时增加 scoped overrides：
+  ```yaml
+  "@modelcontextprotocol/client>zod": 4.6.7
+  "@modelcontextprotocol/core>zod": 4.6.7
+  "@modelcontextprotocol/server>zod": 4.6.7
+  ```
+- 不使用全局 `zod: 4.6.7` override，避免破坏 `apps/zcode-cli/packages/contracts` 的 zod 3。
+- 重新生成两个 lockfile 后，确认 `node_modules/@modelcontextprotocol/core/node_modules/zod` 与 CLI 对应路径不再存在（或为 4.6.7），并运行两个插件的 `build` 验证。
+
 ### T4：桌面运行时依赖
 
 **重要：只跑 `pnpm install` 不会把仍在 range 内的依赖升到目标版本。** 必须对每个目标包执行以下之一：

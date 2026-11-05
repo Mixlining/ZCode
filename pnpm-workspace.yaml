@@ -37,6 +37,11 @@ overrides:
   electron-to-chromium: 1.5.477
   react: 19.3.1
   react-dom: 19.3.1
+  # MCP 2.4.0 的 ^4.2.0 在旧 lockfile 中仍解析到 4.6.5，导致其 StandardSchema
+  # 类型与工作区 zod 4.6.7 的 zod/v4 类型不兼容。只对这些包收口，保留 contracts 的 zod 3。
+  "@modelcontextprotocol/client>zod": 4.6.7
+  "@modelcontextprotocol/core>zod": 4.6.7
+  "@modelcontextprotocol/server>zod": 4.6.7
 patchedDependencies:
   "@aiden0z/pptx-renderer@1.2.4": patches/@aiden0z__pptx-renderer@1.2.4.patch
   "@arms/rum-electron@0.0.3": patches/@arms__rum-electron@0.0.3.patch
