@@ -20,6 +20,7 @@ supportedArchitectures:
     - current
     - glibc
 allowBuilds:
+  core-js: false
   cpu-features: true
   edgedriver: true
   electron: true
@@ -43,6 +44,7 @@ overrides:
   "@modelcontextprotocol/core>zod": 4.6.7
   "@modelcontextprotocol/server>zod": 4.6.7
 patchedDependencies:
+  "@radix-ui/react-menu@2.1.16": patches/@radix-ui__react-menu@2.1.16.patch
   "@aiden0z/pptx-renderer@1.2.4": patches/@aiden0z__pptx-renderer@1.2.4.patch
   "@arms/rum-electron@0.0.3": patches/@arms__rum-electron@0.0.3.patch
   "@extend-ai/react-xlsx@0.16.0": patches/@extend-ai__react-xlsx@0.16.0.patch

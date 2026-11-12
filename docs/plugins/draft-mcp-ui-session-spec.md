@@ -28,7 +28,7 @@ flowchart LR
 
 真实 SQLite 外键、草稿授权/首发、持久化交错、事件发布失败重试和 UI 身份隔离均有回归。PLM-UI-001 覆盖完全访问、后续调用及首发权限并录屏。真实 PDF 复测确认授权前已有的审批保留原生命周期，后续调用使用新权限；工具用量写入告警不在本补丁范围。
 
-2026-10-28 集成约束：同步 staging `4e42f061f2`，沿用统一 session 生命周期 owner、资源声明后台保留和已转正的 `plugins/plugin-management-ui-market.test.ts`。App 业务单测按仓库决定退役，历史数量不代表当前覆盖；现行验收使用 Electron E2E、浏览器场景和保留的 CLI 测试。
+2026-10-28 集成约束：同步 staging `4e42f061f2`，沿用统一 session 生命周期 owner、资源声明后台保留和已转正的 `plugins/marketplace/plugin-management-ui-market.test.ts`。App 业务单测按仓库决定退役，历史数量不代表当前覆盖；现行验收使用 Electron E2E、浏览器场景和保留的 CLI 测试。
 
 本轮验证：根与 CLI 类型/lint、架构和 E2E fixture 检查通过；CLI 138 项、共享审批浏览器 8 项、测试证据退役检查 6 项通过。Electron 44.7.0 run `desktop-e2e-20261028080939958-p772-17d40b5d35bfdf55` 完整通过（1/1），留存录屏与关键帧。首次运行在旧的平铺项目选择步骤失败，按运行截图改为进入本机项目子菜单后通过；权限/SQLite 夹具关闭无关 MCP 自动连接后，收尾无未处理错误。工程 affected 选中全套时按规则跳过，不计为测试通过。
 

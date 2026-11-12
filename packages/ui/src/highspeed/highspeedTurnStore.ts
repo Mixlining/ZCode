@@ -47,9 +47,13 @@ const MAX_RECORDS = 300;
 
 let records: HighspeedTurnRecord[] = [];
 const highspeedTpsByCardId = CODING_PLAN_DISABLED ? null : new Map<string, number>();
-const healthyAttemptsByCardId = CODING_PLAN_DISABLED
-  ? null
-  : new Map<string, { expiryAttempted: boolean; completionRetryAttempted: boolean }>();
+let healthyAttemptSequence = 0;
+const healthyAttemptsByCardId = CODING_PLAN_DISABLED ? null : new Map<string, { expiry?: number; completion?: number }>();
+export interface HighspeedHealthyAttempt {
+  cardId: string;
+  phase: "expiry" | "completion";
+  id: number;
+}
 const listeners = CODING_PLAN_DISABLED ? null : new Set<() => void>();
 
 function publishChange(): void {
@@ -160,21 +164,29 @@ export function getHighspeedCardTps(cardId: string): number | undefined {
  * 导致同一张已过期卡持续请求并放大服务端限流。每张卡最多允许到期查询一次，
  * 若当时仍有 Turn 运行，再允许最后一轮结束后补查一次。
  */
-export function claimHighspeedHealthyAttempt(cardId: string, allTurnsCompleted: boolean): boolean {
-  if (CODING_PLAN_DISABLED) return false;
-  const attempts = healthyAttemptsByCardId?.get(cardId) ?? {
-    expiryAttempted: false,
-    completionRetryAttempted: false,
-  };
-  if (allTurnsCompleted) {
-    if (attempts.completionRetryAttempted) return false;
-    attempts.completionRetryAttempted = true;
-  } else {
-    if (attempts.expiryAttempted) return false;
-    attempts.expiryAttempted = true;
-  }
+export function claimHighspeedHealthyAttempt(
+  cardId: string,
+  allTurnsCompleted: boolean,
+): HighspeedHealthyAttempt | null {
+  if (CODING_PLAN_DISABLED) return null;
+  const attempts = healthyAttemptsByCardId?.get(cardId) ?? {};
+  const phase = allTurnsCompleted ? "completion" : "expiry";
+  if (attempts[phase] !== undefined) return null;
+  const id = ++healthyAttemptSequence;
+  attempts[phase] = id;
   healthyAttemptsByCardId?.set(cardId, attempts);
-  return true;
+  return { cardId, phase, id };
+}
+
+/** 跳过归属不明的请求不消费机会；旧Promise只能释放自己的占位，不广播空转重试。 */
+export function releaseHighspeedHealthyAttempt(attempt: HighspeedHealthyAttempt): void {
+  const current = healthyAttemptsByCardId?.get(attempt.cardId);
+  if (current?.[attempt.phase] === attempt.id) delete current[attempt.phase];
+}
+
+/** 重登可重新核验未取得TPS的卡；已存TPS和分享结果不清理。 */
+export function resetHighspeedHealthyAttempts(): void {
+  healthyAttemptsByCardId?.clear();
 }
 
 export function markHighspeedTurnMetricsPersisted(
@@ -272,7 +284,7 @@ export function listPendingHighspeedTurns(sessionId: string): HighspeedTurnRecor
 export function listExpiredHighspeedCardsAwaitingTps(
   sessionId: string,
   now: number,
-): Array<{ cardId: string; allTurnsCompleted: boolean }> {
+): Array<{ cardId: string; ownerKey: string; allTurnsCompleted: boolean }> {
   const sessionRecords = listHighspeedTurnsBySession(sessionId);
   const cardIds = [...new Set(sessionRecords.map((record) => record.card.cardId))];
   return cardIds.flatMap((cardId) => {
@@ -283,7 +295,11 @@ export function listExpiredHighspeedCardsAwaitingTps(
     ) {
       return [];
     }
-    return [{ cardId, allTurnsCompleted: cardRecords.every((record) => record.metrics) }];
+    const owners = new Set(cardRecords.map((record) => record.card.ownerKey));
+    const ownerKey = cardRecords[0]?.card.ownerKey;
+    // 旧卡不能由当前账号认领；同卡归属冲突也不能拿任一用户的JWT补查。
+    if (!ownerKey || owners.size !== 1) return [];
+    return [{ cardId, ownerKey, allTurnsCompleted: cardRecords.every((record) => record.metrics) }];
   });
 }
 

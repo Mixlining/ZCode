@@ -1,3 +1,4 @@
+import type { OAuthAccountMaterial } from "#src/oauth/repo/oauthCredentialRepo.js";
 import type { ApiClient, EnterpriseCodingPlanOrderStatusRequest } from "@zcode/shared";
 import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import { applyDynamicWorkflowUserMode } from "@zcode/shared";
@@ -12,6 +13,7 @@ import { ZaiCodingPlanSubscriptionProvider } from "./zaiCodingPlanSubscriptionPr
 
 interface CodingPlanSubscriptionServiceDependencies {
   apiClient: ApiClient;
+  loadOAuthAccountMaterial: (family: "zai" | "bigmodel") => Promise<OAuthAccountMaterial | null>;
   credentialService: Pick<ICredentialService, "load">;
   resolveOffPeakModelSelectionView?: () => Promise<ModelSelectionView>;
   /**

@@ -1,3 +1,7 @@
+import {
+  isSameOAuthAccountMaterial,
+  type OAuthAccountMaterial,
+} from "#src/oauth/repo/oauthCredentialRepo.js";
 import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import type {
@@ -44,6 +48,7 @@ export type AccountProviderFamilyAvailabilityResolver = (
 ) => Promise<Partial<Record<string, CodingPlanAvailabilityResult>>>;
 
 export interface AccountProviderConnectionResolverOptions {
+  readonly loadSessionRevision: () => Promise<string | null>;
   readonly readSettings: () => Promise<AccountProviderConnectionSettings>;
   readonly loadCodingPlanApiKey: (
     providerId: string,
@@ -57,6 +62,9 @@ export interface AccountProviderConnectionResolverOptions {
 
 export interface CodingPlanFamilyAvailabilityResolverOptions {
   readonly apiClient: ApiClient;
+  readonly loadOAuthAccountMaterial: (
+    family: ProviderFamilyDomain,
+  ) => Promise<OAuthAccountMaterial | null>;
   readonly credentialService?: {
     load(key: string): Promise<string | null>;
   };
@@ -86,6 +94,7 @@ export function createAccountProviderConnectionResolver(
 ): AccountProviderConnectionResolver {
   let previousScopes = new Map<string, string>();
   return async ({ configuredProviders, reasons = [] }) => {
+    const sessionRevision = await options.loadSessionRevision();
     const settings = structuredClone(await options.readSettings());
     const forceCredentialRefresh = reasons.some(isCredentialRefreshReason);
     const accountIdentityByFamily = new Map<ProviderFamilyDomain, Promise<string | null>>();
@@ -265,9 +274,12 @@ export function createAccountProviderConnectionResolver(
           (await captured) === ((await options.loadAccountIdentity(family))?.trim() || null),
       ),
     );
+    const latestSettings = await options.readSettings();
+    const latestSessionRevision = await options.loadSessionRevision();
     if (
+      sessionRevision !== latestSessionRevision ||
       identitiesUnchanged.some((unchanged) => !unchanged) ||
-      !isDeepStrictEqual(settings, await options.readSettings())
+      !isDeepStrictEqual(settings, latestSettings)
     ) {
       throw new Error("账号查询期间连接或身份发生变化，丢弃过期结果");
     }
@@ -318,15 +330,22 @@ export function createAccountProviderConfigSource(
 export function createCodingPlanFamilyAvailabilityResolver(
   options: CodingPlanFamilyAvailabilityResolverOptions,
 ): AccountProviderFamilyAvailabilityResolver {
-  return ({ family, providers, selections }) => {
+  return async ({ family, providers, selections }) => {
+    const accountMaterial = await options.loadOAuthAccountMaterial(family);
     const context = {
       apiClient: options.apiClient,
       credentialService: options.credentialService,
+      accountMaterial,
       providerFamilyConnectionSelections: selections,
     };
-    return family === "zai"
+    const result = await (family === "zai"
       ? validateZaiAccountProviderAvailability(providers, context)
-      : validateBigModelAccountProviderAvailability(providers, context);
+      : validateBigModelAccountProviderAvailability(providers, context));
+    if (
+      !isSameOAuthAccountMaterial(accountMaterial, await options.loadOAuthAccountMaterial(family))
+    )
+      throw new Error("project_token_scope_invalidated");
+    return result;
   };
 }
 

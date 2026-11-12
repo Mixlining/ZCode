@@ -250,26 +250,8 @@ function generateTask({ workspacePath, turnCount, title, backup }) {
 }
 
 function insertSession(db, input) {
-  db.prepare(
-    `insert into session (id, project_id, workspace_id, parent_id, trace_id, task_type, slug, directory, path, title, title_source, title_message_id, version, share_url, summary_additions, summary_deletions, summary_files, summary_diffs, revert, permission, time_created, time_updated, time_title_updated, time_compacting, time_archived) values (?, ?, ?, null, ?, 'interactive', ?, ?, ?, ?, 'custom', null, 'perf-fixture', null, ?, ?, ?, ?, null, ?, ?, ?, ?, null, null)`,
-  ).run(
-    input.sessionId,
-    `perf-${input.workspaceHash}`,
-    input.workspaceHash,
-    input.traceId,
-    slug(input.title),
-    input.workspacePath,
-    input.workspacePath,
-    input.title,
-    42000,
-    17000,
-    1300,
-    json([{ path: "synthetic/perf.ts", additions: 42000, deletions: 17000 }]),
-    json({ defaultMode: "ask" }),
-    input.baseTime,
-    input.baseTime + input.turnCount * 1000,
-    input.baseTime,
-  );
+  // 本地会话按目录归属；把目录哈希写成显式身份会使冷恢复报 session-lineage-invalid。
+  db.prepare(`insert into session (id, project_id, workspace_id, parent_id, trace_id, task_type, slug, directory, path, title, title_source, title_message_id, version, share_url, summary_additions, summary_deletions, summary_files, summary_diffs, revert, permission, time_created, time_updated, time_title_updated, time_compacting, time_archived) values (?, ?, ?, null, ?, 'interactive', ?, ?, ?, ?, 'custom', null, 'perf-fixture', null, ?, ?, ?, ?, null, ?, ?, ?, ?, null, null)`).run(input.sessionId, `perf-${input.workspaceHash}`, null, input.traceId, slug(input.title), input.workspacePath, input.workspacePath, input.title, 42000, 17000, 1300, json([{ path: "synthetic/perf.ts", additions: 42000, deletions: 17000 }]), json({ defaultMode: "ask" }), input.baseTime, input.baseTime + input.turnCount * 1000, input.baseTime);
 }
 
 function insertTurn(params) {

@@ -71,6 +71,7 @@ App 业务单测已退役，不新增或恢复 App 业务单测 test/spec 或 `c
 - 每次修改后执行 `pnpm typecheck`、`pnpm lint`、`pnpm fmt:check`、`pnpm architecture:check --changed` 和 `git diff --check`，报告真实结果，不将已有失败写成通过。`pnpm typecheck` 是允许的现有检查流程；Desktop Main 改动另用 `pnpm exec tsc -p packages/desktop/tsconfig.main.json --noEmit` 静态核对，并区分其已有错误与新增错误。
 - CI 的 Typecheck 门禁在根类型检查后执行 Desktop Main `tsc --noEmit`。CLI bootstrap 的直接检查依赖未入库的 workspace 声明产物，建立无构建的干净检出检查入口前，不把本地偶然存在的 `dist` 作为 CI 前提。
 - 每次修改后对本次变更链路做静态消融实验：逐项审视新增或保留的条件、参数、状态、封装和依赖，尝试去掉无必要部分；核对调用点和行为边界后重跑静态检查，记录保留理由及净代码变化。不得借消融扩大到无关模块或新增兜底层。
+- 修改 React 组件或 hooks 后，必须运行 `pnpm lint`（Oxlint），检查 `react/exhaustive-deps` 和 `react/rules-of-hooks`。复核本次改动新增及相关的缺失、多余、不稳定依赖与调用位置诊断，不能因仅告警或退出码为 0 就忽略，也不机械补齐整个对象依赖或禁用规则。被根配置忽略的文件须按 [React Hooks 检查](docs/testing/react-hooks-lint.md) 补做专项扫描；渲染问题仍须运行时验证。
 - 使用异步文件和网络 IO；跨包导入使用公开入口，遵守现有路径别名。
 - 禁止 UI 直接调用 Repo、Service 引用 Runtime 具体实现、跨域导入实现细节及循环依赖。
 

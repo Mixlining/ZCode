@@ -6,6 +6,7 @@ packages:
   - "../../packages/provider"
   - "../../packages/provider-node"
   - "../../packages/shared"
+  - "../../packages/session-control"
   - "../../packages/zcode-cua"
 nodeLinker: hoisted
 minimumReleaseAge: 0

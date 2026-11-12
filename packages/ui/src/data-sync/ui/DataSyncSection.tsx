@@ -15,23 +15,14 @@ import {
   resolveRemoteConnectionPresentation,
 } from "@/lib/remoteConnectionPresentation.js";
 import { logger } from "@/logger.js";
-import type {
-  DataSyncDeviceSummary,
-  IDeviceSyncStateService,
-  IServiceAccessor,
-} from "@/data-sync/contract.js";
-import {
-  DataSyncDialogContainer,
-  recordDataSyncResult,
-  toDataSyncDeviceSummary,
-} from "@/data-sync/ui/DataSyncDialogContainer.js";
+import type { DataSyncDeviceSummary, IDeviceSyncStateService } from "@/data-sync/contract.js";
+import { toDataSyncDeviceSummary } from "@/data-sync/ui/DataSyncDialogContainer.js";
+import { useDataSyncEntry } from "@/data-sync/ui/DataSyncEntry.js";
+import { useDataSyncResultVersion } from "@/data-sync/ui/DataSyncDialogProvider.js";
 
 export interface DataSyncSectionProps {
   snapshot: SourceServerManagementSnapshot | null;
-  /** 本机 base services：作为推送的 source。 */
-  sourceServices: IServiceAccessor;
   deviceSyncStateService?: IDeviceSyncStateService;
-  requestSourceSettingsAttachment?: (sourceServerId: string) => Promise<{ attachmentId: string }>;
   /** 打开已有的全局连接向导（Root 注入）；返回 false 表示向导正忙、未接受本次意图。 */
   onOpenRemoteConnection?: (preference: RemoteConnectionOpenPreference) => boolean | void;
   /** 打开迁移向导（直接进入第一步「会话」），从其他 AI 工具导入本机。 */
@@ -106,13 +97,13 @@ function isSameDay(left: number, right: number): boolean {
 }
 
 export function DataSyncSection(props: DataSyncSectionProps) {
+  const resultVersion = useDataSyncResultVersion();
   // Data Sync 硬禁用：不挂载页面、不订阅设备同步状态、不发起连接向导。
   if (DATA_SYNC_DISABLED) return null;
   const { intl, locale } = useZCodeIntl();
   const now = props.now ?? Date.now;
   const devices = useMemo(() => buildDataSyncDevices(props.snapshot), [props.snapshot]);
   const [syncStates, setSyncStates] = useState<Record<string, DeviceSyncState>>({});
-  const [openDeviceId, setOpenDeviceId] = useState<string | null>(null);
   const deviceSyncStateService = props.deviceSyncStateService;
   const onOpenRemoteConnection = props.onOpenRemoteConnection;
   const mounted = useRef(false);
@@ -163,7 +154,7 @@ export function DataSyncSection(props: DataSyncSectionProps) {
 
   useEffect(() => {
     void reloadSyncStates();
-  }, [reloadSyncStates]);
+  }, [reloadSyncStates, resultVersion]);
 
   const formatSyncStatus = (state: DeviceSyncState | undefined): string => {
     if (!state) return intl.formatMessage({ id: "remoteSync.device.neverSynced" });
@@ -194,7 +185,7 @@ export function DataSyncSection(props: DataSyncSectionProps) {
     );
   };
 
-  const openDevice = devices.find((device) => device.sourceServerId === openDeviceId);
+  const syncEntry = useDataSyncEntry();
 
   return (
     <div className="space-y-6" data-testid="remote-sync-section">
@@ -366,7 +357,11 @@ export function DataSyncSection(props: DataSyncSectionProps) {
                   }
                   onClick={() => {
                     if (displayState === "disconnected") openConnectionWizard(device.profileId);
-                    else setOpenDeviceId(device.sourceServerId);
+                    else
+                      syncEntry.open({
+                        sourceServerId: device.sourceServerId,
+                        workspaceHistory: props.snapshot?.workspaceHistory,
+                      });
                   }}
                 >
                   <ActionIcon
@@ -380,21 +375,6 @@ export function DataSyncSection(props: DataSyncSectionProps) {
           })}
         </div>
       )}
-      {openDevice ? (
-        <DataSyncDialogContainer
-          key={openDevice.sourceServerId}
-          device={openDevice}
-          online={openDevice.connection === "online"}
-          workspaceHistory={props.snapshot?.workspaceHistory}
-          sourceServices={props.sourceServices}
-          requestSourceSettingsAttachment={props.requestSourceSettingsAttachment}
-          onClose={() => setOpenDeviceId(null)}
-          onPushFinished={async (result) => {
-            await recordDataSyncResult(deviceSyncStateService, openDevice.sourceServerId, result);
-            await reloadSyncStates();
-          }}
-        />
-      ) : null}
     </div>
   );
 }
