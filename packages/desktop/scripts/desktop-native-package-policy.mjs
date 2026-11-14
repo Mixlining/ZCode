@@ -45,27 +45,40 @@ function assertSupportedTargetPlatformKey(targetPlatformKey) {
   }
 }
 
+function keyringVariantPackages() {
+  return ["darwin-arm64", "darwin-x64", "win32-arm64", "win32-x64", "linux-arm64", "linux-x64"]
+    .map(keyringPlatformPackage)
+    .concat([
+      "@napi-rs/keyring-linux-arm64-musl",
+      "@napi-rs/keyring-linux-x64-musl",
+      "@napi-rs/keyring-win32-ia32-msvc",
+      "@napi-rs/keyring-freebsd-x64",
+      "@napi-rs/keyring-linux-riscv64-gnu",
+      "@napi-rs/keyring-linux-arm-gnueabihf",
+    ]);
+}
+
+// Bugfix: afterPack 的 runtime 依赖闭包会递归 optionalDependencies，把 keyring/sharp 的
+// 全平台变体也当成“缺失模块”重新注入 app.asar，绕过 files 裁剪后触发 native 边界校验。
+// 注入与最终校验都必须复用这里的裁剪判定，保证“被 files 裁剪的包不会被后置步骤加回来”。
+export function isDesktopNativePackagePruned(moduleName, targetPlatformKey) {
+  assertSupportedTargetPlatformKey(targetPlatformKey);
+  if (moduleName.startsWith("@napi-rs/keyring-")) {
+    return moduleName !== keyringPlatformPackage(targetPlatformKey);
+  }
+  if (moduleName === "@napi-rs/canvas" || moduleName.startsWith("@napi-rs/canvas-")) return true;
+  if (moduleName.startsWith("@lydell/node-pty-")) return true;
+  const sharpMatch = /^@img\/(sharp-[a-z0-9-]+)$/.exec(moduleName);
+  return (
+    sharpMatch != null && !SHARP_VARIANTS_BY_PLATFORM[targetPlatformKey].includes(sharpMatch[1])
+  );
+}
+
 export function createDesktopNativePackagePrunePatterns(targetPlatformKey) {
   assertSupportedTargetPlatformKey(targetPlatformKey);
 
-  const keyringVariants = [
-    "darwin-arm64",
-    "darwin-x64",
-    "win32-arm64",
-    "win32-x64",
-    "linux-arm64",
-    "linux-x64",
-  ].map(keyringPlatformPackage);
-  keyringVariants.push(
-    "@napi-rs/keyring-linux-arm64-musl",
-    "@napi-rs/keyring-linux-x64-musl",
-    "@napi-rs/keyring-win32-ia32-msvc",
-    "@napi-rs/keyring-freebsd-x64",
-    "@napi-rs/keyring-linux-riscv64-gnu",
-    "@napi-rs/keyring-linux-arm-gnueabihf",
-  );
   return [
-    ...keyringVariants
+    ...keyringVariantPackages()
       .filter((name) => name !== keyringPlatformPackage(targetPlatformKey))
       .map((name) => `!node_modules/${name}/**`),
     // PDF 预览已经由 Vite 打进 renderer，pdfjs-dist 的 Canvas optional dependency

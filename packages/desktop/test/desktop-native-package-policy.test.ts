@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createDesktopNativePackagePrunePatterns,
   findDesktopNativePackageViolations,
+  isDesktopNativePackagePruned,
   parseAsarListWithPackState,
 } from "../scripts/desktop-native-package-policy.mjs";
 
@@ -120,4 +121,42 @@ it("keyring keeps the target native package and prunes other variants", () => {
       "linux-arm64",
     ),
   ).toEqual([expect.stringContaining("keyring")]);
+});
+
+describe("desktop native package injection policy", () => {
+  it("注入闭包与 files 裁剪共用同一份判定", () => {
+    for (const name of [
+      "@napi-rs/keyring-win32-arm64-msvc",
+      "@napi-rs/keyring-darwin-arm64",
+      "@napi-rs/canvas",
+      "@napi-rs/canvas-win32-x64-msvc",
+      "@lydell/node-pty-linux-x64",
+      "@img/sharp-linux-x64",
+      "@img/sharp-libvips-darwin-x64",
+    ]) {
+      expect(isDesktopNativePackagePruned(name, "win32-x64")).toBe(true);
+    }
+    for (const name of [
+      "@napi-rs/keyring-win32-x64-msvc",
+      "@img/sharp-win32-x64",
+      "@napi-rs/keyring",
+      "undici",
+    ]) {
+      expect(isDesktopNativePackagePruned(name, "win32-x64")).toBe(false);
+    }
+    for (const name of [
+      "@napi-rs/keyring-win32-x64-msvc",
+      "@img/sharp-win32-x64",
+      "@img/sharp-libvips-darwin-x64",
+    ]) {
+      expect(isDesktopNativePackagePruned(name, "darwin-arm64")).toBe(true);
+    }
+    for (const name of [
+      "@napi-rs/keyring-darwin-arm64",
+      "@img/sharp-darwin-arm64",
+      "@img/sharp-libvips-darwin-arm64",
+    ]) {
+      expect(isDesktopNativePackagePruned(name, "darwin-arm64")).toBe(false);
+    }
+  });
 });

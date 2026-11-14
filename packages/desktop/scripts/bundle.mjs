@@ -16,6 +16,7 @@ import { collectPackagedRuntimeImports } from "./packaged-runtime-imports.mjs";
 import { resolveDesktopProductIdentity } from "./desktop-product-identity.mjs";
 import {
   findDesktopNativePackageViolations,
+  isDesktopNativePackagePruned,
   parseAsarListWithPackState,
 } from "./desktop-native-package-policy.mjs";
 import {
@@ -713,7 +714,7 @@ function verifyPackagedRuntimeDependencies(os, arch) {
   const runtimeModules = collectRuntimeModuleClosureEntries(
     [...new Set([...requiredRuntimeModules, ...importedPackageRoots])],
     runtimeModuleLookupRoots,
-  );
+  ).filter((entry) => !isDesktopNativePackagePruned(entry.moduleName, targetPlatformKey));
   const missingSources = [];
   const resolvableRuntimeModules = runtimeModules.filter((entry) => {
     if (!entry.sourceModulePath) {

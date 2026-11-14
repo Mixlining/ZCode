@@ -44,6 +44,7 @@ import {
 import {
   findDesktopNativePackageViolations,
   createDesktopNativePackagePrunePatterns,
+  isDesktopNativePackagePruned,
   parseAsarListWithPackState,
 } from "./scripts/desktop-native-package-policy.mjs";
 import { replaceAppAsarFromStaging } from "./scripts/app-asar-repack.mjs";
@@ -377,7 +378,7 @@ function resolveMissingRuntimeModules(appAsarPath) {
   const runtimeModules = collectRuntimeModuleClosureEntries(
     [...new Set([...REQUIRED_ASAR_RUNTIME_MODULES, ...importedPackageRoots])],
     runtimeModuleLookupRoots,
-  );
+  ).filter((entry) => !isDesktopNativePackagePruned(entry.moduleName, targetPlatform.key));
   const missingImportedSources = [];
   const resolvableRuntimeModules = runtimeModules.filter((entry) => {
     if (!entry.sourceModulePath) {

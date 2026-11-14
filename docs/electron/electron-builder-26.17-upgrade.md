@@ -61,6 +61,8 @@ dmg-builder@1.2.5 的 dmgbuild 会把 `dmg.contents` 中每个 `type:"file"` 条
 
 同一收集器行为还带来包体死重：全平台 `@img/sharp-*` 变体约 110MB（未压缩）进入 app.asar。`desktop-native-package-policy` 按目标平台保留唯一变体集合（win32 只留 `sharp-win32-<arch>`，darwin 留 `sharp-darwin-<arch>` 与 `sharp-libvips-darwin-<arch>`，linux 留 `sharp-linux-<arch>`），其余在 files 规则裁剪；若裁剪漏网，afterPack 的违规检查以"sharp 包含非目标平台变体"fail-closed。现有手写变体清单只覆盖已知包名，不能作为新增平台变体的长期防线。
 
+afterPack 的运行时闭包补包同样递归可选依赖。v3.18 引入 `@napi-rs/keyring` 后，闭包把它的全平台变体当作“缺失模块”重新注入 app.asar，绕过 files 裁剪，Windows warm 构建因此在本机 native 边界校验失败。修复后注入（`electron-builder.config.js`）与最终校验（`bundle.mjs`）都先用 `isDesktopNativePackagePruned` 过滤闭包条目，与 files 裁剪共用同一份 keyring/canvas/sharp/node-pty 判定；目标平台变体仍可补齐，非目标变体不会被后置步骤加回。
+
 Windows x64 CI 在 Windows ARM64 虚拟机上构建，且 Windows x64/arm64 job 可能并行使用同一 checkout。不能通过改变全局 `supportedArchitectures` 或删改共享 `node_modules` 来选择打包目标：这会改变另一 job 的安装树。Windows x64 job 单独启用产物裁剪：在 `afterPack` 的现有 `app.asar` 解包暂存目录里，依据每个包 `package.json` 的 `os`/`cpu` 平台约束删除与 `win32/x64` 不兼容的包，重打包后继续执行 native 资源和运行时闭包的严格校验。无约束包原样保留；不维护新的包名排除清单。此开关不由 Windows arm64、macOS 或 Linux job 启用，不修改它们的依赖安装或打包行为。
 
 ## 验收
