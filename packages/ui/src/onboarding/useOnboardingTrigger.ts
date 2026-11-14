@@ -122,7 +122,7 @@ export function useOnboardingTrigger(options: {
     // 重跑条件=判定上下文（服务实例 / 身份 / 设备 id）；重跑只刷新判定上下文，不重置
     // 放行预算（见 releaseDeadlineRef）。不依赖 settings：settings 不再参与资格判定
     // （spec §6），仅由调用方用于"存量用户不等判定直接进主界面"的 UI 放行。
-  }, [onboardingRecord, userId, loadDeviceMid]);
+  }, [onboardingRecord, userId, loadDeviceMid, update]);
   return [
     needsOnboarding,
     () => {

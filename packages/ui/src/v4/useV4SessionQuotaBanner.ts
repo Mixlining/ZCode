@@ -95,47 +95,45 @@ export function useV4SessionQuotaBanner(params: {
     () => ({ sessionId: params.sessionId, activeProviderId, modelId }),
     [params.sessionId, activeProviderId, modelId],
   );
-  const state = useMemo(
-    () =>
-      buildSessionQuotaBannerState({
-        activeProviderId,
-        snapshot: entitlement.snapshot,
-        modelId,
-        isReminderHidden: (key, referenceTime) =>
-          startPlanQuotaReminderStore.isHidden(key, reminderOwner, referenceTime),
-        serverQuotaExhausted,
-        serverConcurrentLimited,
-        ...(concurrentLimitCode ? { serverConcurrentLimitBusinessCode: concurrentLimitCode } : {}),
-        ...(concurrentLimitCode
-          ? {
-              serverConcurrentLimitReason: resolveStartPlanConcurrentLimitBannerReason(
-                params.error?.message,
-              ),
-            }
-          : {}),
-        ...(providerLimitedCode ? { serverProviderLimitedBusinessCode: providerLimitedCode } : {}),
-        ...(serverProviderLimited
-          ? { serverProviderLimitedMessage: params.error?.message ?? null }
-          : {}),
-        ...(params.mcpUnavailableNotice
-          ? { mcpUnavailableNotice: params.mcpUnavailableNotice }
-          : {}),
-      }),
-    [
+  const state = useMemo(() => {
+    // 提醒关闭状态在外部 owner 中维护，版本变化后重读可见性。
+    void reminderVersion;
+    return buildSessionQuotaBannerState({
       activeProviderId,
-      reminderOwner,
-      reminderVersion,
-      concurrentLimitCode,
-      entitlement.snapshot,
+      snapshot: entitlement.snapshot,
       modelId,
-      params.error?.message,
-      params.mcpUnavailableNotice,
-      providerLimitedCode,
-      serverConcurrentLimited,
-      serverProviderLimited,
+      isReminderHidden: (key, referenceTime) =>
+        startPlanQuotaReminderStore.isHidden(key, reminderOwner, referenceTime),
       serverQuotaExhausted,
-    ],
-  );
+      serverConcurrentLimited,
+      ...(concurrentLimitCode ? { serverConcurrentLimitBusinessCode: concurrentLimitCode } : {}),
+      ...(concurrentLimitCode
+        ? {
+            serverConcurrentLimitReason: resolveStartPlanConcurrentLimitBannerReason(
+              params.error?.message,
+            ),
+          }
+        : {}),
+      ...(providerLimitedCode ? { serverProviderLimitedBusinessCode: providerLimitedCode } : {}),
+      ...(serverProviderLimited
+        ? { serverProviderLimitedMessage: params.error?.message ?? null }
+        : {}),
+      ...(params.mcpUnavailableNotice ? { mcpUnavailableNotice: params.mcpUnavailableNotice } : {}),
+    });
+  }, [
+    activeProviderId,
+    reminderOwner,
+    reminderVersion,
+    concurrentLimitCode,
+    entitlement.snapshot,
+    modelId,
+    params.error?.message,
+    params.mcpUnavailableNotice,
+    providerLimitedCode,
+    serverConcurrentLimited,
+    serverProviderLimited,
+    serverQuotaExhausted,
+  ]);
 
   const dismissKey = buildSessionQuotaBannerDismissKey(
     state,
@@ -199,15 +197,16 @@ export function useV4SessionQuotaBanner(params: {
   const maxPlan = terminalSnapshot !== null && isMaxCodingPlanSnapshot(terminalSnapshot);
 
   const previousPhaseRef = useRef<SessionPhase | null>(params.phase);
+  const refreshQuotaEntitlement = entitlement.refresh;
   useEffect(() => {
     const previousPhase = previousPhaseRef.current;
     previousPhaseRef.current = params.phase;
     if (!isStartPlanProvider || previousPhase === params.phase) return;
     if (isRunningPhase(previousPhase) !== isRunningPhase(params.phase)) {
       // 任务开始会预占额度，终止会扣减或释放；必须绕过普通 freshness 校正一次。
-      void entitlement.refresh({ force: true, silent: true, reason: "manual" });
+      void refreshQuotaEntitlement({ force: true, silent: true, reason: "manual" });
     }
-  }, [entitlement.refresh, isStartPlanProvider, params.phase]);
+  }, [refreshQuotaEntitlement, isStartPlanProvider, params.phase]);
 
   const modelRefreshInitializedRef = useRef(false);
   const previousModelKeyRef = useRef<string | null>(null);
@@ -220,9 +219,9 @@ export function useV4SessionQuotaBanner(params: {
       return;
     }
     if (nextKey && nextKey !== previousKey) {
-      void entitlement.refresh({ reason: "initial" });
+      void refreshQuotaEntitlement({ reason: "initial" });
     }
-  }, [activeProviderId, entitlement.refresh, isStartPlanProvider, modelId]);
+  }, [activeProviderId, refreshQuotaEntitlement, isStartPlanProvider, modelId]);
 
   const dismiss = useCallback(() => {
     if (state.reminderKey) {

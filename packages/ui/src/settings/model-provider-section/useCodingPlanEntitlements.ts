@@ -100,11 +100,21 @@ function useProviderFamilyEntitlements(params: {
 
   return useMemo(
     () => ({
-      coding,
+      coding: {
+        error: coding.error,
+        loading: coding.loading,
+        refresh: coding.refresh,
+        snapshot: coding.snapshot,
+      },
       codingEnabled,
       codingFingerprint,
       codingPlanProviderId,
-      start,
+      start: {
+        error: start.error,
+        loading: start.loading,
+        refresh: start.refresh,
+        snapshot: start.snapshot,
+      },
       startEnabled,
       startPlanProviderId,
       startProviderFingerprint,
@@ -195,32 +205,36 @@ export function useCodingPlanEntitlements({
     providerSettingsView,
   });
 
+  const refreshZaiCoding = zaiFamily.coding.refresh;
+  const refreshZaiStart = zaiFamily.start.refresh;
+  const refreshBigmodelCoding = bigmodelFamily.coding.refresh;
+  const refreshBigmodelStart = bigmodelFamily.start.refresh;
   const refresh = useCallback(
     (options: UsageEntitlementRefreshOptions = {}) => {
       // Start/Coding 使用独立 provider id 与 cache key；两边都可用时并行刷新。
       const refreshJobs: Array<Promise<void>> = [];
       if (zaiFamily.codingEnabled) {
-        refreshJobs.push(zaiFamily.coding.refresh(options));
+        refreshJobs.push(refreshZaiCoding(options));
       }
       if (zaiFamily.startEnabled) {
-        refreshJobs.push(zaiFamily.start.refresh(options));
+        refreshJobs.push(refreshZaiStart(options));
       }
       if (bigmodelFamily.codingEnabled) {
-        refreshJobs.push(bigmodelFamily.coding.refresh(options));
+        refreshJobs.push(refreshBigmodelCoding(options));
       }
       if (bigmodelFamily.startEnabled) {
-        refreshJobs.push(bigmodelFamily.start.refresh(options));
+        refreshJobs.push(refreshBigmodelStart(options));
       }
       return Promise.all(refreshJobs).then(() => undefined);
     },
     [
-      bigmodelFamily.coding.refresh,
+      refreshBigmodelCoding,
       bigmodelFamily.codingEnabled,
-      bigmodelFamily.start.refresh,
+      refreshBigmodelStart,
       bigmodelFamily.startEnabled,
-      zaiFamily.coding.refresh,
+      refreshZaiCoding,
       zaiFamily.codingEnabled,
-      zaiFamily.start.refresh,
+      refreshZaiStart,
       zaiFamily.startEnabled,
     ],
   );

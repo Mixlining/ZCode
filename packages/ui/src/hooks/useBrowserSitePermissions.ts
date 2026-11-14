@@ -48,10 +48,12 @@ export function useBrowserSitePermissions(origin: string, enabled: boolean) {
   }, [enabled, origin, platform]);
 
   useEffect(() => {
+    // cleanup 更新同一请求容器的最新状态，不能捕获旧的代次或保存事务。
+    const generationOwner = generation;
     if (!enabled) return;
     void refresh();
     return () => {
-      generation.current++;
+      generationOwner.current++;
     };
   }, [enabled, origin, platform, refresh]);
 

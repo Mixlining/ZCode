@@ -82,15 +82,17 @@ export function useAssistantPreviewCardsForAssistantTextRow({
       reference.kind === "markdown" ||
       (reference.kind === "html" && compactForRemoteControl !== true),
   );
+  const fileChangesRowId = fileChangesTarget?.rowId;
+  const fileChangesEntityId = fileChangesTarget?.entityId;
   const target = useMemo<ConversationRowTarget | null>(
     () =>
-      fileChangesTarget
+      fileChangesRowId !== undefined && fileChangesEntityId !== undefined
         ? {
-            rowId: fileChangesTarget.rowId,
-            entityId: fileChangesTarget.entityId,
+            rowId: fileChangesRowId,
+            entityId: fileChangesEntityId,
           }
         : null,
-    [fileChangesTarget?.entityId, fileChangesTarget?.rowId],
+    [fileChangesEntityId, fileChangesRowId],
   );
   const requestKey = target
     ? `${target.rowId}:${target.entityId}:${fileChangesState ?? "unknown"}`

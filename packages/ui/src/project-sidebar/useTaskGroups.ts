@@ -37,12 +37,14 @@ export function useTaskGroups(tree: ProjectTree) {
     }
   }, [service]);
   useEffect(() => {
+    // cleanup 更新同一请求容器的最新状态，不能捕获旧的代次或保存事务。
+    const requestSerialOwner = serial;
     void refresh();
     const subscription = services.broadcastService.onMessage((event) => {
       if (event.channel === "state:task-groups") void refresh();
     });
     return () => {
-      serial.current++;
+      requestSerialOwner.current++;
       subscription.dispose();
     };
   }, [services.broadcastService, refresh]);

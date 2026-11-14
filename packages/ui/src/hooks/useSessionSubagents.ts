@@ -140,14 +140,7 @@ export function useSessionSubagents(options: {
     } finally {
       requestInFlightRef.current = false;
     }
-  }, [
-    enabled,
-    options.remoteSessionId,
-    options.sessionId,
-    options.workspaceIdentity,
-    options.workspacePath,
-    requestPage,
-  ]);
+  }, [enabled, options.sessionId, options.workspaceIdentity, options.workspacePath, requestPage]);
 
   const loadMore = useCallback(async () => {
     const current = stateRef.current;

@@ -69,20 +69,20 @@ export function usePlanIdentitySnapshot(
     buildStartPlanEntitlementOptions(providerSettingsView, startPlanProviderId),
   );
 
-  return useCallback(
-    () =>
-      resolvePlanIdentitySnapshot({
-        providerFamilyDomain: normalizedDomain,
-        codingPlanEntitlement: codingPlanEntitlement.snapshot,
-        startPlanEntitlement: startPlanEntitlement.snapshot,
-        now: Date.now(),
-        entitlementCacheTtlMs: USAGE_ENTITLEMENT_CACHE_TTL_MS,
-      }),
-    [
-      codingPlanEntitlement.snapshot,
-      connectionSelection,
-      normalizedDomain,
-      startPlanEntitlement.snapshot,
-    ],
-  );
+  return useCallback(() => {
+    // 套餐连接选择改变时重新取得带当前时间的身份快照，不能沿用旧选择的缓存判定。
+    void connectionSelection;
+    return resolvePlanIdentitySnapshot({
+      providerFamilyDomain: normalizedDomain,
+      codingPlanEntitlement: codingPlanEntitlement.snapshot,
+      startPlanEntitlement: startPlanEntitlement.snapshot,
+      now: Date.now(),
+      entitlementCacheTtlMs: USAGE_ENTITLEMENT_CACHE_TTL_MS,
+    });
+  }, [
+    codingPlanEntitlement.snapshot,
+    connectionSelection,
+    normalizedDomain,
+    startPlanEntitlement.snapshot,
+  ]);
 }

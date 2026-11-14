@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { ZCodeIntlProvider, useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
@@ -27,6 +27,7 @@ const items = Array.from({ length: Number(params.get("items") ?? 9) }, (_, i) =>
     "Hello! I'm ZCode, your coding assistant. I can help you explore the repository, understand the implementation, and improve the sharing experience.",
   isRunning: params.has("running") || i === 8,
 }));
+const productTurnId = (id: number) => (params.has("grouped") && id <= 2 ? "group" : String(id));
 function Fixture() {
   const { intl } = useZCodeIntl();
   const [sessionId, setSessionId] = useState("a");
@@ -37,9 +38,11 @@ function Fixture() {
   const [completed, setCompleted] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState("");
   const [openedUrl, setOpenedUrl] = useState("");
-  const candidates = completed ? items.map((item) => ({ ...item, isRunning: false })) : items;
+  const candidates = useMemo(
+    () => (completed ? items.map((item) => ({ ...item, isRunning: false })) : items),
+    [completed],
+  );
   const visibleItems = short ? candidates.slice(0, 1) : candidates;
-  const productTurnId = (id: number) => (params.has("grouped") && id <= 2 ? "group" : String(id));
   const state = useConversationShareSelectionStore();
   const draft = state.drafts[sessionId];
   const dock = state.dockStates[sessionId] ?? DEFAULT_CONVERSATION_SHARE_DOCK_STATE;
@@ -70,15 +73,16 @@ function Fixture() {
     })),
   );
   const cancel = () => state.cancelSelectionEdit(sessionId);
+  const syncAvailableTurns = state.syncAvailableTurns;
   useEffect(() => {
     if (draft?.open)
-      state.syncAvailableTurns(
+      syncAvailableTurns(
         sessionId,
         candidates
           .filter((i) => !i.isRunning)
           .map((i) => ({ rowId: i.rowId, productTurnId: productTurnId(i.rowId) })),
       );
-  }, [sessionId, draft?.open, completed]);
+  }, [sessionId, draft?.open, candidates, syncAvailableTurns]);
   const patch = (value: Parameters<typeof state.updateDockState>[1]) =>
     state.updateDockState(sessionId, value);
   return (

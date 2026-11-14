@@ -63,7 +63,11 @@ export function useProjectUnreadSignals(
     foregroundQueuesRef.current.set(key, settled);
     return current;
   };
+  const unreadScopeKey = services.windowControllerService ? "controller" : scopeKey;
   useEffect(() => {
+    const subscribedScopes: typeof scopes = services.windowControllerService
+      ? []
+      : JSON.parse(unreadScopeKey);
     let disposed = false;
     const pending = new Set<{
       target: WindowHostTaskUnreadSignal["address"];
@@ -347,7 +351,7 @@ export function useProjectUnreadSignals(
     };
     const subscriptions = services.windowControllerService
       ? [services.windowControllerService.onDynamicTaskUnreadSignal()(receive)]
-      : scopes.map((scope) =>
+      : subscribedScopes.map((scope) =>
           services.zcodeTaskService.onDynamicWorkspaceEvent(scope)((event) => {
             if (
               event.type !== "workspace_task_list_changed" ||
@@ -378,5 +382,5 @@ export function useProjectUnreadSignals(
       document.removeEventListener("visibilitychange", onVisibilityChange);
       releaseStatus();
     };
-  }, [services, tabs, platform, services.windowControllerService ? "controller" : scopeKey]);
+  }, [services, tabs, platform, unreadScopeKey]);
 }

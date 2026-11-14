@@ -1,6 +1,6 @@
 /* oxlint-disable eslint(max-lines) -- 平台事件和分享导入共用同一生命周期。 */
 import { getConversationShareErrorDetails } from "@/lib/conversationShareError.js";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useEffectEvent } from "react";
 import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
 import type { CreateTaskOptions } from "@/app-shell/types.js";
 import type { IPlatformService, ZCodeTaskClientMode } from "@zcode/shared";
@@ -199,18 +199,26 @@ export function useRootPlatformEffects({
     startDraftInWorkspace,
   ]);
 
+  const readPlatformEventContext = useEffectEvent(() => ({
+    intl,
+    activateTabByPath,
+    openWorkspacePath,
+    setWorkspaceActionError,
+    allowOpenWorkspace,
+    openWorkspace,
+  }));
   useEffect(() => {
     const disposeFocusTab = platform.onFocusTab((path: string) => {
       logger.info("[Root] onFocusTab:", path);
       // 跨窗口打开由目标窗口完成项目接纳，避免只激活目录后留下未归类草稿。
-      void openWorkspacePath(path, false);
+      void readPlatformEventContext().openWorkspacePath(path, false);
     });
     const disposeNewTab = platform.onNewTab(() => {
       logger.info("[Root] onNewTab");
-      setWorkspaceActionError(null);
+      readPlatformEventContext().setWorkspaceActionError(null);
       // 新标签过去会打开工作区中间页，导致启动/快捷键都可能进入中间页。
       // 现在新标签语义收敛为“打开工作区”动作，由 Root 决定目录选择或默认 workspace 兜底。
-      openWorkspace();
+      readPlatformEventContext().openWorkspace();
     });
     // 新建回调包含当前语言；同步更新订阅，避免快捷键展示切换语言前的错误提示。
     const disposeNewTask = platform.onNewTask(() => {
@@ -218,11 +226,11 @@ export function useRootPlatformEffects({
     });
     const disposeOpenWorkspace = platform.onOpenWorkspace(() => {
       logger.info("[Root] onOpenWorkspace");
-      openWorkspace();
+      readPlatformEventContext().openWorkspace();
     });
     const disposeOpenWorkspacePath = platform.onOpenWorkspacePath
       ? platform.onOpenWorkspacePath((path: string) => {
-          if (!allowOpenWorkspace) {
+          if (!readPlatformEventContext().allowOpenWorkspace) {
             logger.info("[Root] 当前模式不支持通过 deep link 打开文件夹，已忽略请求");
             return;
           }
@@ -231,7 +239,7 @@ export function useRootPlatformEffects({
           // 系统服务 deep link 对应输入框上方 Open folder 语义。
           // 这里复用 handleSelectProject，而不是把路径作为聊天附件，才能保留 tab 去重、
           // 跨窗口激活和 recentProjects 更新这些手动打开文件夹的既有行为。
-          openWorkspacePath(path);
+          readPlatformEventContext().openWorkspacePath(path);
         })
       : () => {};
     const disposeShareImport = platform.onShareImport
@@ -277,7 +285,7 @@ export function useRootPlatformEffects({
           const targetWorkspaceIdentity = taskMeta?.workspaceIdentity;
           // 通知点击会从全局 workspace store 反查 task。
           // 远端任务必须用 task meta 自带的 workspaceIdentity 激活和选中，否则会落到 path-only 桶。
-          activateTabByPath(
+          readPlatformEventContext().activateTabByPath(
             targetWorkspacePath,
             targetWorkspaceIdentity ? { workspaceIdentity: targetWorkspaceIdentity } : undefined,
           );
@@ -295,7 +303,7 @@ export function useRootPlatformEffects({
           switch (payload.kind) {
             case "up-to-date":
               toast(
-                intl.formatMessage(
+                readPlatformEventContext().intl.formatMessage(
                   { id: "update.toast.upToDate" },
                   { version: payload.currentVersion },
                 ),
@@ -303,7 +311,7 @@ export function useRootPlatformEffects({
               return;
             case "downloading":
               toast(
-                intl.formatMessage(
+                readPlatformEventContext().intl.formatMessage(
                   { id: "update.toast.downloading" },
                   { version: payload.version },
                 ),
@@ -311,25 +319,40 @@ export function useRootPlatformEffects({
               return;
             case "available":
               toast(
-                intl.formatMessage({ id: "update.toast.available" }, { version: payload.version }),
+                readPlatformEventContext().intl.formatMessage(
+                  { id: "update.toast.available" },
+                  { version: payload.version },
+                ),
               );
               return;
             case "already-downloading":
               toast(
-                intl.formatMessage(
+                readPlatformEventContext().intl.formatMessage(
                   { id: "update.toast.alreadyDownloading" },
                   { progress: payload.progress },
                 ),
               );
               return;
             case "ready":
-              toast(intl.formatMessage({ id: "update.toast.ready" }, { version: payload.version }));
+              toast(
+                readPlatformEventContext().intl.formatMessage(
+                  { id: "update.toast.ready" },
+                  { version: payload.version },
+                ),
+              );
               return;
             case "dev-skipped":
-              toast(intl.formatMessage({ id: "update.toast.devSkipped" }));
+              toast(
+                readPlatformEventContext().intl.formatMessage({ id: "update.toast.devSkipped" }),
+              );
               return;
             case "error":
-              toast(intl.formatMessage({ id: "update.toast.error" }, { error: payload.message }));
+              toast(
+                readPlatformEventContext().intl.formatMessage(
+                  { id: "update.toast.error" },
+                  { error: payload.message },
+                ),
+              );
               return;
           }
         })

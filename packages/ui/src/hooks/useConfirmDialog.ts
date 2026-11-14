@@ -22,6 +22,9 @@ export function useYoloModeConfirmation(scope: unknown, currentMode: string | un
 
   return useCallback(
     (nextMode: string, apply: () => void) => {
+      // 目标 scope 换代时确认回调身份也换代，和 layout cleanup 的取消边界一致。
+      void scope;
+
       if (
         pending.current ||
         useConfirmDialogStore.getState().pendingRequest?.presentation === "yolo-confirmation"

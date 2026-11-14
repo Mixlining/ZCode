@@ -1,6 +1,14 @@
 /* eslint-disable max-lines -- 定时任务编辑整页集中维护 Settings/History 两个 tab、cron builder、项目/模型选择器与运行历史，集中更利于交互一致。 */
 import { useStartPlanRecommendation } from "@/hooks/useStartPlanRecommendation.js";
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  useEffectEvent,
+} from "react";
 import { completeNewModelSelection } from "@zcode/provider";
 import {
   ArrowLeft,
@@ -523,9 +531,11 @@ function EndDatePicker({
   const minDate = parseDateInputValue(min);
   const [visibleMonth, setVisibleMonth] = useState(() => selectedDate ?? minDate ?? new Date());
 
+  const selectedDateTimestamp = selectedDate?.getTime();
   useEffect(() => {
-    if (open && selectedDate) setVisibleMonth(selectedDate);
-  }, [open, selectedDate?.getTime()]);
+    if (open && selectedDateTimestamp !== undefined)
+      setVisibleMonth(new Date(selectedDateTimestamp));
+  }, [open, selectedDateTimestamp]);
 
   const year = visibleMonth.getFullYear();
   const month = visibleMonth.getMonth();
@@ -1282,6 +1292,7 @@ export function AutomationEditView({
   workspaceOptionsRef.current = workspaceOptions;
 
   // 打开/切换编辑对象时重置表单。
+  const readDefaultCreateTitle = useEffectEvent(() => localizedDefaultCreateTitle);
   useEffect(() => {
     setTab("settings");
     setRunsPage(1);
@@ -1315,7 +1326,7 @@ export function AutomationEditView({
       titleTouchedRef.current = false;
       modelManuallyChangedRef.current = false;
       thoughtManuallyChangedRef.current = false;
-      setTitle(initialDraft?.title ?? localizedDefaultCreateTitle);
+      setTitle(initialDraft?.title ?? readDefaultCreateTitle());
       setPrompt(initialDraft?.prompt ?? "");
       modelSelection.current = "";
       setModel("");
@@ -1395,8 +1406,9 @@ export function AutomationEditView({
   // 切到 History tab(编辑态)时加载运行历史，并在停留期间轻量刷新。
   // cron run/outcome 由 scheduler/host 异步写入；只加载一次会让用户看到会话已结束但历史仍为空。
   // onLoadRuns 由父组件 inline 传入，不能作为依赖，否则每次 runsCache 更新都会重启 effect 形成请求循环。
+  const editingAutomationId = editing?.automationId;
   useEffect(() => {
-    if (tab !== "history" || !editing) {
+    if (tab !== "history" || editingAutomationId === undefined) {
       return;
     }
     onLoadRunsRef.current?.();
@@ -1404,7 +1416,7 @@ export function AutomationEditView({
       onLoadRunsRef.current?.();
     }, 5_000);
     return () => window.clearInterval(timer);
-  }, [tab, editing?.automationId]);
+  }, [tab, editingAutomationId]);
 
   const isSessionCreatedAutomation = resolveIsSessionCreatedAutomation(editing);
   // 会话来源但无法由 UI 安全回显的旧 cron 保持只读；用户显式重设后以持久化标记退出该路径。
@@ -1744,6 +1756,7 @@ export function AutomationEditView({
   const hasUnsavedChanges = Boolean(editing) && changedFields.length > 0;
 
   const recommendStartPlan = useStartPlanRecommendation(modelSelectionView);
+  const selectedWorkspaceExists = selectedWorkspace !== null && selectedWorkspace !== undefined;
   const submitAutomation = useCallback(
     async (options: { validationSource: "save" | "run-now"; returnToList?: boolean }) => {
       if (saving) return false;
@@ -1770,7 +1783,7 @@ export function AutomationEditView({
             workspacePath: editing.workspacePath,
             workspaceIdentity: editing.workspaceIdentity,
           }
-        : selectedWorkspace
+        : selectedWorkspaceExists
           ? {
               workspacePath: selectedWorkspace.workspacePath,
               workspaceIdentity: selectedWorkspace.workspaceIdentity,
@@ -1816,6 +1829,7 @@ export function AutomationEditView({
       saving,
       model,
       thoughtLevel,
+      selectedWorkspaceExists,
       selectedWorkspace?.workspaceIdentity,
       selectedWorkspace?.workspacePath,
       selectedWorkspace?.projectId,

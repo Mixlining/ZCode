@@ -1266,6 +1266,9 @@ function ConversationTurnGroupImpl({
       ? undefined
       : visibleUserRows.find((row) => row.highspeed)?.highspeed;
   const highspeedShareTarget = useMemo(() => {
+    // 保留原分享指标的运行态失效边界，避免纯 meta 引用未变时沿用旧指标。
+    void highspeedState;
+
     // 旧记录的 metadata 不能在套餐禁用后重新打开厂商分享入口。
     if (CODING_PLAN_DISABLED) return null;
     let target: { cardId: string; metrics: HighspeedShareMetrics } | null = null;

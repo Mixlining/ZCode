@@ -369,6 +369,8 @@ export function AgentToolCallBlock(context: ToolCallBlockRenderContext) {
       isAgentVisuallyRunning,
       prompt,
       toolCall.status,
+      context.nestedToolRenderer,
+      context.onOpenAutomationsMain,
     ],
   );
 

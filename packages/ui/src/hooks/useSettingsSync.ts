@@ -8,7 +8,6 @@ import type {
 } from "@zcode/shared";
 import { logger } from "@/logger.js";
 import { useServices } from "@/hooks/useServices.js";
-import { useZCodeSessionService } from "@/hooks/useZCodeSessionService.js";
 import { invalidateDeferredDraftSessionForSkillChange } from "@/lib/zcodeDraftSkillInvalidation.js";
 import type { SettingsSyncUiState, SettingsSyncUiTask } from "@/settings-sync/types.js";
 
@@ -201,11 +200,6 @@ function applyTaskResults(
 
 export function useSettingsSync(params: { workspacePath?: string; workspaceIdentity?: string }) {
   const { settingsSyncService } = useServices();
-  const zcodeSessionService = useZCodeSessionService(
-    params.workspacePath,
-    undefined,
-    params.workspaceIdentity,
-  );
   const runningImportRef = useRef(0);
   const discoveryRequestRef = useRef(0);
   const [state, setState] = useState<SettingsSyncUiState>(createInitialState);
@@ -595,7 +589,6 @@ export function useSettingsSync(params: { workspacePath?: string; workspaceIdent
       params.workspaceIdentity,
       params.workspacePath,
       settingsSyncService,
-      zcodeSessionService,
       state.discovery,
       state.selectedKeys,
     ],

@@ -287,7 +287,14 @@ export function ChatPromptEditor({
 
       onDragOver?.(event);
     },
-    [enableExternalFileDrop, enableWorkspaceFileDrop, onDragOver],
+    [
+      enableExternalFileDrop,
+      enableWorkspaceFileDrop,
+      onDragOver,
+      setInternalDragging,
+      setWorkspaceFileDragging,
+      setExternalFileDragging,
+    ],
   );
 
   const handleDragLeave: DragEventHandler<HTMLDivElement> = useCallback(
@@ -300,7 +307,7 @@ export function ChatPromptEditor({
       setInternalDragging(false);
       onDragLeave?.(event);
     },
-    [onDragLeave],
+    [onDragLeave, setInternalDragging],
   );
 
   const handleDrop: DragEventHandler<HTMLDivElement> = useCallback(
@@ -341,6 +348,9 @@ export function ChatPromptEditor({
       resolvedInputApiRef,
       workspaceIdentity,
       workspacePath,
+      setInternalDragging,
+      setWorkspaceFileDragging,
+      setExternalFileDragging,
     ],
   );
 

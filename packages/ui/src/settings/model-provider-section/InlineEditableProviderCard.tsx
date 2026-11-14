@@ -364,6 +364,9 @@ export function InlineEditableProviderCard({
 
   const persistModelOrder = useCallback(
     async (modelIds: readonly string[]) => {
+      // 切换 provider 时调序回调换代，和当前保存操作的 owner 保持一致。
+      void provider.providerId;
+
       const target = reorderModelIdsTargetRef.current;
       if (!target) throw new Error("当前设置入口未装配 Model 调序能力");
       await runSaveOperation(async () => {
@@ -468,10 +471,12 @@ export function InlineEditableProviderCard({
   };
 
   useEffect(() => {
+    // cleanup 更新同一请求容器的最新状态，不能捕获旧的代次或保存事务。
+    const deleteRequestOwner = deleteRequestedRef;
     return () => {
       cancelIdleDraftSave();
       const cleanupAction = resolveProviderDraftCleanupAction({
-        deleteRequested: deleteRequestedRef.current,
+        deleteRequested: deleteRequestOwner.current,
       });
       if (cleanupAction === "skip-delete") {
         // 确认删除会触发详情卡片卸载；如果 cleanup 继续补保存草稿，

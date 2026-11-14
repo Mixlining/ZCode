@@ -143,9 +143,10 @@ export function OpenSplitButton({
     },
     defaultApplication ? { application: defaultApplication.name } : undefined,
   );
+  const loadFileApplications = fileApplications.load;
   useEffect(() => {
-    if (openDefaultOnPrimary && canOpenNative) void fileApplications.load();
-  }, [openDefaultOnPrimary, canOpenNative, fileApplications.load]);
+    if (openDefaultOnPrimary && canOpenNative) void loadFileApplications();
+  }, [openDefaultOnPrimary, canOpenNative, loadFileApplications]);
   const editorRequest = useRef(0);
   const primaryEditorLoadStarted = useRef(false);
   const [editors, setEditors] = useState<EditorInfo[]>([]);
@@ -195,7 +196,7 @@ export function OpenSplitButton({
   const loadEditors = useCallback(async () => {
     if (target.type !== "file") return;
     if (!isRemoteSource) {
-      await fileApplications.load();
+      await loadFileApplications();
       return;
     }
     if (editorsLoaded || loadingEditors) {
@@ -218,7 +219,7 @@ export function OpenSplitButton({
     } finally {
       if (request === editorRequest.current) setLoadingEditors(false);
     }
-  }, [editorsLoaded, loadingEditors, platform, target, isRemoteSource, fileApplications.load]);
+  }, [editorsLoaded, loadingEditors, platform, target, isRemoteSource, loadFileApplications]);
 
   useEffect(() => {
     // 远端主按钮也需要提前获取可用编辑器；不能等用户先打开下拉才解除禁用。

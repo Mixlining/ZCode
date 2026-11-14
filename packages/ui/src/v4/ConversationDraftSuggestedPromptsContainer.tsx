@@ -105,10 +105,11 @@ export function ConversationDraftSuggestedPromptsContainer({
     registerRecommendedPromptPane(recommendationPaneId, recommendationMode);
     return () => unregisterRecommendedPromptPane(recommendationPaneId);
   }, [proactive, recommendationMode, recommendationPaneId]);
-  const recommendedItems = useMemo(
-    () => getRecommendedPromptsForPane(recommendationPaneId, recommendationMode),
-    [recommendationMode, recommendationPaneId, recommendationRevision],
-  );
+  const recommendedItems = useMemo(() => {
+    // 推荐列表从外部 owner 读取，revision 变化时重新生成当前窗格建议。
+    void recommendationRevision;
+    return getRecommendedPromptsForPane(recommendationPaneId, recommendationMode);
+  }, [recommendationMode, recommendationPaneId, recommendationRevision]);
   const [closing, setClosing] = useState(false);
   const closeRecommendations = async () => {
     setClosing(true);
@@ -531,6 +532,7 @@ export function ConversationDraftSuggestedPromptsContainer({
       targetParams,
       waitForComposerTextInsertApplied,
       workspaceKey,
+      isWebRemoteControl,
     ],
   );
 

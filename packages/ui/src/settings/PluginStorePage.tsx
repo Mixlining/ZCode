@@ -436,7 +436,7 @@ export function PluginStorePage({
       // 已预热的草稿 session 继续携带旧版本甚至空能力，导致“升级成功”后新会话仍不可用。
       await refreshAfterPluginChange();
     },
-    [operationService, refreshAfterPluginChange, updatePlugin],
+    [operationService, refreshAfterPluginChange, updatePlugin, usePluginManagementStore],
   );
 
   const handleCheckForUpdates = useCallback(async () => {
@@ -461,7 +461,7 @@ export function PluginStorePage({
       return;
     }
     toast(intl.formatMessage({ id: "settings.plugins.checkForUpdates.none" }));
-  }, [intl, operationService, updateMarketplace]);
+  }, [intl, operationService, updateMarketplace, usePluginManagementStore]);
 
   const handleAddMarketplace = useCallback(
     async (source: string) => {
@@ -474,7 +474,7 @@ export function PluginStorePage({
       if (succeeded) setSegment("personal");
       return succeeded;
     },
-    [addMarketplace, operationService],
+    [addMarketplace, operationService, usePluginManagementStore],
   );
 
   const handleUsePrompt = useCallback(

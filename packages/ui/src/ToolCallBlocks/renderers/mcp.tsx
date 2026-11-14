@@ -179,7 +179,6 @@ export function McpToolCallBlock(context: ToolCallBlockRenderContext) {
   const resultText = stringifyMcpResult(toolCall.output);
   const visibleError =
     toolCall.status === "failed" ? (toolCall.error ?? context.errorText) : undefined;
-  const hasPrimaryResult = Boolean(resultText || visibleError);
   const isSummaryOnlyLifecycle = toolCall.status === "pending" || toolCall.status === "stopped";
   // R7：运行中且 agent 投影了 MCP 进度时，摘要行显示细进度条 + message；终态由投影清除。
   const progress = toolCall.status === "in_progress" ? readToolCallProgress(toolCall.raw) : null;
@@ -314,7 +313,6 @@ export function McpToolCallBlock(context: ToolCallBlockRenderContext) {
       descriptionLabel,
       handleLoadFullToolCallFields,
       hasCallDetails,
-      hasPrimaryResult,
       parametersLabel,
       presentation?.description,
       resultLabel,

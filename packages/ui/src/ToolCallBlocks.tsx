@@ -271,7 +271,6 @@ function ToolCallBlockComponent({
       showTodoToolCalls,
       sourceLabel,
       statusLabel,
-      suppressSourceLabel,
       theme,
       toolCallNode,
       toolPreviewCodeViewer,

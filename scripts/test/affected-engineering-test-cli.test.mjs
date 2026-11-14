@@ -10,6 +10,33 @@ import test from "node:test";
 const exec = promisify(execFile);
 const entry = fileURLToPath(new URL("../run-affected-engineering-tests.mjs", import.meta.url));
 const zero = "0".repeat(40);
+
+test("root Vitest config supports native ESM loading with unchanged paths and engineering catalog", async () => {
+  const root = fileURLToPath(new URL("../../", import.meta.url));
+  const configUrl = new URL("../../vitest.config.ts", import.meta.url).href;
+  const { stdout } = await exec(
+    process.execPath,
+    [
+      "--input-type=module",
+      "-e",
+      `
+    const { default: config } = await import(${JSON.stringify(configUrl)});
+    console.log(JSON.stringify({ aliases: config.resolve.alias, triggers: config.test.forceRerunTriggers,
+      include: config.test.projects[0].test.include }));
+  `,
+    ],
+    { cwd: root },
+  );
+  const config = JSON.parse(stdout);
+  assert.equal(config.aliases["@"], resolve(root, "packages/ui/src"));
+  assert.equal(config.aliases["@desktop"], resolve(root, "packages/desktop/src"));
+  assert.equal(config.aliases["@web"], resolve(root, "packages/web/src"));
+  assert.ok(config.triggers.includes(resolve(root, "scripts/engineering-test-files.json")));
+  assert.deepEqual(
+    config.include,
+    JSON.parse(await readFile(new URL("../engineering-test-files.json", import.meta.url), "utf8")),
+  );
+});
 async function fixture(t) {
   const root = await mkdtemp(join(tmpdir(), "affected-official-"));
   t.after(() => rm(root, { recursive: true, force: true }));

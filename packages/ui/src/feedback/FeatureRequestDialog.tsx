@@ -165,7 +165,17 @@ export const FeatureRequestDialog = memo(function FeatureRequestDialogComponent(
       setError(getErrorMessage(submitError));
       setSubmitting(false);
     }
-  }, [contact, copy, description, feedbackService, formatMessage, locale, openTickets, solution]);
+  }, [
+    contact,
+    copy,
+    description,
+    feedbackService,
+    formatMessage,
+    locale,
+    openTickets,
+    solution,
+    intl.formatMessage,
+  ]);
 
   return (
     <Dialog

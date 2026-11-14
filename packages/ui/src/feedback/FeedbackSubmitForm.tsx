@@ -319,6 +319,7 @@ export function FeedbackSubmitForm({
     ticketModule,
     ticketSeverity,
     ticketType,
+    intl.formatMessage,
   ]);
 
   return (

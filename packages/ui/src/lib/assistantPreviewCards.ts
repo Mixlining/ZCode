@@ -7,7 +7,6 @@ import {
   cleanAssistantFilePathCandidate,
   extractAssistantFileReferences,
   getAssistantPreviewFileTypeDefinition,
-  hasAssistantPreviewFileChangeCandidates,
   isAssistantPreviewHtmlPath,
   parseAssistantFileUrlPath,
   resolveAssistantRawFilePath,

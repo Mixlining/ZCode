@@ -438,13 +438,16 @@ export function ChatContextUsage({
     now: opportunityNow,
     opportunity: { ...opportunityBadge, sourceKey: resetSourceKey },
   });
+  const opportunityKey = opportunityReminder?.opportunityKey;
+  const opportunityPhase = opportunityReminder?.phase;
+  const hasOpportunityReminder = opportunityReminder !== null && opportunityReminder !== undefined;
   const dismissOpportunityReminder = useCallback(() => {
-    if (!opportunityReminder) return;
-    contextQuotaResetOpportunityDismissalStore.dismiss(opportunityReminder);
-  }, [opportunityReminder?.opportunityKey, opportunityReminder?.phase]);
+    if (opportunityKey === undefined || opportunityPhase === undefined) return;
+    contextQuotaResetOpportunityDismissalStore.dismiss({ opportunityKey, phase: opportunityPhase });
+  }, [opportunityKey, opportunityPhase]);
   useEffect(() => {
     // 设置覆盖层保留工作区挂载；后台监听不能把设置页点击算作提醒已读。
-    if (!isWorkspaceVisible || !opportunityReminder || contextOpen) return;
+    if (!isWorkspaceVisible || !hasOpportunityReminder || contextOpen) return;
     const handleOutsidePointerDown = (event: PointerEvent) => {
       if (
         shouldDismissContextQuotaResetOpportunityReminder(
@@ -457,13 +460,7 @@ export function ChatContextUsage({
     };
     document.addEventListener("pointerdown", handleOutsidePointerDown, true);
     return () => document.removeEventListener("pointerdown", handleOutsidePointerDown, true);
-  }, [
-    isWorkspaceVisible,
-    contextOpen,
-    dismissOpportunityReminder,
-    opportunityReminder?.opportunityKey,
-    opportunityReminder?.phase,
-  ]);
+  }, [isWorkspaceVisible, contextOpen, dismissOpportunityReminder, hasOpportunityReminder]);
   // 五小时与周额度各自维护撒花轨迹，避免一类完成压制另一类的触发器动效。
   const resetCelebrationStateByTypeRef = useRef<
     Record<CodingPlanResetType, CodingPlanQuotaResetCelebrationState | null>
@@ -500,7 +497,14 @@ export function ChatContextUsage({
   // Main 返回 claim winner 前 Composer 可能已经卸载或切换 source。现在先获取带 token
   // 的临时 reservation，只有组件与候选仍有效且即将展示时才 commit played；失效 winner release，
   // busy loser 保留 observedAt，等待真实 played 广播或 reservation 释放后重试。
+  const reserveAutomaticCompletion = resetUi.reserveAutomaticCompletion;
+  const commitAutomaticCompletion = resetUi.commitAutomaticCompletion;
+  const releaseAutomaticCompletion = resetUi.releaseAutomaticCompletion;
   useEffect(() => {
+    const candidates = {
+      FIVE_HOUR: automaticCompletionCandidateByType.FIVE_HOUR,
+      WEEK: automaticCompletionCandidateByType.WEEK,
+    };
     let active = true;
     const retryTimers: Array<ReturnType<typeof setTimeout>> = [];
     const previous = claimedAutomaticCompletionRef.current;
@@ -509,12 +513,11 @@ export function ChatContextUsage({
       sourceKey: resetSourceKey,
       completedAtByType: {
         FIVE_HOUR:
-          sameSource &&
-          previous.completedAtByType.FIVE_HOUR === automaticCompletionCandidateByType.FIVE_HOUR
+          sameSource && previous.completedAtByType.FIVE_HOUR === candidates.FIVE_HOUR
             ? previous.completedAtByType.FIVE_HOUR
             : null,
         WEEK:
-          sameSource && previous.completedAtByType.WEEK === automaticCompletionCandidateByType.WEEK
+          sameSource && previous.completedAtByType.WEEK === candidates.WEEK
             ? previous.completedAtByType.WEEK
             : null,
       },
@@ -529,12 +532,12 @@ export function ChatContextUsage({
     }
 
     for (const resetType of CODING_PLAN_QUOTA_RESET_TYPES) {
-      const completedAt = automaticCompletionCandidateByType[resetType];
+      const completedAt = candidates[resetType];
       if (completedAt === null || synchronized.completedAtByType[resetType] === completedAt) {
         continue;
       }
       void coordinateCodingPlanQuotaResetAutoPlay({
-        reserve: () => resetUi.reserveAutomaticCompletion(resetType, completedAt),
+        reserve: () => reserveAutomaticCompletion(resetType, completedAt),
         isCurrent: () => {
           const latest = latestAutomaticCompletionCandidateRef.current;
           return (
@@ -543,8 +546,8 @@ export function ChatContextUsage({
             latest.completedAtByType[resetType] === completedAt
           );
         },
-        commit: resetUi.commitAutomaticCompletion,
-        release: resetUi.releaseAutomaticCompletion,
+        commit: commitAutomaticCompletion,
+        release: releaseAutomaticCompletion,
         onCommitted: () => {
           const current = claimedAutomaticCompletionRef.current;
           const completedAtByType =
@@ -596,9 +599,9 @@ export function ChatContextUsage({
     automaticCompletionCandidateByType.WEEK,
     autoPlayReservationRetryTick,
     resetSourceKey,
-    resetUi.commitAutomaticCompletion,
-    resetUi.releaseAutomaticCompletion,
-    resetUi.reserveAutomaticCompletion,
+    commitAutomaticCompletion,
+    releaseAutomaticCompletion,
+    reserveAutomaticCompletion,
   ]);
 
   // Tooltip/撒花只消费本窗口已经 claim 成功且仍对应当前候选的 used_at。
@@ -749,7 +752,7 @@ export function ChatContextUsage({
     if (!contextOpen) {
       return;
     }
-    if (opportunityReminder) {
+    if (hasOpportunityReminder) {
       dismissOpportunityReminder();
     }
     setResetTooltipDismissed((prev) => {
@@ -772,8 +775,7 @@ export function ChatContextUsage({
     contextOpen,
     phaseByType,
     automaticCompletedAtByType,
-    opportunityReminder?.opportunityKey,
-    opportunityReminder?.phase,
+    hasOpportunityReminder,
     dismissOpportunityReminder,
   ]);
 

@@ -1,7 +1,8 @@
 import { resolve } from "node:path";
 import { configDefaults, defineConfig } from "vitest/config";
 
-import engineeringTestFiles from "./scripts/engineering-test-files.json";
+// Node 原生加载要求显式 JSON 类型；ESM 不提供 __dirname，路径统一取配置文件所在目录。
+import engineeringTestFiles from "./scripts/engineering-test-files.json" with { type: "json" };
 
 export default defineConfig({
   // 测试固定注入事件上报端点，使遥测上报链路在单测中可验证；真实构建由 scripts/build-time-config.mjs 决定。
@@ -10,17 +11,17 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@": resolve(__dirname, "packages/ui/src"),
-      "@desktop": resolve(__dirname, "packages/desktop/src"),
-      "@web": resolve(__dirname, "packages/web/src"),
+      "@": resolve(import.meta.dirname, "packages/ui/src"),
+      "@desktop": resolve(import.meta.dirname, "packages/desktop/src"),
+      "@web": resolve(import.meta.dirname, "packages/web/src"),
       // 间接 import desktopNetworkTelemetry 等的单测无需真实 ARMS；需 vi.fn 的用例在文件内 vi.mock 覆盖
       // Bugfix: 具体的 /browser 子路径必须排在包根别名前，否则会被根别名拼成不存在的 stub.ts/browser。
       "@arms/rum-electron/browser": resolve(
-        __dirname,
+        import.meta.dirname,
         "packages/desktop/test/mocks/armsRumElectronStub.ts",
       ),
       "@arms/rum-electron": resolve(
-        __dirname,
+        import.meta.dirname,
         "packages/desktop/test/mocks/armsRumElectronStub.ts",
       ),
     },
@@ -38,7 +39,7 @@ export default defineConfig({
         "vitest.config.ts",
         "vitest.setup.ts",
         "scripts/engineering-test-files.json",
-      ].map((file) => resolve(__dirname, file)),
+      ].map((file) => resolve(import.meta.dirname, file)),
     ],
     // 修复原因：全量 run 的 stdout 会把**通过**测试里的 console 输出一并转发——services 层
     // 用 createServiceLogger 的用例在绿态下也要刷几千行多行日志，全量输出因此膨胀到

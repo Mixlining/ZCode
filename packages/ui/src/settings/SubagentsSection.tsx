@@ -845,10 +845,11 @@ function SubagentForm({
   const recommendStartPlan = useStartPlanRecommendation(modelSelectionView, "subagent");
   const { intl } = useZCodeIntl();
   const initialFormStateKey = createSubagentFormInitialStateKey(initial);
-  const initialFormState = useMemo(
-    () => createSubagentFormInitialState(initial),
-    [initial, initialFormStateKey],
-  );
+  const initialFormState = useMemo(() => {
+    // 同一 initial 对象可能被原有编辑流程更新，表单 key 是显式重新初始化信号。
+    void initialFormStateKey;
+    return createSubagentFormInitialState(initial);
+  }, [initial, initialFormStateKey]);
   const previousInitialFormStateKeyRef = useRef(initialFormStateKey);
   const [name, setName] = useState(initialFormState.name);
   const [description, setDescription] = useState(initialFormState.description);

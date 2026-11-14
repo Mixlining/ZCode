@@ -184,19 +184,23 @@ export function GroupItem({
       groupId: node.group.id,
     },
   });
+  const setGroupDragNode = groupDraggable.setNodeRef;
+  const setExpandedGroupDropNode = expandedGroupHeaderDroppable.setNodeRef;
   const setGroupHeaderNodeRef = useCallback(
     (element: HTMLDivElement | null) => {
-      groupDraggable.setNodeRef(element);
-      expandedGroupHeaderDroppable.setNodeRef(element);
+      setGroupDragNode(element);
+      setExpandedGroupDropNode(element);
     },
-    [expandedGroupHeaderDroppable.setNodeRef, groupDraggable.setNodeRef],
+    [setExpandedGroupDropNode, setGroupDragNode],
   );
+  const setCollapsedGroupDropNode = collapsedGroupDroppable.setNodeRef;
+  const setGroupOverDropNode = groupOverDroppable.setNodeRef;
   const setGroupItemNodeRef = useCallback(
     (element: HTMLDivElement | null) => {
-      collapsedGroupDroppable.setNodeRef(element);
-      groupOverDroppable.setNodeRef(element);
+      setCollapsedGroupDropNode(element);
+      setGroupOverDropNode(element);
     },
-    [collapsedGroupDroppable.setNodeRef, groupOverDroppable.setNodeRef],
+    [setCollapsedGroupDropNode, setGroupOverDropNode],
   );
   useLayoutEffect(() => {
     if (!renaming) {

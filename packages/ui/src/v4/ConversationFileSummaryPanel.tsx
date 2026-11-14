@@ -145,48 +145,39 @@ export function ConversationFileSummaryPanel({
   );
   const needsDetails = open || filtersSources;
 
+  const fetchFileChanges = context.fetchFileChanges;
   useEffect(() => {
-    if (!needsDetails || !context.fetchFileChanges || !target) return;
+    if (!needsDetails || !fetchFileChanges || !target) return;
 
     let disposed = false;
     // 运行中的 fileChanges 是某个 projection revision 的局部结果；turn
     // 进入终态后必须废弃局部 details，并用可持久缓存的终态策略重新读取。
     // requestKey 已同步隔离旧结果；同一摘要展开重读时保留已加载内容，避免卸载按钮丢失焦点。
     setLoadingDetails(true);
-    void context
-      .fetchFileChanges(target, {
-        cachePolicy,
-        fileChangesState,
-      })
-      .then(
-        (result) => {
-          if (disposed) return;
-          setLoadedDetails({ key: requestKey, result });
-          setLoadingDetails(false);
-        },
-        (loadError: unknown) => {
-          if (disposed) return;
-          logger.warn("[ConversationFileSummaryPanel] 读取文件变更详情失败", {
-            error: loadError instanceof Error ? loadError.message : String(loadError),
-            rowId: target.rowId,
-          });
-          setLoadedDetails({ key: requestKey, result: null });
-          setLoadingDetails(false);
-        },
-      );
+    void fetchFileChanges(target, {
+      cachePolicy,
+      fileChangesState,
+    }).then(
+      (result) => {
+        if (disposed) return;
+        setLoadedDetails({ key: requestKey, result });
+        setLoadingDetails(false);
+      },
+      (loadError: unknown) => {
+        if (disposed) return;
+        logger.warn("[ConversationFileSummaryPanel] 读取文件变更详情失败", {
+          error: loadError instanceof Error ? loadError.message : String(loadError),
+          rowId: target.rowId,
+        });
+        setLoadedDetails({ key: requestKey, result: null });
+        setLoadingDetails(false);
+      },
+    );
 
     return () => {
       disposed = true;
     };
-  }, [
-    cachePolicy,
-    context.fetchFileChanges,
-    fileChangesState,
-    needsDetails,
-    open,
-    requestKey,
-    target,
-  ]);
+  }, [cachePolicy, fetchFileChanges, fileChangesState, needsDetails, open, requestKey, target]);
 
   const handlePreviewRewind = useCallback(async () => {
     if (!context.previewFileRewind || !target) return;

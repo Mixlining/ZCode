@@ -1,6 +1,14 @@
 import { RemotePasswordInput } from "@/remote-connection/RemotePasswordInput.js";
 /* eslint-disable max-lines -- 远程连接字段较多，SSH/WSL/Docker 分支暂集中在单文件维护。 */
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+  useEffectEvent,
+} from "react";
 import type {
   DockerContainerInfo,
   RemoteAssetInstallMode,
@@ -510,11 +518,18 @@ export function RemoteConnectionFields({
   // 放在 effect 里而不是事件回调里，保证读取到已经提交到 DOM 的值。
   const focusRequestKey = `${focusFirstEmptyToken}:${pasteFocusRequest}`;
   const lastFocusRequestKeyRef = useRef(focusRequestKey);
+  const readSshFieldsForFocus = useEffectEvent(() => ({
+    host,
+    username,
+    sshAuthMethod,
+    privateKeyPath,
+  }));
   useEffect(() => {
     if (lastFocusRequestKeyRef.current === focusRequestKey) return;
     lastFocusRequestKeyRef.current = focusRequestKey;
     const root = sshRootRef.current;
     if (!root) return;
+    const { host, username, sshAuthMethod, privateKeyPath } = readSshFieldsForFocus();
     const firstEmptyTestId = !host.trim()
       ? TID_SSH_HOST_INPUT
       : !username.trim()

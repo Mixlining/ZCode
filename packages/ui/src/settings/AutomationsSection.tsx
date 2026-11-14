@@ -746,7 +746,7 @@ export function AutomationsSection({
     // 后台关闭闲时灰度后，Idle tab 会被隐藏；旧状态若继续停在 idle，
     // 定时任务列表也会被 tab === "idle" 一并隐藏。回到 Scheduled，确保定时任务始终可访问。
     setTab(nextTab);
-  }, [offPeakVisible, tab]);
+  }, [offPeakVisible, tab, setTab]);
 
   useEffect(() => {
     if (!openAutomationTab) return;
@@ -792,6 +792,7 @@ export function AutomationsSection({
     visibleTabs,
     workspaceIdentity,
     workspacePath,
+    setTab,
   ]);
 
   // 服务端给出准确恢复时间；到点后重查。刷新期间及失败后继续禁入，直到成功返回 true。
@@ -859,7 +860,7 @@ export function AutomationsSection({
     if (currentWorkspaceIsRemote) return;
     setTab("idle");
     setView({ mode: "offpeak-create", draft });
-  }, [consumePendingCreateDraft, currentWorkspaceIsRemote]);
+  }, [consumePendingCreateDraft, currentWorkspaceIsRemote, setTab]);
 
   useEffect(() => {
     if (!currentWorkspaceIsRemote) return;
@@ -869,7 +870,7 @@ export function AutomationsSection({
         ? { mode: "list" }
         : current,
     );
-  }, [currentWorkspaceIsRemote]);
+  }, [currentWorkspaceIsRemote, setTab]);
 
   const handleOpenCodingPlanUpgrade = useCallback(() => {
     const providerId =
@@ -993,6 +994,7 @@ export function AutomationsSection({
     openAutomationId,
     workspaceIdentity,
     workspacePath,
+    setTab,
   ]);
 
   const handleCreateManually = useCallback(() => {

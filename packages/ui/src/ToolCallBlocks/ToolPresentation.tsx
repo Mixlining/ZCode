@@ -35,16 +35,17 @@ export function ToolPresentation({
   const { intl } = useZCodeIntl();
   const capabilities = useToolPresentationCapabilities();
   const { childToolCalls } = toolCallNode;
+  const normalizeToolOutputText = capabilities.normalizeOutputText;
   const normalizedNode = useMemo(() => {
-    if (!capabilities.normalizeOutputText || typeof toolCallNode.toolCall.output !== "string")
+    if (!normalizeToolOutputText || typeof toolCallNode.toolCall.output !== "string")
       return toolCallNode;
-    const output = capabilities.normalizeOutputText(toolCallNode.toolCall.output);
+    const output = normalizeToolOutputText(toolCallNode.toolCall.output);
     const raw = toolCallNode.toolCall.raw as Record<string, unknown> | undefined;
     return {
       ...toolCallNode,
       toolCall: { ...toolCallNode.toolCall, output, raw: { ...raw, rawOutput: output } },
     };
-  }, [capabilities.normalizeOutputText, toolCallNode]);
+  }, [normalizeToolOutputText, toolCallNode]);
   const { toolCall } = normalizedNode;
   const state = mapToolStatus(toolCall.status);
   const displayModel = useMemo(() => buildToolDisplayModel(toolCall, ""), [toolCall]);

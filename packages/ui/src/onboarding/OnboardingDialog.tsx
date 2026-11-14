@@ -183,6 +183,7 @@ export function OnboardingDialog(props: {
     }
   }, [wizardStep]);
 
+  const scanMigratingSessions = sessionMigration.scan;
   useEffect(() => {
     // 修复原因：删除欢迎页时一并删掉了 `view === "wizard"` 门禁，而 wizardStep 初始就是 session、
     // 组件常驻挂载，弹窗关闭时每次启动也会扫描 Claude 历史。修法：只在弹窗打开时自动扫描；
@@ -202,11 +203,11 @@ export function OnboardingDialog(props: {
     }
 
     autoScannedSessionStepRef.current = true;
-    void sessionMigration.scan();
+    void scanMigratingSessions();
   }, [
     sessionMigration.candidates.length,
     sessionMigration.isScanning,
-    sessionMigration.scan,
+    scanMigratingSessions,
     sessionMigration.scanError,
     sessionMigration.supportState.supported,
     settingsSync.state.open,

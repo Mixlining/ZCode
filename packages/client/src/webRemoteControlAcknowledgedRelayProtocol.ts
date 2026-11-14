@@ -13,7 +13,6 @@ import {
 import { AcknowledgedRelayBatchQueue } from "./webRemoteControlAcknowledgedRelayBatchQueue.js";
 import { AcknowledgedRelayDeadline } from "./webRemoteControlAcknowledgedRelayDeadline.js";
 import {
-  ACKNOWLEDGED_WEB_REMOTE_CONTROL_RELAY_LIMITS,
   type AcknowledgedWebRemoteControlRelayProtocolAdapter,
   type AcknowledgedWebRemoteControlRelayProtocolOptions,
   isRawTransportCandidate,

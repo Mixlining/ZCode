@@ -36,10 +36,21 @@ export function usePluginCreator(
     undefined,
     target?.workspaceIdentity,
   );
-  const scope = useMemo(
-    () => ({ active: true }),
-    [targetKey, resolution.services, resolution.remoteSessionId, resolution.rpcReady, onCreateTask],
-  );
+  const scope = useMemo(() => {
+    // 这些输入定义当前资源或请求的 owner；换代必须创建新的实例/令牌，不能删除失效条件。
+    void resolution.rpcReady;
+    void resolution.services;
+    void resolution.remoteSessionId;
+    void onCreateTask;
+    void targetKey;
+    return { active: true };
+  }, [
+    targetKey,
+    resolution.services,
+    resolution.remoteSessionId,
+    resolution.rpcReady,
+    onCreateTask,
+  ]);
   useEffect(() => {
     scope.active = true;
     return () => {

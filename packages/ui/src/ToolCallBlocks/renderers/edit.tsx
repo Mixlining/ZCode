@@ -296,6 +296,7 @@ export function EditToolCallBlock(context: ToolCallBlockRenderContext) {
       rawFileSummaries,
       singleFileInlinePreview,
       toolCall,
+      context.animateDiffCountOnMount,
     ],
   );
 

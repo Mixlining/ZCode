@@ -495,6 +495,8 @@ const UserInputAttachmentList = memo(function UserInputAttachmentList({
     if (attachmentKind === "file" || !attachments || !sessionId || !readAttachment) {
       return;
     }
+    const thumbnailObjectUrls = thumbnailObjectUrlsRef.current;
+    const thumbnailUrls = thumbnailUrlsRef.current;
     let cancelled = false;
     // 只丢弃读取结果不会停止底层分块传输，消息行卸载后仍可能拉取完整视频。
     // 预取生命周期必须通过 AbortSignal 贯穿 transport，及时释放文件 IO 与 IPC 资源。
@@ -533,16 +535,16 @@ const UserInputAttachmentList = memo(function UserInputAttachmentList({
                   type: result.mediaType,
                 }),
               );
-          if (!isLocalUrl) thumbnailObjectUrlsRef.current.add(url);
+          if (!isLocalUrl) thumbnailObjectUrls.add(url);
           if (cancelled) {
             if (!isLocalUrl) {
-              thumbnailObjectUrlsRef.current.delete(url);
+              thumbnailObjectUrls.delete(url);
               URL.revokeObjectURL(url);
             }
             return;
           }
-          thumbnailUrlsRef.current.set(ref, url);
-          setThumbnailUrls(new Map(thumbnailUrlsRef.current));
+          thumbnailUrls.set(ref, url);
+          setThumbnailUrls(new Map(thumbnailUrls));
         } catch (error) {
           if (cancelled || controller.signal.aborted) return;
           if (!isVideo) setFailedRefs((current) => new Set(current).add(ref));
@@ -559,9 +561,9 @@ const UserInputAttachmentList = memo(function UserInputAttachmentList({
       cancelled = true;
       // Desktop local video 返回自定义协议 URL，不是 renderer 创建的 Blob；
       // 只释放本 effect 创建的 object URL，避免把本地媒体 URL 当成 Blob 生命周期管理。
-      for (const url of thumbnailObjectUrlsRef.current) URL.revokeObjectURL(url);
-      thumbnailObjectUrlsRef.current.clear();
-      thumbnailUrlsRef.current.clear();
+      for (const url of thumbnailObjectUrls) URL.revokeObjectURL(url);
+      thumbnailObjectUrls.clear();
+      thumbnailUrls.clear();
     };
   }, [attachmentIndices, attachmentKind, attachments, entityId, readAttachment, rowId, sessionId]);
 

@@ -90,7 +90,7 @@ export function RemoteProjectList({
     return () => {
       active = false;
     };
-  }, [service, hostId, scope, retry]);
+  }, [service, hostId, scope, retry, intl.formatMessage]);
   const add = async (project: VirtualProject) => {
     if (!current()) throw new Error("project.creation-cancelled");
     // 原因：返回草稿或成员换代后，旧选择不得再登记入口或关闭新的流程。

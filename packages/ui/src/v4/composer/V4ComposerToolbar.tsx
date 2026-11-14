@@ -665,10 +665,14 @@ function V4ComposerModelControlsImpl({
     [connectionAuthenticated, enterpriseProducts.snapshot?.productList],
   );
   const authSessionSeq = useZCodeStoreWithDefault((state) => state.authSessionSeq, 0);
-  const teamUsageScope = useMemo(
-    () => ({}),
-    [baseServices, connectionFamily, user?.id, authSessionSeq],
-  );
+  const teamUsageScope = useMemo(() => {
+    // 这些输入定义当前资源或请求的 owner；换代必须创建新的实例/令牌，不能删除失效条件。
+    void authSessionSeq;
+    void baseServices;
+    void connectionFamily;
+    void user?.id;
+    return {};
+  }, [baseServices, connectionFamily, user?.id, authSessionSeq]);
   const contextTeamUsageSourceCacheRef = useRef<{
     scope: object;
     sources: CodingPlanUsageSource[];
@@ -680,29 +684,29 @@ function V4ComposerModelControlsImpl({
     contextPlanConnection.kind === "personalCoding" || contextPlanConnection.kind === "teamCoding"
       ? contextPlanConnection.providerId
       : undefined;
-  const contextCodingPlanUsageTeamSource = useMemo(
-    () =>
-      connectionAuthenticated && contextPlanConnection.kind === "teamCoding"
-        ? resolveContextCodingPlanUsageSource({
-            accountAccess: contextAccountProviderAccess?.access,
-            cachedTeamSources: contextTeamUsageSourceCacheRef.current.sources,
-            // 原硬取 bigmodelCodingPlan 的 entitlement snapshot，
-            // zai team plan 查不到额度。改为按 connection.providerId 取对应 snapshot。
-            entitlementSnapshot: entitlements[contextPlanConnection.providerId]?.snapshot ?? null,
-            providerId: contextPlanConnection.providerId,
-            teamSelection: contextPlanConnection.selection,
-            subscribedTeamProducts,
-          })
-        : null,
-    [
-      connectionAuthenticated,
-      teamUsageScope,
-      contextAccountProviderAccess?.access,
-      contextPlanConnection,
-      entitlements,
-      subscribedTeamProducts,
-    ],
-  );
+  const contextCodingPlanUsageTeamSource = useMemo(() => {
+    // 当前 scope 决定 ref 中的团队用量缓存归属，换代后重新解析投影。
+    void teamUsageScope;
+    return connectionAuthenticated && contextPlanConnection.kind === "teamCoding"
+      ? resolveContextCodingPlanUsageSource({
+          accountAccess: contextAccountProviderAccess?.access,
+          cachedTeamSources: contextTeamUsageSourceCacheRef.current.sources,
+          // 原硬取 bigmodelCodingPlan 的 entitlement snapshot，
+          // zai team plan 查不到额度。改为按 connection.providerId 取对应 snapshot。
+          entitlementSnapshot: entitlements[contextPlanConnection.providerId]?.snapshot ?? null,
+          providerId: contextPlanConnection.providerId,
+          teamSelection: contextPlanConnection.selection,
+          subscribedTeamProducts,
+        })
+      : null;
+  }, [
+    connectionAuthenticated,
+    teamUsageScope,
+    contextAccountProviderAccess?.access,
+    contextPlanConnection,
+    entitlements,
+    subscribedTeamProducts,
+  ]);
   useEffect(() => {
     if (!contextCodingPlanUsageTeamSource) {
       return;
@@ -740,13 +744,14 @@ function V4ComposerModelControlsImpl({
     cacheKey: contextCodingPlanUsageTeamSource?.id,
     refreshOnMount: false,
   });
+  const refreshTeamEntitlement = teamEntitlement.refresh;
   const refreshTaskEntitlements = useCallback(
     async (options?: UsageEntitlementRefreshOptions) => {
       // Team Plan 的 context 面板使用 sourceId 隔离自己的 freshness key；任务边界刷新时
       // 与全局 entitlement 一起发布，底层 request key 会合并相同团队请求。
-      await Promise.all([refreshCodingPlanEntitlements(options), teamEntitlement.refresh(options)]);
+      await Promise.all([refreshCodingPlanEntitlements(options), refreshTeamEntitlement(options)]);
     },
-    [refreshCodingPlanEntitlements, teamEntitlement.refresh],
+    [refreshCodingPlanEntitlements, refreshTeamEntitlement],
   );
   const contextCodingPlanUsageProviders = useMemo(() => {
     if (contextPlanConnection.kind !== "personalCoding" || !contextCodingPlanUsageProviderId) {
@@ -766,6 +771,7 @@ function V4ComposerModelControlsImpl({
       },
     ];
   }, [contextAccountProviderAccess, contextCodingPlanUsageProviderId, contextPlanConnection.kind]);
+  const contextUsageAccountAccess = contextCodingPlanUsageProviders[0]?.accountAccess;
   const codingPlanUsageEntitlements = useMemo<
     ChatCodingPlanUsageRemainingConfig["entitlements"]
   >(() => {
@@ -786,7 +792,7 @@ function V4ComposerModelControlsImpl({
     if (
       contextPlanConnection.kind !== "personalCoding" ||
       !contextCodingPlanUsageProviderId ||
-      contextCodingPlanUsageProviders.length === 0
+      contextUsageAccountAccess === undefined
     ) {
       return [];
     }
@@ -796,7 +802,7 @@ function V4ComposerModelControlsImpl({
       {
         sourceId: providerId,
         providerId,
-        accountAccess: contextCodingPlanUsageProviders[0]!.accountAccess,
+        accountAccess: contextUsageAccountAccess,
         snapshot: entitlement?.snapshot ?? null,
         loading: entitlement?.loading ?? providerSourcesLoading,
         error: entitlement?.error ?? null,
@@ -804,7 +810,7 @@ function V4ComposerModelControlsImpl({
     ];
   }, [
     contextCodingPlanUsageProviderId,
-    contextCodingPlanUsageProviders.length,
+    contextUsageAccountAccess,
     contextCodingPlanUsageTeamSource,
     contextPlanConnection.kind,
     entitlements,

@@ -23,7 +23,13 @@ export function useSessionsIndex(
   const { zcodeAgentService } = useServices();
 
   const store = useMemo(
-    () => new SessionsIndexStore(),
+    () => {
+      // 这些输入定义当前资源或请求的 owner；换代必须创建新的实例/令牌，不能删除失效条件。
+      void workspacePath;
+      void workspaceIdentity;
+      void zcodeAgentService;
+      return new SessionsIndexStore();
+    },
     // 每个 workspace 一个 store 实例（依赖变化 → 全新 store 冷启动）。
     [workspacePath, workspaceIdentity, zcodeAgentService],
   );
@@ -40,7 +46,11 @@ export function useSessionsIndex(
   // useSyncExternalStore：store.subscribe/getState 是类字段箭头函数，引用稳定。
   const state = useSyncExternalStore(store.subscribe, store.getState);
   // state 变化即代表列表可能变化；getSessions 内部缓存稳定引用。
-  const sessions = useMemo(() => store.getSessions(), [store, state]);
+  const sessions = useMemo(() => {
+    // 会话列表从 store 读取，store 的快照通知触发列表投影重算。
+    void state;
+    return store.getSessions();
+  }, [store, state]);
 
   return { sessions, status: store.getStatus() };
 }

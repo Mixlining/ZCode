@@ -51,7 +51,12 @@ export function useDraftModelReadinessGate(params: {
   const displayProvider = provider ?? ZCODE_AGENT_PROVIDER;
   const enabled = sessionId === null && isZCodeAgentProvider(displayProvider);
   const gateKey = `${workspaceKey}\u0000${displayProvider}`;
-  const scope = useMemo(() => ({ gateKey }), [enabled, gateKey, modelSelectionService]);
+  const scope = useMemo(() => {
+    // 这些输入定义当前资源或请求的 owner；换代必须创建新的实例/令牌，不能删除失效条件。
+    void modelSelectionService;
+    void enabled;
+    return { gateKey };
+  }, [enabled, gateKey, modelSelectionService]);
   const [state, setState] = useState<DraftModelReadinessState>(() => ({
     scope,
     status: enabled ? "checking" : "ready",

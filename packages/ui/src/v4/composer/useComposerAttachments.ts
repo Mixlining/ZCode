@@ -40,7 +40,6 @@ import {
   updateComposerAttachmentScope,
   useComposerAttachmentUploadStore,
   type ComposerAttachmentUploadItem,
-  type ComposerAttachmentUploadStatus,
 } from "@/store/composerAttachmentUploadStore.js";
 import { uploadComposerAttachment, type AttachmentPutFn } from "@/v4/composer/attachmentUpload.js";
 

@@ -60,7 +60,7 @@ export function GitBranchSwitcher({
   showFooterActions = true,
 }: GitBranchSwitcherProps) {
   const { intl, locale } = useZCodeIntl();
-  const numberFormatter = new Intl.NumberFormat(locale);
+  const numberFormatter = useMemo(() => new Intl.NumberFormat(locale), [locale]);
   const commandListRef = useRef<HTMLDivElement | null>(null);
   const [gitGraphDialogOpen, setGitGraphDialogOpen] = useState(false);
   const {

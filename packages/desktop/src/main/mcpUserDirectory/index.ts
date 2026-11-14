@@ -18,7 +18,6 @@ import type {
 import { readJsonObjectFileForUpdate, updateJsonObjectFile } from "@zcode/services/node";
 import type { McpConfigKeyName } from "./types.js";
 import { isRecord } from "./utils.js";
-import { migrateLegacyCommonMcp } from "./legacy.js";
 import { logger } from "../logger.js";
 
 // 重新导出类型和函数

@@ -52,6 +52,9 @@ function Fixture() {
   const [commits, setCommits] = useState(0);
   const switchMode = useCallback(
     (next: string) => {
+      // 验收夹具切换目标后回调身份同步换代，保持生产确认入口的 scope 边界。
+      void target;
+
       setCommits((n) => n + 1);
       if (next === "plan" || next === "plan-off") setPlan(next === "plan");
       else setMode(next);

@@ -124,7 +124,6 @@ export function useCuaComposerEntry({
         sessionBusy,
       }),
     [
-      cuaPlugin,
       hiddenBySettings,
       lastFailedPluginId,
       isLocalWorkspace,

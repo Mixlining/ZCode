@@ -173,10 +173,12 @@ export function ProjectEditor({
   const epoch = useRef(0);
   const alive = useRef(true);
   useEffect(() => {
+    // cleanup 更新同一请求容器的最新状态，不能捕获旧的代次或保存事务。
+    const epochOwner = epoch;
     alive.current = true;
     return () => {
       alive.current = false;
-      epoch.current++;
+      epochOwner.current++;
       saveFlight.current?.cancelTrust?.();
     };
   }, []);

@@ -31,10 +31,15 @@ export function MarkdownPreviewContent({
   onOpenBrowserUrl,
 }: MarkdownPreviewContentProps) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const selectionScope = useMemo(
-    () => ({}),
-    [content, sourceKey, sourcePath, selectionTarget?.workspaceKey, selectionTarget?.sessionId],
-  );
+  const selectionScope = useMemo(() => {
+    // 这些输入定义当前资源或请求的 owner；换代必须创建新的实例/令牌，不能删除失效条件。
+    void content;
+    void sourceKey;
+    void selectionTarget?.workspaceKey;
+    void sourcePath;
+    void selectionTarget?.sessionId;
+    return {};
+  }, [content, sourceKey, sourcePath, selectionTarget?.workspaceKey, selectionTarget?.sessionId]);
   return (
     <div
       ref={rootRef}

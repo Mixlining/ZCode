@@ -619,8 +619,14 @@ export function McpSettingsSection({
   // snapshot 投影到 B，更不能让后续 effect 把这些敏感配置发送给 B 的 Agent。
   const mcpStoreMatchesActiveWorkspace =
     Boolean(activeWorkspaceKey) && currentMcpStoreWorkspaceKey === activeWorkspaceKey;
-  const servers = mcpStoreMatchesActiveWorkspace ? storedServers : [];
-  const statusSnapshots = mcpStoreMatchesActiveWorkspace ? storedStatusSnapshots : {};
+  const servers = useMemo(
+    () => (mcpStoreMatchesActiveWorkspace ? storedServers : []),
+    [mcpStoreMatchesActiveWorkspace, storedServers],
+  );
+  const statusSnapshots = useMemo(
+    () => (mcpStoreMatchesActiveWorkspace ? storedStatusSnapshots : {}),
+    [mcpStoreMatchesActiveWorkspace, storedStatusSnapshots],
+  );
   const isConfigLoaded = useMcpStore((s) => s.isConfigLoaded);
   const ensureLoadedForWorkspace = useMcpStore((s) => s.ensureLoadedForWorkspace);
   const loadMcpFromUserDirectory = useMcpStore((s) => s.loadMcpFromUserDirectory);

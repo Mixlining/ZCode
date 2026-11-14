@@ -36,7 +36,7 @@ export function createContextQuotaResetOpportunityDismissalStore() {
   const listeners = new Set<() => void>();
 
   return {
-    dismiss(reminder: ContextQuotaResetOpportunityReminder) {
+    dismiss(reminder: Pick<ContextQuotaResetOpportunityReminder, "opportunityKey" | "phase">) {
       const sameOpportunity = snapshot.opportunityKey === reminder.opportunityKey;
       snapshot = {
         initial: sameOpportunity

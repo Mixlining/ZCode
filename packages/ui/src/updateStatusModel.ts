@@ -62,7 +62,7 @@ export function deriveUpdateStatusViewModel({
 
 export function isUpdateActionCompleted(
   action: UpdateActionInFlight,
-  updateState: UpdateStatePayload | null,
+  updateState: Pick<UpdateStatePayload, "kind"> | null,
 ) {
   return (
     // 点击下载后 main 侧可能先广播 checking/idle 等过渡态。

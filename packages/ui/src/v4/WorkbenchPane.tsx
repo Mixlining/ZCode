@@ -326,21 +326,22 @@ export function WorkbenchLeafPane({
   const handleClosePane = useCallback(() => {
     onClosePane(paneId);
   }, [onClosePane, paneId]);
+  const onSessionDeleted = shell.onSessionDeleted;
   const handleSessionDeleted = useCallback(() => {
     if (isGroupPrimary) {
       // group primary 删除过去只关闭布局，shell 仍指向已删除 session。
       // accepted 后必须先解散 group，再让 shell 回当前 workspace draft；secondary
       // 仅恢复普通 session 身份，不能在这里被隐式提升。
       handleClosePane();
-      shell.onSessionDeleted?.();
+      onSessionDeleted?.();
       return;
     }
     if (isPrimary) {
-      shell.onSessionDeleted?.();
+      onSessionDeleted?.();
       return;
     }
     handleClosePane();
-  }, [handleClosePane, isGroupPrimary, isPrimary, shell.onSessionDeleted]);
+  }, [handleClosePane, isGroupPrimary, isPrimary, onSessionDeleted]);
   const handleBindSession = useCallback(
     (createdSessionId: string, origin?: "draft-promotion") => {
       const shouldSyncShellActive = onBindSession(paneId, createdSessionId) !== false;

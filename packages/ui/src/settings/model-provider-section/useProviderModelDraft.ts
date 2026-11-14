@@ -38,6 +38,9 @@ export function useProviderModelDraft({
   resolveRef.current = resolve;
   const resolveRecommended = useCallback(
     (id: string) => {
+      // 模型草稿切换 scope 后重新分发解析回调，避免子组件沿用旧 scope 的回调身份。
+      void scopeKey;
+
       if (!resolveRef.current) throw new Error("Model Config Resolution 未配置");
       // 公共草稿持有个人意图；只向 Host 取推荐基线，不用半有效表单拼装第二份 Overlay。
       return resolveRef.current(id, {});

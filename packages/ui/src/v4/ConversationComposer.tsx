@@ -845,25 +845,28 @@ function ConversationComposerImpl({
     enableExternalFileDrop: true,
     enableWorkspaceFileDrop: true,
   });
+  const handleDragOverComposer = attachmentsApi.handleDragOverComposer;
   const handleConversationDragOver = useCallback(
     (event: DragEvent<HTMLElement>) => {
-      attachmentsApi.handleDragOverComposer(event);
+      handleDragOverComposer(event);
     },
-    [attachmentsApi.handleDragOverComposer],
+    [handleDragOverComposer],
   );
+  const handleDragLeaveComposer = attachmentsApi.handleDragLeaveComposer;
   const handleConversationDragLeave = useCallback(
     (event: DragEvent<HTMLElement>) => {
-      attachmentsApi.handleDragLeaveComposer(event);
+      handleDragLeaveComposer(event);
     },
-    [attachmentsApi.handleDragLeaveComposer],
+    [handleDragLeaveComposer],
   );
+  const handleDropComposer = attachmentsApi.handleDropComposer;
   const handleConversationDrop = useCallback(
     (event: DragEvent<HTMLElement>) => {
       const workspaceFilePayload = readWorkspaceFileDragPayload(event.dataTransfer);
       if (workspaceFilePayload) {
         // 文件树 payload 与 OS File[] 语义不同：只插入 mention，绝不能进入上传队列。
         event.preventDefault();
-        attachmentsApi.handleDropComposer(event);
+        handleDropComposer(event);
         appendWorkspaceFileMentionToComposer({
           inputApiRef,
           currentMarkdown: inputApiRef.current?.getMarkdown() ?? textRef.current,
@@ -874,9 +877,9 @@ function ConversationComposerImpl({
         });
         return;
       }
-      attachmentsApi.handleDropComposer(event);
+      handleDropComposer(event);
     },
-    [attachmentsApi.handleDropComposer, updateText, workspaceIdentity, workspacePath],
+    [handleDropComposer, updateText, workspaceIdentity, workspacePath],
   );
   const conversationDragKind = workspaceFileDragging
     ? "workspace"
@@ -1092,11 +1095,12 @@ function ConversationComposerImpl({
   const draftFocusVersion = useZCodeSessionStore(
     (state) => state.getWorkspaceState(workspacePath, workspaceIdentity).draftFocusVersion,
   );
+  const restoreDraftAttachments = attachmentsApi.restoreDraftAttachments;
   useEffect(() => {
     if (!draftScopeId.startsWith(V4_DRAFT_SCOPE_ROOT)) return;
     const attachments = consumeV4ComposerDraftAttachments(workspaceKey, draftFocusVersion);
-    if (attachments) attachmentsApi.restoreDraftAttachments(attachments);
-  }, [draftFocusVersion, draftScopeId, workspaceKey, attachmentsApi.restoreDraftAttachments]);
+    if (attachments) restoreDraftAttachments(attachments);
+  }, [draftFocusVersion, draftScopeId, workspaceKey, restoreDraftAttachments]);
   const pendingFocusRef = useRef(false);
   // 本次 focus 是否由程序触发（见 flushPendingFocus），供 send_input_focus 过滤非用户动作。
   const programmaticFocusRef = useRef(false);
@@ -1367,6 +1371,7 @@ function ConversationComposerImpl({
   // 刷新/关窗前落盘当前草稿。
   useEffect(() => {
     if (typeof window === "undefined") return;
+    const commandResolutionCleanups = commandResolutionCleanupsRef.current;
     const commitLifecycleContent = captureComposerContentLifecycleCommit();
     const flush = () => persistDraftNow(draftScopeRef.current);
     window.addEventListener("pagehide", flush);
@@ -1381,8 +1386,8 @@ function ConversationComposerImpl({
         window.clearTimeout(draftPersistTimerRef.current);
         draftPersistTimerRef.current = null;
       }
-      for (const cleanup of commandResolutionCleanupsRef.current) cleanup();
-      commandResolutionCleanupsRef.current.clear();
+      for (const cleanup of commandResolutionCleanups) cleanup();
+      commandResolutionCleanups.clear();
     };
   }, [
     captureComposerContentLifecycleCommit,

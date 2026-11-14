@@ -358,6 +358,7 @@ export function V4WorkspaceChatArea({
       onConversationFindMatchStateChange,
       searchResultHighlightRequest,
       onSearchResultHighlightDone,
+      sessionId,
     ],
   );
 

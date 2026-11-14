@@ -14,5 +14,8 @@ export async function refreshRootProviderState(services: RootProviderStateServic
 }
 
 export function useRootProviderStateRefresh(services: IServiceAccessor) {
-  return useCallback(() => refreshRootProviderState(services), [services.providerSettingsService]);
+  return useCallback(
+    () => refreshRootProviderState({ providerSettingsService: services.providerSettingsService }),
+    [services.providerSettingsService],
+  );
 }

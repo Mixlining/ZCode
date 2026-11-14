@@ -154,6 +154,10 @@ export function useWorkspaceSessionsIndexItems(
   const previousItemsRef = useRef<ZCodeTaskMeta[]>([]);
   const previousHydratingRef = useRef<string[]>([]);
   return useMemo(() => {
+    // 聚合读取稳定 subscriptionSet 的各工作区 store；身份及修订通知都必须触发重算。
+    void signature;
+    void tick;
+
     const metas: ZCodeTaskMeta[] = [];
     const hydratingEndpointKeys = new Set<string>();
     const sourceRevisionByScopeKey: Record<string, string> = {};
@@ -210,7 +214,7 @@ export function useWorkspaceSessionsIndexItems(
       sourceRevisionByScopeKey,
       hydratingEndpointKeys: hydrating,
     };
-  }, [signature, subscriptionSet, tick]);
+  }, [signature, subscriptionSet, tick, baseAgentService]);
 }
 
 function buildSummaryIdentityKey(scope: WorkspaceSessionsIndexScope, sessionId: string): string {

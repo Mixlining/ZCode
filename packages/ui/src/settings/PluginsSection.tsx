@@ -379,6 +379,7 @@ function PluginList({
       plugins,
       setEnabled,
       storeItemById,
+      usePluginManagementStore,
     ],
   );
   const handleResetPluginConfig = useCallback(
@@ -398,7 +399,15 @@ function PluginList({
       }
       toast(intl.formatMessage({ id: "settings.plugins.scope.restored" }, { plugin: pluginLabel }));
     },
-    [intl, locale, pluginManagementService, plugins, resetPluginConfig, storeItemById],
+    [
+      intl,
+      locale,
+      pluginManagementService,
+      plugins,
+      resetPluginConfig,
+      storeItemById,
+      usePluginManagementStore,
+    ],
   );
   const uninstall = usePluginUninstall({
     store: usePluginManagementStore,
@@ -414,7 +423,7 @@ function PluginList({
       if (usePluginManagementStore.getState().error) return;
       await refreshAfterPluginChange();
     },
-    [pluginManagementService, refreshAfterPluginChange, updatePlugin],
+    [pluginManagementService, refreshAfterPluginChange, updatePlugin, usePluginManagementStore],
   );
   const [updatingAll, setUpdatingAll] = useState(false);
   const updateAllAbortRef = useRef<AbortController | null>(null);
@@ -1101,6 +1110,10 @@ export function PluginsSection({
 
   const updatePluginCount = useCallback(
     (count: number) => {
+      // 子列表按回调身份重新报告数量，切换目标或 scope 时必须重新收集。
+      void selectedScope.key;
+      void selectedTargetKey;
+
       setCapabilityCounts((current) =>
         current.plugins === count ? current : { ...current, plugins: count },
       );
@@ -1109,6 +1122,10 @@ export function PluginsSection({
   );
   const updateMcpCount = useCallback(
     (count: number) => {
+      // 子列表按回调身份重新报告数量，切换目标或 scope 时必须重新收集。
+      void selectedScope.key;
+      void selectedTargetKey;
+
       setCapabilityCounts((current) =>
         current.mcps === count ? current : { ...current, mcps: count },
       );
@@ -1117,6 +1134,10 @@ export function PluginsSection({
   );
   const updateSkillCount = useCallback(
     (count: number) => {
+      // 子列表按回调身份重新报告数量，切换目标或 scope 时必须重新收集。
+      void selectedScope.key;
+      void selectedTargetKey;
+
       setCapabilityCounts((current) =>
         current.skills === count ? current : { ...current, skills: count },
       );
@@ -1125,6 +1146,10 @@ export function PluginsSection({
   );
   const updateCommandCount = useCallback(
     (count: number) => {
+      // 子列表按回调身份重新报告数量，切换目标或 scope 时必须重新收集。
+      void selectedScope.key;
+      void selectedTargetKey;
+
       setCapabilityCounts((current) =>
         current.commands === count ? current : { ...current, commands: count },
       );

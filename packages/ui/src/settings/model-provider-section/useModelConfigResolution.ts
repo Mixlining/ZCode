@@ -23,7 +23,13 @@ export function useModelConfigResolution({
   const [resolving, setResolving] = useState(false);
   const [defaultsLoaded, setDefaultsLoaded] = useState(false);
   const generationRef = useRef(0);
-  const identity = useMemo(() => ({}), [open, modelId, resolve]);
+  const identity = useMemo(() => {
+    // 这些输入定义当前资源或请求的 owner；换代必须创建新的实例/令牌，不能删除失效条件。
+    void open;
+    void modelId;
+    void resolve;
+    return {};
+  }, [open, modelId, resolve]);
   const identityRef = useRef(identity);
   identityRef.current = identity;
   const enabledRef = useRef(enabled);
@@ -83,6 +89,8 @@ export function useModelConfigResolution({
 
   const idle = useIdleTrigger(() => resolveCurrent());
 
+  const cancelModelResolution = idle.cancel;
+  const scheduleModelResolution = idle.schedule;
   useEffect(() => {
     generationRef.current += 1;
     const normalizedModelId = modelId.trim();
@@ -93,7 +101,7 @@ export function useModelConfigResolution({
       !normalizedModelId ||
       normalizedModelId === originalModelId
     ) {
-      idle.cancel();
+      cancelModelResolution();
       setResult(null);
       setResolving(false);
       setDefaultsLoaded(false);
@@ -102,12 +110,12 @@ export function useModelConfigResolution({
     }
     // 恢复成功与开启智能模式同批提交，沿用同一结果，不紧接着再发一次自动解析。
     if (result?.identity === identity) return;
-    idle.schedule();
+    scheduleModelResolution();
   }, [
     enabled,
     identity,
-    idle.cancel,
-    idle.schedule,
+    cancelModelResolution,
+    scheduleModelResolution,
     modelId,
     open,
     originalModelId,

@@ -49,8 +49,6 @@ import type {
 import type {
   ZCodeTaskListQuery,
   ZCodeTaskListResult,
-  ZCodeTaskListSortBy,
-  ZCodeTaskListWorkspaceScope,
   ZCodeWorkspaceEventSubscriptionParams,
 } from "#src/session/zcodeTaskListTypes.js";
 

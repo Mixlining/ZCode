@@ -329,13 +329,15 @@ export function V4InteractionDialogs({
     [snoozeAutoResolution],
   );
 
+  const pendingInteractionId = pending?.interactionId;
+  const pendingHasAutoResolution = Boolean(pending?.autoResolution);
   useEffect(() => {
     // PermissionRequested 可能先投出 userInput，紧接着 autoResolution durable event 才到。
     // 用户若在这两帧之间完成首个分题操作，先记本地意图，registry 就绪后立即补发一次。
-    if (pending) {
-      void sendSnoozeOnce(pending.interactionId, Boolean(pending.autoResolution));
+    if (pendingInteractionId !== undefined) {
+      void sendSnoozeOnce(pendingInteractionId, pendingHasAutoResolution);
     }
-  }, [pending?.autoResolution, pending?.interactionId, sendSnoozeOnce]);
+  }, [pendingHasAutoResolution, pendingInteractionId, sendSnoozeOnce]);
 
   if (!pending) {
     return null;

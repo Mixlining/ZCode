@@ -90,20 +90,29 @@ export function DirectoryBrowser({
   const { intl } = useZCodeIntl();
 
   // 同一向导收起后会重建浏览器实例；卸载必须撤销旧请求，不能让迟到结果改写恢复后的目录。
+  // 仅挂载时初始化目录；保留原生命周期，后续导航不因 props 对象换代重新发起。
+  const readDirectoryInitialization = useEffectEvent(() => ({
+    initialPath,
+    services,
+    formatError,
+    intl,
+    navigateTo,
+  }));
   useEffect(() => {
+    const requestGuard = requestGuardRef.current;
+    const { initialPath, services, formatError, intl, navigateTo } = readDirectoryInitialization();
     let disposed = false;
-    const homeRequestId = requestGuardRef.current.begin();
+    const homeRequestId = requestGuard.begin();
     if (initialPath) {
       void navigateTo(initialPath);
     } else {
       void services.systemService
         .info()
         .then((info) => {
-          if (!disposed && requestGuardRef.current.isCurrent(homeRequestId))
-            void navigateTo(info.homedir);
+          if (!disposed && requestGuard.isCurrent(homeRequestId)) void navigateTo(info.homedir);
         })
         .catch((err) => {
-          if (disposed || !requestGuardRef.current.isCurrent(homeRequestId)) return;
+          if (disposed || !requestGuard.isCurrent(homeRequestId)) return;
           logger.error("[DirectoryBrowser] 获取系统信息失败:", err);
           setError(
             formatError?.(err) ?? intl.formatMessage({ id: "directoryBrowser.errorSystem" }),
@@ -113,9 +122,8 @@ export function DirectoryBrowser({
     }
     return () => {
       disposed = true;
-      requestGuardRef.current.begin();
+      requestGuard.begin();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const navigateTo = async (

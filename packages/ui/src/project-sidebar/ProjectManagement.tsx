@@ -80,7 +80,11 @@ function ProjectManagementContent() {
     [state.deviceNames],
   );
   // 「最近活动」与疑似原因按目录版本取一次当前时间，渲染之间保持稳定。
-  const now = useMemo(() => Date.now(), [state.tree]);
+  const now = useMemo(() => {
+    // 树换代时固定本次渲染的相对时间基准，不在每个行渲染中反复读取时钟。
+    void state.tree;
+    return Date.now();
+  }, [state.tree]);
   const rows = useMemo(
     () =>
       buildProjectManagementRows({

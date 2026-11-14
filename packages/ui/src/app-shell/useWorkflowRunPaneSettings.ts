@@ -66,7 +66,11 @@ export function useWorkflowRunPaneSettings({
   const sessionModel = useMemo(() => workflowSessionModelOf(sessionConfig), [sessionConfig]);
   const host = useMemo<WorkflowRunSettingsHost>(
     () => ({
-      ...workflowRunTabScope(tab),
+      ...workflowRunTabScope({
+        workspacePath: tab.workspacePath,
+        workspaceIdentity: tab.workspaceIdentity,
+        remoteSessionId: tab.remoteSessionId,
+      }),
       ...(sessionModel === undefined ? {} : { sessionModel }),
       // 与 Stop / Resume 同类：不携 baseRevision，workId ≡ runId。
       apply: (change) =>
@@ -105,7 +109,11 @@ export function useWorkflowRunPaneSettings({
     if (follow === undefined || !successorArrived) return;
     setFollow(undefined);
     onOpenWorkflowRun?.({
-      ...workflowRunTabScope(tab),
+      ...workflowRunTabScope({
+        workspacePath: tab.workspacePath,
+        workspaceIdentity: tab.workspaceIdentity,
+        remoteSessionId: tab.remoteSessionId,
+      }),
       parentSessionId: tab.parentSessionId,
       toolCallId: follow.toolCallId,
       runId: follow.runId,

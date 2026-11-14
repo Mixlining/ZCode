@@ -74,7 +74,7 @@ export function usePluginUiSidePaneModel({
       ...(tab.workspaceIdentity ? { workspaceIdentity: tab.workspaceIdentity } : {}),
       sessionId: tab.parentSessionId,
     }),
-    [tab.parentSessionId, tab.workspaceIdentity, tab.workspacePath],
+    [tab.parentSessionId, tab.workspaceIdentity, tab.workspacePath, tab.remoteSessionId],
   );
   usePluginUiResourceDeltaFeed(lease?.store, feedScope);
 

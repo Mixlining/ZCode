@@ -1,7 +1,7 @@
 import { dispatchPluginUiResourceDelta } from "@/plugin-ui/app/pluginUiResourceNotificationBus.js";
 import { buildPluginUiSessionKey, type PluginUiSessionScope } from "@/plugin-ui/contract.js";
 import type { ConversationProjectionStore } from "@/v4/conversationProjectionStore.js";
-import { useEffect } from "react";
+import { useEffect, useEffectEvent } from "react";
 
 /**
  * 把一个会话投影 store 的 live-only 增量接到资源通知路由表。
@@ -47,7 +47,9 @@ export function usePluginUiResourceDeltaFeed(
   scope: PluginUiSessionScope | null,
 ): void {
   const sessionKey = scope ? buildPluginUiSessionKey(scope) : null;
+  const readCurrentDeltaScope = useEffectEvent(() => scope);
   useEffect(() => {
+    const scope = readCurrentDeltaScope();
     if (!store || !scope) return;
     return attachPluginUiResourceDeltaFeed(store, scope);
     // scope 按会话键比较（SessionPane 每次渲染可能新建对象），不把对象本身放进依赖。

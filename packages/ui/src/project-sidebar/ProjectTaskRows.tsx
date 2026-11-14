@@ -39,9 +39,10 @@ export const ProjectTaskRow = memo(function Row({
       onSelect(task.workspacePath, task.taskId, task.workspaceIdentity, undefined, task.unreadAt),
     [onSelect, task],
   );
+  const openTaskFiles = presentation.onOpenTaskFiles;
   const openFiles = useCallback(
-    () => presentation.onOpenTaskFiles?.(task, remoteSessionId ?? undefined),
-    [presentation.onOpenTaskFiles, task, remoteSessionId],
+    () => openTaskFiles?.(task, remoteSessionId ?? undefined),
+    [openTaskFiles, task, remoteSessionId],
   );
   // 原因：内联 JSX 每次都会创建新引用，导致 TaskList 的 memo 比较失效。
   const organizationActions = useMemo(() => <TaskGroupTaskMenu task={task} />, [task]);

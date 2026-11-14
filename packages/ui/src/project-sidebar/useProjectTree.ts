@@ -70,10 +70,12 @@ export function useProjectTree(isDesktop = false) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const serial = useRef(0);
-  const reads = useMemo(
-    () => ({ flight: null as Promise<void> | null, dirty: false }),
-    [service, remoteService],
-  );
+  const reads = useMemo(() => {
+    // 这些输入定义当前资源或请求的 owner；换代必须创建新的实例/令牌，不能删除失效条件。
+    void remoteService;
+    void service;
+    return { flight: null as Promise<void> | null, dirty: false };
+  }, [service, remoteService]);
   const pendingCommits = useRef(
     new Set<{
       target: ProjectTaskRef;
@@ -367,7 +369,7 @@ export function useProjectTree(isDesktop = false) {
         },
       )
       .catch((cause) => logger.warn("[project-sidebar] Controller 活动订阅失败", cause));
-  }, [registry, scopeKey, sourceRevision, sourceVersion]);
+  }, [registry, scopeKey, sourceRevision, sourceVersion, scopes.length]);
   useEffect(() => {
     void observeSources();
   }, [observeSources]);
@@ -381,7 +383,8 @@ export function useProjectTree(isDesktop = false) {
     return () => window.removeEventListener("focus", onFocus);
   }, [refreshDirectory]);
   useEffect(() => {
-    const subscriptions = (registry ? [] : scopes).map((scope) =>
+    const subscribedScopes: typeof scopes = registry ? [] : JSON.parse(scopeKey);
+    const subscriptions = subscribedScopes.map((scope) =>
       services.zcodeTaskService.onDynamicWorkspaceEvent(scope)((event) => {
         if (event.type === "workspace_task_list_changed") void refresh();
       }),
@@ -399,6 +402,9 @@ export function useProjectTree(isDesktop = false) {
   const activity = useWorkspaceSessionsIndexItems(registry ? [] : scopes);
   const lastDisplay = useRef<ProjectTree>(EMPTY);
   const displayedTree = useMemo(() => {
+    // 活动 registry 是事实 owner，修订通知使稳定引用下的活动投影重新计算。
+    void revision;
+
     const activities = registry
       ? registry.readActivities()
       : activity.items.flatMap((task) => {

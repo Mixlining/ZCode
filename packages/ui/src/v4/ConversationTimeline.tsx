@@ -16,6 +16,7 @@ import {
   type ReactNode,
   type TouchEvent as ReactTouchEvent,
   type WheelEvent as ReactWheelEvent,
+  useEffectEvent,
 } from "react";
 import { flushSync } from "react-dom";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -1325,9 +1326,10 @@ function ConversationTimelineImpl({
     virtualizer,
   ]);
 
+  const liveUnitHeightCacheKey = getUnitHeightCacheKey(liveUnit ?? undefined);
   useLayoutEffect(() => {
     const element = liveTailRef.current;
-    const cacheKey = getUnitHeightCacheKey(liveUnit ?? undefined);
+    const cacheKey = liveUnitHeightCacheKey;
     if (!element || cacheKey === undefined) return;
 
     const cacheHeight = (entry?: ResizeObserverEntry) => {
@@ -1371,7 +1373,7 @@ function ConversationTimelineImpl({
     commitFollowing,
     getActiveUserScrollIntent,
     isContentWidthChanging,
-    liveUnit?.key,
+    liveUnitHeightCacheKey,
     markLayoutScrollGuard,
     scrollToBottom,
   ]);
@@ -1684,6 +1686,8 @@ function ConversationTimelineImpl({
   // V4 迁移删除旧 ChatView 滚动 hook 后，sessionKey effect 仍固定滚到底部，
   // 导致残留的 renderer-local 记忆模块彻底断线。这里在清测高并重新 measure 后按 scope
   // 恢复；首个 layout 立即写入防闪动，下一帧再校正异步测高，但必须把滚动权让给用户。
+  // 行窗口增长不能重置会话滚动恢复；仅在既有 scope 生命周期内读取当前窗口标识。
+  const readRestoreRowWindowKey = useEffectEvent(() => rowWindowKey);
   useLayoutEffect(() => {
     clearUserScrollIntent();
     heightCacheRef.current?.clear();
@@ -1706,7 +1710,7 @@ function ConversationTimelineImpl({
       scrollMemoryKey && restoredState && pendingRestoreWait
         ? {
             key: scrollMemoryKey,
-            rowWindowKey,
+            rowWindowKey: readRestoreRowWindowKey(),
             state: restoredState,
             waitFor: pendingRestoreWait,
           }
@@ -1819,6 +1823,7 @@ function ConversationTimelineImpl({
     scrollMemoryKey,
     totalCount,
     totalSize,
+    rows.length,
   ]);
 
   // prepend 锚定：loadOlder 前插历史行时平移 scrollTop，阅读位置不跳。

@@ -57,6 +57,6 @@ export function useSourceServerOperationLogs(
       disposed = true;
       subscription?.dispose();
     };
-  }, [management, profileKey]);
+  }, [management, profileKey, enabled]);
   return { logsByProfileId };
 }

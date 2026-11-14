@@ -245,11 +245,8 @@ export function useModelProviderNavigation({
     customProviders,
     codingPlanItems,
     connectionModeCodingPlanItems,
-    // 左侧导航分组标题在这个 memo 内格式化。
-    // 语言切换时 provider/权益引用可能不变，必须依赖 intl 才能刷新旧 locale 的文案。
     intl,
     connectionSelections,
-    pendingConnectionSelections,
     presetProviders,
     modelProviders,
   ]);

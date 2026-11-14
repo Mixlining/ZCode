@@ -53,6 +53,7 @@ export function useWorkspaceFileSearchFilterEntries(
     backend.setPacked(packed, rootPath);
   }, [backendRef, packed, rootPath]);
 
+  const { limit, requireQuery } = options;
   useEffect(() => {
     const backend = backendRef.current;
     if (!backend) {
@@ -60,7 +61,7 @@ export function useWorkspaceFileSearchFilterEntries(
     }
     let cancelled = false;
     setFiltering(true);
-    void backend.filter(query, options).then((result) => {
+    void backend.filter(query, { limit, requireQuery }).then((result) => {
       if (cancelled) {
         return;
       }
@@ -77,7 +78,7 @@ export function useWorkspaceFileSearchFilterEntries(
     // entries 必须在依赖里：索引重建（setEntries）后要重新发起过滤，否则结果
     // 停留在旧索引的空列表（曾在删除 entryMap 时误删此触发链）。
     // options 每次渲染都是新对象字面量；按字段展开为依赖避免每帧重过滤。
-  }, [backendRef, options.limit, options.requireQuery, packed, query, rootPath]);
+  }, [backendRef, limit, requireQuery, packed, query, rootPath]);
 
   useEffect(() => {
     return () => {

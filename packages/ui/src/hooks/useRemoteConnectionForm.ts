@@ -114,7 +114,9 @@ export function useRemoteConnectionForm({
     setKind(availableKinds[0] ?? "ssh");
   }, [availableKinds, kind]);
 
+  const readPreserveDraftOnOpen = useEffectEvent(() => preserveDraftOnOpen);
   useEffect(() => {
+    const preserveDraftOnOpen = readPreserveDraftOnOpen();
     dockerOptionsActiveLoadIdRef.current += 1;
     dockerOptionsInFlightLoadIdRef.current = null;
 

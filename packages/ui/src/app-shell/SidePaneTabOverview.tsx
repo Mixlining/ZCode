@@ -55,62 +55,30 @@ export function SidePaneTabOverview({
   const [query, setQuery] = useState("");
   const [currentTime, setCurrentTime] = useState(() => Date.now());
   const queryParts = useMemo(() => normalizeSearchQuery(query), [query]);
-  const tabItems = useMemo(
-    () =>
-      tabs.map((tab) => {
-        const title = getLocalizedSidePaneTabTitle(tab, labels);
-        const hint = getSidePaneTabSearchHint(tab);
-        const typeLabel = getSidePaneTabTypeLabel(tab, labels);
-        return {
-          tab,
-          title,
-          hint,
-          openedAtLabel: labels.relativeTime(tab.openedAt ?? currentTime),
-          searchFields: buildSearchFields(title, hint, typeLabel),
-        };
-      }),
-    [
-      currentTime,
-      labels.browserTitle,
-      labels.codeViewerTitle,
-      labels.relativeTime,
-      labels.reviewTitle,
-      labels.treemappingTitle,
-      labels.whiteboardTitle,
-      labels.developerToolsTitle,
-      labels.terminalTitle,
-      labels.subagentTypeLabel,
-      tabs,
-    ],
-  );
-  const recentClosedItems = useMemo(
-    () =>
-      recentClosedTabs.map((item) => {
-        const title = getLocalizedSidePaneTabTitle(item.tab, labels);
-        const hint = getSidePaneTabSearchHint(item.tab);
-        const typeLabel = getSidePaneTabTypeLabel(item.tab, labels);
-        return {
-          item,
-          title,
-          hint,
-          closedAtLabel: labels.relativeTime(item.closedAt),
-          searchFields: buildSearchFields(title, hint, typeLabel),
-        };
-      }),
-    [
-      currentTime,
-      labels.browserTitle,
-      labels.codeViewerTitle,
-      labels.relativeTime,
-      labels.reviewTitle,
-      labels.treemappingTitle,
-      labels.whiteboardTitle,
-      labels.developerToolsTitle,
-      labels.terminalTitle,
-      labels.subagentTypeLabel,
-      recentClosedTabs,
-    ],
-  );
+  const tabItems = tabs.map((tab) => {
+    const title = getLocalizedSidePaneTabTitle(tab, labels);
+    const hint = getSidePaneTabSearchHint(tab);
+    const typeLabel = getSidePaneTabTypeLabel(tab, labels);
+    return {
+      tab,
+      title,
+      hint,
+      openedAtLabel: labels.relativeTime(tab.openedAt ?? currentTime),
+      searchFields: buildSearchFields(title, hint, typeLabel),
+    };
+  });
+  const recentClosedItems = recentClosedTabs.map((item) => {
+    const title = getLocalizedSidePaneTabTitle(item.tab, labels);
+    const hint = getSidePaneTabSearchHint(item.tab);
+    const typeLabel = getSidePaneTabTypeLabel(item.tab, labels);
+    return {
+      item,
+      title,
+      hint,
+      closedAtLabel: labels.relativeTime(item.closedAt),
+      searchFields: buildSearchFields(title, hint, typeLabel),
+    };
+  });
   const filteredTabItems = useMemo(
     () => filterAndRankSearchItems(tabItems, queryParts),
     [queryParts, tabItems],

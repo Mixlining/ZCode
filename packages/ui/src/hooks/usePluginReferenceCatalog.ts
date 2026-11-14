@@ -120,10 +120,16 @@ export function usePluginReferenceCatalog(
   // 每次 Picker 重新打开、workspace/session/remote attachment 改变，或 services
   // 实例重连时都创建新的请求身份。渲染只接受同一 scope 的结果，因此 effect 尚未
   // 发出新请求的首帧也不会短暂泄露上一 authority 的 catalog。
-  const requestScope = useMemo(
-    () => ({}),
-    [enabled, remoteSessionId, requestKey, rpcReady, services, workspacePath],
-  );
+  const requestScope = useMemo(() => {
+    // 这些输入定义当前资源或请求的 owner；换代必须创建新的实例/令牌，不能删除失效条件。
+    void enabled;
+    void requestKey;
+    void rpcReady;
+    void remoteSessionId;
+    void workspacePath;
+    void services;
+    return {};
+  }, [enabled, remoteSessionId, requestKey, rpcReady, services, workspacePath]);
 
   useEffect(() => {
     if (!enabled || !workspacePath || !rpcReady) {

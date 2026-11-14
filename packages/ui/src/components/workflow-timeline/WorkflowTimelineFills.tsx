@@ -8,6 +8,7 @@ import {
   useState,
   type FocusEvent,
   type PointerEvent,
+  useEffectEvent,
 } from "react";
 import { cn } from "@/components/lib/utils.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -25,24 +26,29 @@ export const FILL_FRESH_MS = 2_000;
 export function useFreshFills(
   fills: readonly { holeId: string; filledAt?: number }[],
 ): ReadonlySet<string> {
-  const compute = () => {
+  const compute = (currentFills = fills) => {
     const now = Date.now();
     return new Set(
-      fills
+      currentFills
         .filter((fill) => fill.filledAt !== undefined && now - fill.filledAt < FILL_FRESH_MS)
         .map((fill) => fill.holeId),
     );
   };
   const [fresh, setFresh] = useState<ReadonlySet<string>>(compute);
   const key = fills.map((fill) => `${fill.holeId}@${fill.filledAt ?? ""}`).join("\u0000");
-  useEffect(() => {
-    const next = compute();
-    setFresh(next);
-    if (next.size === 0) return undefined;
+  // 补全身份/时刻拥有计时生命周期，读取最新数组不把每帧引用变化当作重新计时。
+  const freshSnapshot = useEffectEvent(() => {
+    const next = compute(fills);
     const now = Date.now();
     const latest = Math.max(
       ...fills.filter((fill) => next.has(fill.holeId)).map((fill) => fill.filledAt ?? now),
     );
+    return { next, now, latest };
+  });
+  useEffect(() => {
+    const { next, now, latest } = freshSnapshot();
+    setFresh(next);
+    if (next.size === 0) return undefined;
     const timer = setTimeout(() => setFresh(new Set()), Math.max(0, latest + FILL_FRESH_MS - now));
     return () => clearTimeout(timer);
     // 只按补全的身份与时刻重算（`key`）：`fills` 数组每帧是新引用，按它依赖会让定时器每帧重置。

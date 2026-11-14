@@ -138,6 +138,7 @@ export function useRemoteConnectionFlow(options: RemoteConnectionFlowOptions) {
   const [discardPending, setDiscardPending] = useState(false);
   const [completionRunning, setCompletionRunning] = useState(false);
   const [blockedCompletion, setBlockedCompletion] = useState<(() => Promise<void>) | null>(null);
+  const reopenAfterCompletionFailure = useEffectEvent(() => applyOpenState(true));
   useEffect(() => {
     if (confirmationPending || discardPending || !blockedCompletion) return;
     // 在关闭确认的 owner 处理完选择后重入，避免确认关闭与完成回调抢跑。
@@ -149,7 +150,7 @@ export function useRemoteConnectionFlow(options: RemoteConnectionFlowOptions) {
         if (entryEpochRef.current !== epoch) return;
         setError(getErrorMessage(cause));
         setCurrentStep("connecting");
-        applyOpenState(true);
+        reopenAfterCompletionFailure();
       })
       .finally(() => {
         if (entryEpochRef.current === epoch) setCompletionRunning(false);
@@ -1207,7 +1208,7 @@ export function useRemoteConnectionFlow(options: RemoteConnectionFlowOptions) {
     );
   };
 
-  const handleConfirmInstall = useCallback(() => {
+  const handleConfirmInstall = () => {
     logger.lifecycle.info("[remote-connection] 用户确认安装", {
       hasTarget: Boolean(pendingInstallConfirmation),
       activeRequestId: activeRequestIdRef.current,
@@ -1218,7 +1219,7 @@ export function useRemoteConnectionFlow(options: RemoteConnectionFlowOptions) {
     const intent = pendingCompletionIntentRef.current;
     setPendingInstallConfirmation(null);
     void startRemoteConnection(target, true, intent.preferredDirectoryPath, intent.options);
-  }, [pendingInstallConfirmation, startRemoteConnection, loading]);
+  };
 
   const handleCancelInstall = useCallback(() => {
     if (completion === "device-management" && onCancelled) {
@@ -1279,6 +1280,8 @@ export function useRemoteConnectionFlow(options: RemoteConnectionFlowOptions) {
     completion,
     onCancelled,
     updateConnectingRequestId,
+    handleCancelSession,
+    setConnectedSessionId,
   ]);
 
   const handleCancelConnection = useCallback(() => {
@@ -1294,47 +1297,39 @@ export function useRemoteConnectionFlow(options: RemoteConnectionFlowOptions) {
     });
   }, [abandonConnection, cancelOwnedSourceUpdate, updateCancelable]);
 
-  const handleStartPendingRemoteConnection = useCallback(
-    (automaticServerUpdateAttempted = false) => {
-      if (!pendingRemoteTarget) {
-        void handleConnect();
-        return;
-      }
+  const handleStartPendingRemoteConnection = (automaticServerUpdateAttempted = false) => {
+    if (!pendingRemoteTarget) {
+      void handleConnect();
+      return;
+    }
 
-      if (
-        pendingRemoteTarget.kind === "ssh" &&
-        !pendingRemoteTarget.password &&
-        !pendingRemoteTarget.privateKeyPath
-      ) {
-        resetFeedback();
-        setAliasCredentialsPending(true);
-        return;
-      }
-      const intent = pendingCompletionIntentRef.current;
-      void startRemoteConnection(
-        pendingRemoteTarget,
-        false,
-        intent.preferredDirectoryPath,
-        intent.options,
-        automaticServerUpdateAttempted,
-      );
-    },
-    [handleConnect, pendingRemoteTarget, startRemoteConnection],
-  );
+    if (
+      pendingRemoteTarget.kind === "ssh" &&
+      !pendingRemoteTarget.password &&
+      !pendingRemoteTarget.privateKeyPath
+    ) {
+      resetFeedback();
+      setAliasCredentialsPending(true);
+      return;
+    }
+    const intent = pendingCompletionIntentRef.current;
+    void startRemoteConnection(
+      pendingRemoteTarget,
+      false,
+      intent.preferredDirectoryPath,
+      intent.options,
+      automaticServerUpdateAttempted,
+    );
+  };
 
-  const handleUpgradeRequiredServer = useCallback(async () => {
+  const handleUpgradeRequiredServer = async () => {
     if (!upgradeProfileId || !pendingRemoteTarget || pendingRemoteTarget.kind === "server") return;
     if (await updateRequiredServer(upgradeProfileId, pendingRemoteTarget)) {
       handleStartPendingRemoteConnection(true);
     }
-  }, [
-    handleStartPendingRemoteConnection,
-    pendingRemoteTarget,
-    upgradeProfileId,
-    updateRequiredServer,
-  ]);
+  };
 
-  const handleDowngradeServer = useCallback(async () => {
+  const handleDowngradeServer = async () => {
     if (!downgradeProfileId || !pendingRemoteTarget || pendingRemoteTarget.kind === "server")
       return;
     const state = sourceManagementSnapshot?.states.find(
@@ -1350,15 +1345,7 @@ export function useRemoteConnectionFlow(options: RemoteConnectionFlowOptions) {
     if (await updateRequiredServer(downgradeProfileId, pendingRemoteTarget, true)) {
       handleStartPendingRemoteConnection(true);
     }
-  }, [
-    confirmDialog,
-    downgradeProfileId,
-    handleStartPendingRemoteConnection,
-    intl,
-    pendingRemoteTarget,
-    sourceManagementSnapshot,
-    updateRequiredServer,
-  ]);
+  };
 
   const reinstallServer = reinstallProfile?.sourceServerId
     ? sourceManagementSnapshot?.servers.find(
@@ -1391,7 +1378,7 @@ export function useRemoteConnectionFlow(options: RemoteConnectionFlowOptions) {
   const reinstallAvailable =
     Boolean(reinstallProfile) && reinstallAvailability.visible && reinstallAvailability.enabled;
 
-  const handleReinstallServer = useCallback(async () => {
+  const handleReinstallServer = async () => {
     if (!reinstallProfile || !pendingRemoteTarget || pendingRemoteTarget.kind === "server") return;
     const epoch = entryEpochRef.current;
     const confirmed = await confirmDialog(
@@ -1410,16 +1397,7 @@ export function useRemoteConnectionFlow(options: RemoteConnectionFlowOptions) {
     if (await updateRequiredServer(reinstallProfile.profileId, pendingRemoteTarget)) {
       handleStartPendingRemoteConnection(true);
     }
-  }, [
-    activeProfileName,
-    confirmDialog,
-    handleStartPendingRemoteConnection,
-    intl,
-    pendingRemoteTarget,
-    recognizedDeviceName,
-    reinstallProfile,
-    updateRequiredServer,
-  ]);
+  };
 
   const handleBackToConnection = useCallback(async () => {
     if (!connectedSessionId) {
@@ -1436,7 +1414,13 @@ export function useRemoteConnectionFlow(options: RemoteConnectionFlowOptions) {
     } catch (sessionError) {
       setError(getErrorMessage(sessionError));
     }
-  }, [connectedSessionId, onCancelSession, updateConnectingRequestId]);
+  }, [
+    connectedSessionId,
+    onCancelSession,
+    updateConnectingRequestId,
+    setConnectedSessionId,
+    resetConnectionLogs,
+  ]);
 
   const handleSelectDirectory = useCallback(
     async (path: string) => {
@@ -1712,7 +1696,7 @@ export function useRemoteConnectionFlow(options: RemoteConnectionFlowOptions) {
     // Root 用 flowActive 拒绝新增意图；显式替换已有 openIntentId 仍需撤销等待中的完成动作。
     if (isRemoteConnectionFlowActive(flowSnapshot) || upgradeLoading) return;
     acceptOpenIntent();
-  }, [open, openIntentId, flowActive]);
+  }, [open, openIntentId, flowActive, flowSnapshot, upgradeLoading]);
 
   const applyKindPreference = useEffectEvent(() => {
     if (!preferredKind || !availableKinds.includes(preferredKind)) return;

@@ -1913,6 +1913,15 @@ global:
   acceptedUpstreamSnapshot: scripts/architecture/upstream-snapshot.json
 
 exceptions:
+  - id: pre-push-hooks-existing-upstream-edit
+    rule: unmanaged-new-file
+    paths:
+      - packages/ui/src/app-shell/useWorkflowRunPaneSettings.ts
+      - packages/ui/src/hooks/useBrowserSitePermissions.ts
+      - packages/ui/src/lib/workflowRunAckStore.ts
+      - packages/ui/src/v4/telemetry/useSessionOpenArmsTelemetry.ts
+      - packages/ui/src/workspace-file-search/useWorkspaceFileSearchFilter.ts
+    reason: 已入库并由 upstream snapshot 准入的五个文件仅修复 Hooks 依赖或捕获 cleanup 的请求容器（spec/pre-push-warning-cleanup.md）；接口、状态 owner、import 与永久禁用边界不变。本条只登记此次存量编辑，不接管整个 UI；后续改变接口或所有权需单独整理模块边界。
   - id: region-copy-suggested-prompts-edit
     rule: unmanaged-new-file
     paths: [packages/ui/src/v4/featureSuggestedPrompts.ts]

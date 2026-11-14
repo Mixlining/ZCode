@@ -1155,11 +1155,13 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
   );
 
   useEffect(() => {
+    const panelElement = workspaceSidebarPanelElementRef.current;
+    const shellElement = workspaceShellRef.current;
     return () => {
       setWorkspaceSidebarResizeActive({
         active: false,
-        panelElement: workspaceSidebarPanelElementRef.current,
-        shellElement: workspaceShellRef.current,
+        panelElement,
+        shellElement,
       });
     };
   }, []);
@@ -1364,7 +1366,10 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
   const gitDirtyFileCount = useMemo(() => {
     // 关键业务逻辑：同一个文件可能同时出现在 staged / unstaged。
     // 这里按 path 去重后再统计，避免入口里“未提交更改文件数”被重复计算。
-    return getGitDirtyFileCount(gitState.datasets);
+    return getGitDirtyFileCount({
+      staged: gitState.datasets.staged,
+      unstaged: gitState.datasets.unstaged,
+    });
   }, [gitState.datasets.staged, gitState.datasets.unstaged]);
   // Bug 原因：此前本地 workspace 没有 identity 时只按路径取第一个 tab；同路径远程 tab 在前时，
   // 本地任务的 Header 会显示远程设备与连接状态。与 TabStore 共用匹配规则，未传 identity 只命中本地 tab。

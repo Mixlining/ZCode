@@ -171,6 +171,7 @@ export function HookForm({
     storageLevel,
     timeout,
     type,
+    hook?.shell,
   ]);
 
   return (

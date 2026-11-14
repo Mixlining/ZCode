@@ -153,6 +153,18 @@ export function useProjectSidebarPreferences(
       return next;
     });
   }, []);
+  // 排序只依赖顺序与旧 key 的迁移映射；展开/视图偏好变化不应重建排序投影。
+  const sort = useCallback(
+    (items: VirtualProject[]) => {
+      // 删除只由权威目录移除行；提前清理排序键会把刷新前的旧行追加到末尾，造成跳动。
+      const order = reconcileProjectOrder(preferences.order, items.map(projectKey), upgradeKeys);
+      const positions = new Map(order.map((key, index) => [key, index]));
+      return [...items].sort(
+        (a, b) => positions.get(projectKey(a))! - positions.get(projectKey(b))!,
+      );
+    },
+    [preferences.order, upgradeKeys],
+  );
   return useMemo(
     () => ({
       order: preferences.order,
@@ -161,14 +173,7 @@ export function useProjectSidebarPreferences(
           projectKey(project),
           ...order.filter((key) => key !== projectKey(project)),
         ]),
-      sort: (items: VirtualProject[]) => {
-        // 删除只由权威目录移除行；提前清理排序键会把刷新前的旧行追加到末尾，造成跳动。
-        const order = reconcileProjectOrder(preferences.order, items.map(projectKey), upgradeKeys);
-        const positions = new Map(order.map((key, index) => [key, index]));
-        return [...items].sort(
-          (a, b) => positions.get(projectKey(a))! - positions.get(projectKey(b))!,
-        );
-      },
+      sort,
       reorder: (section: VirtualProject[], active: string, over: string) =>
         changeOrder((order) => moveProjectOrder(order, section.map(projectKey), active, over)),
       view: preferences.view,
@@ -194,6 +199,6 @@ export function useProjectSidebarPreferences(
         }),
       setExpanded,
     }),
-    [preferences, changeOrder, setView, setExpanded, legacyExpansion, upgradeKeys],
+    [preferences, changeOrder, setView, setExpanded, legacyExpansion, sort],
   );
 }

@@ -62,22 +62,30 @@ export function useFileMentionProvider(
   const limit =
     getMentionGroupLimitForQuery(query, defaultPreviewLimit) ?? WORKSPACE_FILE_SEARCH_DISPLAY_CAP;
   // 连接实例也属于作用域：相同路径的远程重连不能接纳旧 Host 的查询结果。
-  const scope = useMemo(
-    () => ({
+  const scope = useMemo(() => {
+    // 这些输入定义当前资源或请求的 owner；换代必须创建新的实例/令牌，不能删除失效条件。
+    void workspaceIdentity;
+    void projectId;
+    void projectRevision;
+    void sessionId;
+    void fileService;
+    void projectService;
+    void workspacePath;
+    void enabled;
+    return {
       error: null as Error | null,
       missRefreshUsed: false,
-    }),
-    [
-      fileService,
-      projectService,
-      workspacePath,
-      workspaceIdentity,
-      enabled,
-      sessionId,
-      projectId,
-      projectRevision,
-    ],
-  );
+    };
+  }, [
+    fileService,
+    projectService,
+    workspacePath,
+    workspaceIdentity,
+    enabled,
+    sessionId,
+    projectId,
+    projectRevision,
+  ]);
   const [result, setResult] = useState<{
     scope: typeof scope;
     query: string;

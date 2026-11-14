@@ -102,5 +102,9 @@ export function useWorkflowRunAcknowledged(): (runId: string) => boolean {
   const store = getWorkflowRunAckStore();
   const version = useSyncExternalStore(store.subscribe, store.getVersion, store.getVersion);
   // 谓词随版本换引用：调用方把它放进 useMemo 依赖，集合一变行选择就重算。
-  return useMemo(() => (runId: string) => store.isAcknowledged(runId), [store, version]);
+  return useMemo(() => {
+    // ack owner 的外部版本通知触发查询重算，store 本身的引用保持稳定。
+    void version;
+    return (runId: string) => store.isAcknowledged(runId);
+  }, [store, version]);
 }

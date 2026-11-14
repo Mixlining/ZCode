@@ -69,6 +69,8 @@ export function useBotBoundGroups(bot: BotConfig) {
     }
   }, [refresh]);
   useEffect(() => {
+    // cleanup 更新同一请求容器的最新状态，不能捕获旧的代次或保存事务。
+    const revisionOwner = revision;
     if (BOTS_DISABLED) return;
     alive.current = true;
     void reload();
@@ -77,7 +79,7 @@ export function useBotBoundGroups(bot: BotConfig) {
     });
     return () => {
       alive.current = false;
-      ++revision.current;
+      ++revisionOwner.current;
       subscription.dispose();
     };
   }, [broadcastService, reload]);

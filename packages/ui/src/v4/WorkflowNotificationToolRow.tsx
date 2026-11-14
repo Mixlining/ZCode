@@ -179,16 +179,6 @@ function WorkflowNotificationBaseRow({
     return () => clearInterval(timer);
   }, []);
 
-  const openRunLink = onOpenRun ? (
-    <button
-      type="button"
-      onClick={onOpenRun}
-      className="text-ui-sm text-foreground-subtle decoration-dotted underline-offset-2 hover:text-foreground hover:underline"
-    >
-      {intl.formatMessage({ id: "chat.toolCall.workflow.openRunDetails" })}
-    </button>
-  ) : null;
-
   const isEscalation = notification.kind === "escalation";
   const isStall = notification.kind === "stall";
   const isBlocked = notification.kind === "blocked";
@@ -260,6 +250,15 @@ function WorkflowNotificationBaseRow({
       : undefined;
 
   const renderContent = useCallback(() => {
+    const openRunLink = onOpenRun ? (
+      <button
+        type="button"
+        onClick={onOpenRun}
+        className="text-ui-sm text-foreground-subtle decoration-dotted underline-offset-2 hover:text-foreground hover:underline"
+      >
+        {intl.formatMessage({ id: "chat.toolCall.workflow.openRunDetails" })}
+      </button>
+    ) : null;
     if (notification.kind === "escalation") {
       const contextHeading = intl.formatMessage({ id: "chat.toolCall.workflow.escalate.context" });
       return (
@@ -385,7 +384,7 @@ function WorkflowNotificationBaseRow({
         {openRunLink}
       </div>
     );
-  }, [notification, theme, waited, openRunLink, intl]);
+  }, [notification, theme, waited, onOpenRun, intl]);
 
   const toolId = `${TID_CHAT_WORKFLOW_NOTIFICATION_ROW}-${testIdKey}`;
 

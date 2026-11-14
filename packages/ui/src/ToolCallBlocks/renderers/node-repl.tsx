@@ -221,6 +221,7 @@ export function NodeReplToolCallBlock(context: ToolCallBlockRenderContext) {
     ),
     [summary.detail, summary.status, summary.title],
   );
+  const onOpenNodeReplCodeViewer = context.onOpenCodeViewer;
   const renderContent = useCallback(
     () => (
       // ToolLayout 已提供展开间距，Node REPL 再叠加横向 padding 会让 BUA
@@ -268,14 +269,14 @@ export function NodeReplToolCallBlock(context: ToolCallBlockRenderContext) {
         {model.persistedResult && fullResultLabel ? (
           <div className="flex flex-wrap items-center gap-2 text-ui-base text-foreground-subtle">
             <span>{fullResultLabel}</span>
-            {context.onOpenCodeViewer ? (
+            {onOpenNodeReplCodeViewer ? (
               <Button
                 type="button"
                 variant="link"
                 size="xs"
                 className="px-0"
                 onClick={() =>
-                  context.onOpenCodeViewer?.({
+                  onOpenNodeReplCodeViewer?.({
                     type: "file",
                     title: resultLabel,
                     path: model.persistedResult!.artifactPath,
@@ -344,7 +345,7 @@ export function NodeReplToolCallBlock(context: ToolCallBlockRenderContext) {
     ),
     [
       context.isRunning,
-      context.onOpenCodeViewer,
+      onOpenNodeReplCodeViewer,
       copyDetailsLabel,
       copyResultLabel,
       detailContentLabel,

@@ -18,7 +18,7 @@ import {
   TID_SETTINGS_TOOL_SEARCH_SELECT,
   TID_SETTINGS_TOOL_SEARCH_OPTION,
 } from "@zcode/shared/test-ids";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import type { IPlatformService } from "@zcode/shared";
 import {
   TID_SETTINGS_LOCALE_SELECT_ITEM,
@@ -249,26 +249,28 @@ export function GeneralSectionContent({
   const isTerminalFontFamilyDirty = normalizedTerminalFontFamily !== terminalFontFamily;
   const integratedTerminalShellValue =
     integratedTerminalShell.mode === "shell" ? integratedTerminalShell.id : "auto";
-  const selectedIntegratedTerminalShellOption =
-    integratedTerminalShell.mode === "shell"
-      ? (integratedTerminalShellOptions.find(
-          (option) => option.id === integratedTerminalShell.id,
-        ) ?? {
-          dialect: integratedTerminalShell.dialect,
-          id: integratedTerminalShell.id,
-          label: integratedTerminalShell.label,
-          path: integratedTerminalShell.path,
-          source: "system" as const,
-        })
-      : undefined;
-  const visibleIntegratedTerminalShellOptions = selectedIntegratedTerminalShellOption
-    ? [
-        selectedIntegratedTerminalShellOption,
-        ...integratedTerminalShellOptions.filter(
-          (option) => option.id !== selectedIntegratedTerminalShellOption.id,
-        ),
-      ]
-    : integratedTerminalShellOptions;
+  const visibleIntegratedTerminalShellOptions = useMemo(() => {
+    const selectedIntegratedTerminalShellOption =
+      integratedTerminalShell.mode === "shell"
+        ? (integratedTerminalShellOptions.find(
+            (option) => option.id === integratedTerminalShell.id,
+          ) ?? {
+            dialect: integratedTerminalShell.dialect,
+            id: integratedTerminalShell.id,
+            label: integratedTerminalShell.label,
+            path: integratedTerminalShell.path,
+            source: "system" as const,
+          })
+        : undefined;
+    return selectedIntegratedTerminalShellOption
+      ? [
+          selectedIntegratedTerminalShellOption,
+          ...integratedTerminalShellOptions.filter(
+            (option) => option.id !== selectedIntegratedTerminalShellOption.id,
+          ),
+        ]
+      : integratedTerminalShellOptions;
+  }, [integratedTerminalShell, integratedTerminalShellOptions]);
 
   const handleTerminalFontFamilySave = useCallback(async () => {
     await onTerminalFontFamilyChange(normalizedTerminalFontFamily);

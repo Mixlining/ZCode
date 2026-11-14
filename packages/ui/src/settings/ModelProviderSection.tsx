@@ -560,7 +560,6 @@ export function ModelProviderSection({
       refreshCodingPlanEntitlements,
       refreshCodingPlanProducts,
       refreshCodingPlanPurchaseTokenState,
-      refreshModelProviderPanelAfterAuthChange,
     ],
   );
 

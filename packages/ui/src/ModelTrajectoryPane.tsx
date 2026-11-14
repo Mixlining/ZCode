@@ -57,7 +57,7 @@ export function ModelTrajectoryPane({
     workspaceIdentity,
   );
 
-  const records = data?.records ?? [];
+  const records = useMemo(() => data?.records ?? [], [data?.records]);
   const sourceFiles = data?.sourceFiles;
   const sourceDirectory = useMemo(
     () => getModelTrajectorySourceDirectory(sourceFiles),

@@ -44,14 +44,15 @@ export function useModelProviders(target: {
       }),
     [effectiveModelProviders, providerSettingsView],
   );
+  const commitProviderRead = providerSettingsRead.commit;
   const commitProviderSettingsView = useCallback(
     (view: ProviderSettingsView): void => {
       // 远端 mutation 的返回值是目标 Environment 已刷新后的权威 View，
       // 只依赖 onDidChange 会在 attachment 换代/事件丢失时留下删除前的 UI 快照。
       // 统一在 Hook 边界提交返回 View，仍由 useProviderSettingsServiceView 做 Service/revision 守卫。
-      providerSettingsRead.commit(view);
+      commitProviderRead(view);
     },
-    [providerSettingsRead.commit],
+    [commitProviderRead],
   );
   const [refreshing, setRefreshing] = useState(false);
   const latestRefreshTokenRef = useRef(0);

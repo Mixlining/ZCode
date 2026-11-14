@@ -779,6 +779,9 @@ export function SessionPane({
     (store) => store.getWorkspaceState(workspacePath, workspaceIdentity).draftFocusVersion,
   );
   const pendingAtEntry = useMemo(() => {
+    // 外部草稿 owner 的 generation 是显式重读信号，逐字编辑与草稿换代不能混淆。
+    void composerDraftGeneration;
+
     if (sessionId !== null || newTaskComposerScope.projectId !== null) return null;
     const pending = readPendingTaskDraft(newTaskComposerScope);
     return pending?.workspacePath === workspacePath && pending.commandId ? pending : null;
@@ -950,26 +953,29 @@ export function SessionPane({
       }),
     );
   }, [eligibleShareItems, sessionId, shareActive, snapshot?.rows.window, syncAvailableTurns]);
-  const selectedShareProductTurnIds = useMemo(
-    () =>
-      !ZCODE_VENDOR_ACTIONS_DISABLED && sessionId
-        ? getConversationShareSelectedProductTurnIds(
-            useConversationShareSelectionStore.getState(),
-            sessionId,
-          )
-        : [],
-    [sessionId, shareDraft],
-  );
+  const selectedShareProductTurnIds = useMemo(() => {
+    // 分享草稿改变会改写外部选择器，重新读取确认范围。
+    void shareDraft;
+    return !ZCODE_VENDOR_ACTIONS_DISABLED && sessionId
+      ? getConversationShareSelectedProductTurnIds(
+          useConversationShareSelectionStore.getState(),
+          sessionId,
+        )
+      : [];
+  }, [sessionId, shareDraft]);
   const preflightShareProductTurnIds = useMemo(
     // 选择器预检读取待确认草稿；取消后自动回到已确认范围，不提前提交选择。
-    () =>
-      !ZCODE_VENDOR_ACTIONS_DISABLED && sessionId
+    () => {
+      // 分享草稿改变会改写外部选择器，重新读取待确认范围。
+      void shareDraft;
+      return !ZCODE_VENDOR_ACTIONS_DISABLED && sessionId
         ? getConversationShareSelectedProductTurnIds(
             useConversationShareSelectionStore.getState(),
             sessionId,
             "pending",
           )
-        : [],
+        : [];
+    },
     [sessionId, shareDraft],
   );
   const sharePreflightMetaRef = useRef<{
@@ -986,40 +992,40 @@ export function SessionPane({
     supportedArtifactTypes: [],
   });
   const [sharePreflightVersion, setSharePreflightVersion] = useState(0);
-  const selectedShareTurnFingerprints = useMemo(
-    () =>
-      ZCODE_VENDOR_ACTIONS_DISABLED
-        ? EMPTY_SHARE_FINGERPRINTS
-        : new Map(
-            preflightShareProductTurnIds.map((productTurnId) => [
+  const selectedShareTurnFingerprints = useMemo(() => {
+    // 预检缓存写入 ref 后用版本通知重算，不能删除该失效信号。
+    void sharePreflightVersion;
+    return ZCODE_VENDOR_ACTIONS_DISABLED
+      ? EMPTY_SHARE_FINGERPRINTS
+      : new Map(
+          preflightShareProductTurnIds.map((productTurnId) => [
+            productTurnId,
+            conversationShareTurnFingerprint(
+              snapshot?.rows.window ?? [],
               productTurnId,
-              conversationShareTurnFingerprint(
-                snapshot?.rows.window ?? [],
-                productTurnId,
-                workspacePath,
-                {
-                  workspaceKey: workspaceIdentity?.trim() || workspacePath,
-                  remoteSessionId: remoteSessionId ?? "",
-                  sessionId: sessionId ?? "",
-                  revision: snapshot?.revision,
-                  logEpoch: snapshot?.logEpoch,
-                  capabilitiesFingerprint: sharePreflightMetaRef.current.capabilitiesFingerprint,
-                },
-              ),
-            ]),
-          ),
-    [
-      remoteSessionId,
-      preflightShareProductTurnIds,
-      sessionId,
-      sharePreflightVersion,
-      snapshot?.logEpoch,
-      snapshot?.revision,
-      snapshot?.rows.window,
-      workspaceIdentity,
-      workspacePath,
-    ],
-  );
+              workspacePath,
+              {
+                workspaceKey: workspaceIdentity?.trim() || workspacePath,
+                remoteSessionId: remoteSessionId ?? "",
+                sessionId: sessionId ?? "",
+                revision: snapshot?.revision,
+                logEpoch: snapshot?.logEpoch,
+                capabilitiesFingerprint: sharePreflightMetaRef.current.capabilitiesFingerprint,
+              },
+            ),
+          ]),
+        );
+  }, [
+    remoteSessionId,
+    preflightShareProductTurnIds,
+    sessionId,
+    sharePreflightVersion,
+    snapshot?.logEpoch,
+    snapshot?.revision,
+    snapshot?.rows.window,
+    workspaceIdentity,
+    workspacePath,
+  ]);
   const eligibleShareProductTurnIds = useMemo(() => {
     if (ZCODE_VENDOR_ACTIONS_DISABLED) return EMPTY_SHARE_ITEMS;
     if (eligibleShareItems.length === 0) return [];
@@ -1052,6 +1058,9 @@ export function SessionPane({
   }, [preflightShareProductTurnIds, sharePreflightCacheKey]);
   const shareHydratedSessionRef = useRef<string | null>(null);
   const sharePreflight = useMemo<ConversationSharePreflightState>(() => {
+    // 预检缓存写入 ref 后用版本通知重算，不能删除该失效信号。
+    void sharePreflightVersion;
+
     if (!shareActive || !sessionId || compactForRemoteControl) {
       return { status: "idle" };
     }
@@ -1261,10 +1270,13 @@ export function SessionPane({
       }
     }
   }, [conversationTelemetry, snapshot]);
-  const fileChangesRequestCache = useMemo(
-    () => new Map<string, Promise<V4ConversationFileChangesResult>>(),
-    [fileChanges, sessionId, snapshot?.logEpoch],
-  );
+  const fileChangesRequestCache = useMemo(() => {
+    // 这些输入定义当前资源或请求的 owner；换代必须创建新的实例/令牌，不能删除失效条件。
+    void sessionId;
+    void snapshot?.logEpoch;
+    void fileChanges;
+    return new Map<string, Promise<V4ConversationFileChangesResult>>();
+  }, [fileChanges, sessionId, snapshot?.logEpoch]);
   const [dismissedErrorKeys, setDismissedErrorKeys] = useState<readonly string[]>([]);
   const [sendSubmissionError, setSendSubmissionError] = useState<ZCodeUiError | null>(null);
   const [paneLocalSummaryPanelVariantOverride, setPaneLocalSummaryPanelVariantOverride] =
@@ -1753,14 +1765,17 @@ export function SessionPane({
     // Bug 原因：V4 session 配置只存在 ConversationSnapshot，legacy task 配置桶一直为空；
     // 用户从 custom model 会话新建任务时，startDraft 只能继承 workspace 默认模型。
     // 这里仅把权威配置叠到完整目录并按 task 缓存，不改变 session 或 workspace 事实源。
-    useZCodeSessionStore
-      .getState()
-      .setTaskConfigOptions(
-        workspacePath,
-        sessionId,
-        projectSessionConfigToTaskConfigOptions(workspaceConfigOptions, snapshot.config),
-        workspaceIdentity,
-      );
+    useZCodeSessionStore.getState().setTaskConfigOptions(
+      workspacePath,
+      sessionId,
+      projectSessionConfigToTaskConfigOptions(workspaceConfigOptions, {
+        provider: snapshot.config.provider,
+        model: snapshot.config.model,
+        mode: snapshot.config.mode,
+        thought: snapshot.config.thought,
+      }),
+      workspaceIdentity,
+    );
   }, [
     sessionId,
     snapshot?.config.mode,
@@ -2105,10 +2120,12 @@ export function SessionPane({
   const projectDirectory = useOptionalProjectDirectoryActions();
   const commitCreatedTask = projectDirectory?.commitCreatedTask;
   const refreshTaskGroups = projectDirectory?.refreshTaskGroups;
-  const draftNavigation = useMemo(
-    () => ({ controller: new AbortController() }),
-    [workspaceKey, sessionId],
-  );
+  const draftNavigation = useMemo(() => {
+    // 这些输入定义当前资源或请求的 owner；换代必须创建新的实例/令牌，不能删除失效条件。
+    void workspaceKey;
+    void sessionId;
+    return { controller: new AbortController() };
+  }, [workspaceKey, sessionId]);
   useEffect(() => {
     // StrictMode 会重放 effect；旧 scope 的请求仍使用各自的取消信号。
     draftNavigation.controller = new AbortController();
@@ -3463,15 +3480,16 @@ export function SessionPane({
     snapshot?.sessionId === effectiveSessionId &&
     (!snapshot.runtimeInitialization || snapshot.runtimeInitialization.status === "ready"),
   );
+  const draftPermissionConfig = snapshot?.config;
   useEffect(() => {
-    if (sessionId === null && effectiveSessionId && pluginUiRuntimeReady && snapshot) {
-      observeDraftPermissionGrant(effectiveSessionId, snapshot.config);
+    if (sessionId === null && effectiveSessionId && pluginUiRuntimeReady && draftPermissionConfig) {
+      observeDraftPermissionGrant(effectiveSessionId, draftPermissionConfig);
     }
   }, [
     sessionId,
     effectiveSessionId,
     pluginUiRuntimeReady,
-    snapshot?.config,
+    draftPermissionConfig,
     observeDraftPermissionGrant,
   ]);
   useLayoutEffect(() => {
@@ -3665,16 +3683,7 @@ export function SessionPane({
       // 消费 store 已按 deliveryKind 去重后的同一 realtime online 事件。
       showModelChangeNotice(transition.from, transition.to);
     },
-    [
-      effectiveSessionId,
-      focused,
-      provider,
-      sessionId,
-      showModelChangeNotice,
-      workspaceIdentity,
-      workspaceKey,
-      workspacePath,
-    ],
+    [effectiveSessionId, focused, showModelChangeNotice],
   );
   const onlineModelTransitionHandlerRef = useRef(handleOnlineModelTransition);
   useLayoutEffect(() => {

@@ -87,7 +87,11 @@ export function useModelSelectionServiceView(
   const normalizedService = service ?? null;
   // 调用方可每次 render 创建参数对象；所有权按选择内容绑定，不按对象引用反复订阅。
   const inputKey = input === undefined ? undefined : JSON.stringify(input);
-  const stableInput = useMemo(() => input, [inputKey]);
+  // RPC 输入只含严格协议中的字符串选择；以已有序列化 key 还原，等价新对象不重建订阅。
+  const stableInput = useMemo<ModelSelectionViewInput | undefined>(
+    () => (inputKey === undefined ? undefined : (JSON.parse(inputKey) as ModelSelectionViewInput)),
+    [inputKey],
+  );
   const [reloadVersion, reload] = useReducer((value: number) => value + 1, 0);
   const [owned, setOwned] = useState<OwnedModelSelectionState>(() => ({
     service: normalizedService,

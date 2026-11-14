@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import type {
   GitBranchMutationResult,
   GitLocalBranchListResult,
@@ -41,7 +41,7 @@ export function useGitBranchSwitcher({
 }: UseGitBranchSwitcherOptions) {
   const { gitService } = useServices();
   const { intl, locale } = useZCodeIntl();
-  const numberFormatter = new Intl.NumberFormat(locale);
+  const numberFormatter = useMemo(() => new Intl.NumberFormat(locale), [locale]);
   const [open, setOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createBranchName, setCreateBranchName] = useState("");

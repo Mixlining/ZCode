@@ -71,10 +71,15 @@ export function useSkills(options: UseSkillsOptions): ConversationSkillCatalogSt
 
   // 用 scope 身份隔离渲染：key 切换后的 effect 尚未执行时也只返回空态，避免旧 Session
   // 或旧 remote attachment 的 Skill 在一帧内泄漏到新 Composer。
-  const requestScope = useMemo(
-    () => ({}),
-    [options.enabled, remoteSessionId, requestKey, rpcReady, services],
-  );
+  const requestScope = useMemo(() => {
+    // 这些输入定义当前资源或请求的 owner；换代必须创建新的实例/令牌，不能删除失效条件。
+    void remoteSessionId;
+    void options.enabled;
+    void services;
+    void requestKey;
+    void rpcReady;
+    return {};
+  }, [options.enabled, remoteSessionId, requestKey, rpcReady, services]);
 
   useEffect(() => {
     if (!options.enabled || !options.workspacePath || !rpcReady) return;

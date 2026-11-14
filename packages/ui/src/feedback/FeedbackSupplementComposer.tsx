@@ -119,7 +119,7 @@ export function FeedbackSupplementComposer({
         setError(getErrorMessage(readError));
       }
     },
-    [attachments.length],
+    [attachments.length, formatMessage],
   );
 
   const removeAttachment = useCallback((id: string) => {

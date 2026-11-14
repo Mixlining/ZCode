@@ -129,14 +129,7 @@ export function usePluginUiToolCallModel(
       resourceUri: presentation.resourceUri,
       title: toolCall.title ?? presentation.pluginId,
     });
-  }, [
-    onOpenSidePane,
-    presentation,
-    routedSurfaceKey,
-    toolCall.title,
-    toolCall.toolId,
-    toolSurfaceKey,
-  ]);
+  }, [onOpenSidePane, presentation, toolCall.title, toolCall.toolId]);
 
   const handleDisplayModeRequest = useCallback(
     (mode: McpAppsDisplayMode) => {
@@ -148,9 +141,10 @@ export function usePluginUiToolCallModel(
     },
     [onOpenSidePane, openInSidePane],
   );
+  const openToolBrowserUrl = context.onOpenBrowserUrl;
   const handleOpenExternal = useCallback(
-    (url: string) => context.onOpenBrowserUrl?.(url),
-    [context.onOpenBrowserUrl],
+    (url: string) => openToolBrowserUrl?.(url),
+    [openToolBrowserUrl],
   );
 
   // MCP 的业务失败仍可能是 completed 且带 UI 元数据；只检查有结果会让错误行争抢同一页面并留下空白卡片。

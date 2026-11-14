@@ -8,12 +8,14 @@ export function useBotPrivateDeliveryRetry(botId: string, deliveryId: string) {
   const generation = useRef(0);
   const busy = useRef(false);
   useEffect(() => {
+    // cleanup 更新同一请求容器的最新状态，不能捕获旧的代次或保存事务。
+    const generationOwner = generation;
     if (BOTS_DISABLED) return;
-    ++generation.current;
+    ++generationOwner.current;
     busy.current = false;
     setState("idle");
     return () => {
-      ++generation.current;
+      ++generationOwner.current;
     };
   }, [botId, deliveryId]);
   const retry = useCallback(async () => {

@@ -32,15 +32,20 @@ export function useStartPlanRecommendation(
     refreshOnMount: !CODING_PLAN_DISABLED,
     mountRefreshReason: "access",
   });
+  const {
+    error: entitlementError,
+    snapshot: entitlementSnapshot,
+    refresh: refreshEntitlement,
+  } = entitlement;
   return useCallback(
     async (selection: ModelSelection): Promise<ModelSelection | null> => {
       // 套餐硬关闭：不再做体验套餐推荐，提交时直接沿用用户选择。
       if (CODING_PLAN_DISABLED) return selection;
       // 提交不等待网络；过期额度跳过推荐，访问刷新沿用一分钟节流与失败退避。
-      void entitlement.refresh({ silent: true, reason: "access" });
-      const candidate = entitlement.error
+      void refreshEntitlement({ silent: true, reason: "access" });
+      const candidate = entitlementError
         ? null
-        : resolveStartPlanRecommendation(selection, view, entitlement.snapshot);
+        : resolveStartPlanRecommendation(selection, view, entitlementSnapshot);
       if (!candidate || !services) return selection;
       try {
         // 每次读同一 Host 的偏好，覆盖另一入口或手机刚勾选后的下一次提交。
@@ -86,9 +91,9 @@ export function useStartPlanRecommendation(
       return choice === "confirm" ? candidate : selection;
     },
     [
-      entitlement.error,
-      entitlement.snapshot,
-      entitlement.refresh,
+      entitlementError,
+      entitlementSnapshot,
+      refreshEntitlement,
       intl,
       requestChoice,
       services,

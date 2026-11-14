@@ -359,6 +359,7 @@ function OffPeakEditViewEnabled({
     title,
     workspacePath,
     selectedProject,
+    showToast,
   ]);
 
   // 闲时与定时任务复用同一权限 option，并通过 provider 保持会话权限词表一致。

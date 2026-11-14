@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
+  useEffectEvent,
 } from "react";
 import type { ZCodeElicitationQuestion, ZCodeElicitationRequest } from "@zcode/shared";
 import type { InteractionAutoResolution } from "@zcode/shared/zcode-protocol-v4";
@@ -72,7 +73,11 @@ function getElicitationCountdownRefreshDelay(
 function useElicitationCountdownSeconds(autoResolution: InteractionAutoResolution | undefined) {
   const [clockNow, setClockNow] = useState(Date.now);
 
+  const readCountdownResolution = useEffectEvent(() => autoResolution);
+  const countdownDeadlineAt =
+    autoResolution?.state === "snoozed" ? autoResolution.snoozedAt : autoResolution?.deadlineAt;
   useEffect(() => {
+    const autoResolution = readCountdownResolution();
     if (!autoResolution || autoResolution.state === "snoozed") return;
     let timeoutId: number | undefined;
     const schedule = () => {
@@ -93,11 +98,7 @@ function useElicitationCountdownSeconds(autoResolution: InteractionAutoResolutio
       window.removeEventListener("focus", schedule);
       document.removeEventListener("visibilitychange", schedule);
     };
-  }, [
-    autoResolution?.state,
-    autoResolution?.startedAt,
-    autoResolution?.state === "snoozed" ? autoResolution.snoozedAt : autoResolution?.deadlineAt,
-  ]);
+  }, [autoResolution?.state, autoResolution?.startedAt, countdownDeadlineAt]);
 
   return getElicitationCountdownSeconds(autoResolution, clockNow);
 }

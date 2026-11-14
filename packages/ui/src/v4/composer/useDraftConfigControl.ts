@@ -697,7 +697,7 @@ export function useDraftConfigControl(params: {
         setStoredState(nextState);
       }
     },
-    [incarnation, isCurrentScope, scopeKey, scopePersistenceTarget],
+    [incarnation, isCurrentScope, scopeKey, scopePersistenceTarget, bumpScopeContentRevision],
   );
   const captureComposerContentLifecycleCommit = useCallback(() => {
     const target = scopePersistenceTarget;
@@ -911,6 +911,7 @@ export function useDraftConfigControl(params: {
       workspaceIdentity,
       workspacePath,
       rootScope,
+      createDraftPersistence,
     ],
   );
 
