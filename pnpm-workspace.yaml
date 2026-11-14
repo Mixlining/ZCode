@@ -35,7 +35,7 @@ allowBuilds:
   unsafe-pointer: true
 overrides:
   "@electron/rebuild>node-abi": 4.40.0
-  electron-to-chromium: 1.5.477
+  electron-to-chromium: 1.5.485
   react: 19.3.1
   react-dom: 19.3.1
   # MCP 2.4.0 的 ^4.2.0 在旧 lockfile 中仍解析到 4.6.5，导致其 StandardSchema

@@ -469,3 +469,15 @@ git diff --check
 - Docker E2E 工具链升级。
 - 修复 renderer/preload/CLI 的既存类型基线问题。
 - 应用启动、App 单测、E2E、制品构建。
+
+## 后续补丁升级：Electron 44.11.3
+
+2026-11-14 在 `44.10.2` 基线上做同 major 补丁升级。本节记录本轮目标；上方「版本矩阵」「T2」与「验收场景」保留为 2026-11 首次升级的历史记录，不回写。
+
+- Electron `44.10.2` → `44.11.3`；Chromium `152.0.7977.169`、内置 Node `24.22.2`、ABI `149` 均未变化，无 breaking change。
+- electron-to-chromium `1.5.477` → `1.5.485`：`1.5.477` 缺少 `44.11.3` 映射，WDIO 的 ChromeDriver 解析会失败。
+- electron-builder `26.18.0` → `26.18.1`，electron-updater `6.8.11` → `6.8.12`；`scripts/electron-builder-binaries-macos.json` 的 toolchain 同步到 `26.18.1`，macOS 工具资产仍为 `7zip@1.0.0` / `dmg-builder@1.2.5`。
+- node-abi override 保持 `4.40.0`（已能解析 Electron 44 → ABI `149`）。
+- 唯一版本来源仍是 `packages/desktop/package.json`；electron-builder 配置、CI 缓存 key 与 warm workflow 触发路径均为动态读取，三个 GitHub workflow 无差异。
+- 既有硬编码版本断言同步：`electronBuilderSecurity.test.ts`、`e2eElectronBinary.test.ts`、`chromedriverPreflight.test.ts`；未新增测试。
+- 验证：静态门禁 + 上述三个工程测试 + `scripts/test/verify-electron-builder-binaries-mirror.test.mjs`；第三方 notices/inventory 重新生成。不启动应用、不跑 E2E、不构建制品。

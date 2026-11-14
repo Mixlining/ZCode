@@ -860,7 +860,7 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 
 - buildcheck@0.0.7 — MIT
 
-- builder-util-runtime@9.7.0 — MIT
+- builder-util-runtime@9.7.1 — MIT
 
 - bun-ffi-structs@0.2.2 — MIT
 
@@ -1132,11 +1132,11 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 
 - ee-first@1.1.1 — MIT
 
-- electron-to-chromium@1.5.477 — ISC
+- electron-to-chromium@1.5.485 — ISC
 
-- electron-updater@6.8.11 — MIT
+- electron-updater@6.8.12 — MIT
 
-- electron@44.10.2 — MIT
+- electron@44.11.3 — MIT
 
 - elkjs@0.12.0 — EPL-2.0 OR GPL-3.0-or-later
 
@@ -34515,9 +34515,9 @@ IN THE SOFTWARE.
 
 ### Notice bed8d0ab3e6031817f775a641ff37313b0f5591bc8ba0ed79b978dafbd4231ce
 
-- builder-util-runtime@9.7.0: LICENSE
+- builder-util-runtime@9.7.1: LICENSE
 
-- electron-updater@6.8.11: LICENSE
+- electron-updater@6.8.12: LICENSE
 
 
 
@@ -40124,7 +40124,7 @@ THE SOFTWARE.
 
 ### Notice 25ba5c59dad3e0dd8f9540beaa0f0a86a10e3aec35af5fdc8e88c5f6a5c0d8c6
 
-- electron-to-chromium@1.5.477: LICENSE
+- electron-to-chromium@1.5.485: LICENSE
 
 
 
@@ -40139,7 +40139,7 @@ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH RE
 
 ### Notice e45cc9748a256e86701d991817c8e668cf8d82354998a302009e2b945a29b853
 
-- electron-to-chromium@1.5.477: README.md (license section)
+- electron-to-chromium@1.5.485: README.md (license section)
 
 
 
@@ -40151,9 +40151,9 @@ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH RE
 
 ### Notice 5154e165bd6c2cc0cfbcd8916498c7abab0497923bafcd5cb07673fe8480087d
 
-- electron@44.10.2: dist/LICENSE
+- electron@44.11.3: dist/LICENSE
 
-- electron@44.10.2: LICENSE
+- electron@44.11.3: LICENSE
 
 
 
@@ -40184,7 +40184,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ### Notice 56a37896ff6edec2b75b41465b66dd768f2d294c315255164898ca3e685bbd30
 
-- electron@44.10.2: README.md (license section)
+- electron@44.11.3: README.md (license section)
 
 
 

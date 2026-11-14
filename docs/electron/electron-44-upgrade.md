@@ -2,7 +2,7 @@
 
 ## 当前 pin（2026-11）
 
-- Electron 精确 pin 为 `44.10.2`（Chromium `152.0.7977.169`，内置 Node `24.22.2`），唯一来源仍是 `packages/desktop/package.json`。
+- Electron 精确 pin 为 `44.11.3`（Chromium `152.0.7977.169`，内置 Node `24.22.2`），唯一来源仍是 `packages/desktop/package.json`。44.11.3 相对 44.10.2 仅含补丁修复，Chromium、内置 Node 与 ABI 均未变化。
 - 本文以下的 `44.7.0` smoke、artifact 与兼容性证据均为历史记录，不随当前 pin 更新，也不删除。
 
 ## 目标与边界
