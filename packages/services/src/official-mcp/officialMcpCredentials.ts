@@ -348,7 +348,7 @@ export async function resolveOfficialMcpCredentials(
       material.zcodeUserId !== identity.snapshot.userId ||
       material.sessionRevision !== identity.snapshot.sessionRevision ||
       material.zcodeJwtToken !== identity.snapshot.jwt
-        )
+    )
       continue;
     const codingPlanAuthorization = material.accessToken.trim();
     if (!codingPlanAuthorization) return fail("official_auth_unavailable");

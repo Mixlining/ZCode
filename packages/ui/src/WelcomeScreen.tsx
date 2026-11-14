@@ -159,8 +159,8 @@ export function WelcomeScreen({ onComplete }: WelcomeScreenProps) {
       <div className="relative z-10 flex h-dvh flex-col items-center overflow-y-auto px-4 pb-6 pt-14 sm:px-6">
         <div className="flex w-full flex-1 shrink-0 items-center justify-center py-6">
           <section className="flex w-full max-w-sm shrink-0 flex-col gap-7 rounded-2xl bg-background p-8 text-ui-base/relaxed shadow-md sm:p-10">
-        <LoginPanel active onComplete={onComplete} />
-      </section>
+            <LoginPanel active onComplete={onComplete} />
+          </section>
         </div>
         <footer className="pointer-events-none flex shrink-0 flex-col items-center gap-2 text-center text-ui-xs text-foreground-subtle">
           <p className="flex flex-wrap items-center justify-center gap-x-1">
@@ -490,7 +490,7 @@ export function LoginPanel({ active, onComplete }: LoginPanelProps) {
               </div>
             ) : null}
 
-            {!loadingProviders && !loginProvider ? (
+            {!CODING_PLAN_DISABLED && !loadingProviders && !loginProvider ? (
               <Alert
                 variant="warning"
                 className="flex items-center justify-center gap-2 text-center"
@@ -507,20 +507,20 @@ export function LoginPanel({ active, onComplete }: LoginPanelProps) {
               <div className="flex flex-col items-center">
                 {/* 官方登录硬禁用：不打开统一 OAuth 入口，仅保留 API key。 */}
                 {!CODING_PLAN_DISABLED ? (
-                      <Button
-                        variant="default"
-                  className="h-11 w-full rounded-lg text-ui-base font-medium"
-                        size="lg"
-                  data-testid={TID_OAUTH_LOGIN_BUTTON}
-                  disabled={!loginProvider}
-                  onClick={() => {
-                    if (loginProvider) void startTrackedLogin(loginProvider);
-                  }}
-                      >
-                        <span className="min-w-0 truncate">
-                    {intl.formatMessage({ id: "login.singleLogin.browserButton" })}
-                        </span>
-                      </Button>
+                  <Button
+                    variant="default"
+                    className="h-11 w-full rounded-lg text-ui-base font-medium"
+                    size="lg"
+                    data-testid={TID_OAUTH_LOGIN_BUTTON}
+                    disabled={!loginProvider}
+                    onClick={() => {
+                      if (loginProvider) void startTrackedLogin(loginProvider);
+                    }}
+                  >
+                    <span className="min-w-0 truncate">
+                      {intl.formatMessage({ id: "login.singleLogin.browserButton" })}
+                    </span>
+                  </Button>
                 ) : null}
                 <Button
                   variant="outline"
@@ -597,20 +597,20 @@ export function LoginPanel({ active, onComplete }: LoginPanelProps) {
             </Button>
             {/* 第三行固定占位，授权链接晚到时只替换内容，不改变卡片高度和按钮位置。 */}
             <div className="mt-4 flex h-7 items-center justify-center gap-1 text-center text-ui-sm text-foreground-subtle">
-            {authorizeUrl ? (
+              {authorizeUrl ? (
                 <>
-                <span>{intl.formatMessage({ id: "login.oauth.browserNotOpened" })}</span>
-                <button
-                  type="button"
-                  className="font-medium text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  data-testid={TID_OAUTH_COPY_LOGIN_LINK}
-                  onClick={() => void handleCopyLoginLink()}
-                >
-                  {intl.formatMessage({ id: "login.oauth.copyLoginLink" })}
-                </button>
+                  <span>{intl.formatMessage({ id: "login.oauth.browserNotOpened" })}</span>
+                  <button
+                    type="button"
+                    className="font-medium text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    data-testid={TID_OAUTH_COPY_LOGIN_LINK}
+                    onClick={() => void handleCopyLoginLink()}
+                  >
+                    {intl.formatMessage({ id: "login.oauth.copyLoginLink" })}
+                  </button>
                 </>
-            ) : null}
-          </div>
+              ) : null}
+            </div>
           </div>
         )}
 

@@ -446,10 +446,7 @@ export async function collectPreviousRuntimeAgentInterruptions(
         continue;
       }
       if (run !== undefined && run.status !== "running") continue;
-      const metadata = { ...(part.metadata ?? {}), ...(part.state.metadata ?? {}) } as Record<
-        string,
-        unknown
-      >;
+      const metadata = { ...part.metadata, ...part.state.metadata } as Record<string, unknown>;
       const childSessionId =
         typeof metadata.childSessionId === "string"
           ? metadata.childSessionId

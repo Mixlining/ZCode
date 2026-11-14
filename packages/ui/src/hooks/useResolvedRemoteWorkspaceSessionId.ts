@@ -1,4 +1,4 @@
-import { useTabStore } from "@/store/TabStoreProvider.js";
+import { useOptionalTabStore } from "@/store/TabStoreProvider.js";
 import { useShallow } from "zustand/react/shallow";
 import { isWorkspaceTab, type WorkspaceTabState } from "@/store/tabStore.js";
 import { useRemoteWorkspaceSessionStore } from "@/store/remoteWorkspaceSessionStore.js";
@@ -60,7 +60,7 @@ export function useResolvedRemoteWorkspaceSessionId(
   workspaceIdentity?: string | null,
   remoteTarget?: unknown,
 ): string | null {
-  const activeWorkspaceTab = useTabStore(
+  const activeWorkspaceTab = useOptionalTabStore(
     useShallow((state) => {
       if (!workspacePath || !state.activeTabId) {
         return null;

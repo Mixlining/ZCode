@@ -17,7 +17,7 @@ interface LocalChromiumPage extends Page {
   };
 }
 
-async function useNativeVisibility(page: Page) {
+async function applyNativeVisibility(page: Page) {
   // Playwright在主CDP session强制focus emulation，使后台tab也永远visible。
   // 新CDP session不能撤销原session的覆盖；只关闭本地driver原始session的测试仿真，
   // 后续完全使用Chrome真实tab切换，不修改document getter或派发visibility事件。
@@ -99,7 +99,7 @@ export async function createWebRemoteVisibilityBrowser(
           readySelector,
         });
       else await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
-      await useNativeVisibility(page);
+      await applyNativeVisibility(page);
       await page.bringToFront();
       await record("native-navigation");
     },
@@ -108,7 +108,7 @@ export async function createWebRemoteVisibilityBrowser(
     },
     async hide() {
       cover ??= await context.newPage();
-      await useNativeVisibility(cover);
+      await applyNativeVisibility(cover);
       await cover.bringToFront();
       await page.waitForFunction(() => document.visibilityState === "hidden");
       await record("native-background");

@@ -327,7 +327,7 @@ async function verifyCustomCaChain(
       now < anchor.notBefore.value.getTime() ||
       now > anchor.notAfter.value.getTime()
     )
-  return false;
+      return false;
     verifiedPath = [endEntity];
   }
   if (!verifiedPath) return false;

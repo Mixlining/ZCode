@@ -611,13 +611,13 @@ Rules:
 
 ### Breakpoint roles
 
-| Breakpoint | Preferred use                                                     |
+| Breakpoint     | Preferred use                                                                                                                                                                                                                                |
 | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sm:`      | Dialog width, button arrangement, small-screen layout corrections |
-| `md:`      | Grid columns and form layout expansion                            |
-| `lg:`      | Desktop toolbar visibility and secondary information density      |
-| `xl:`      | Chat and complex content arrangements                             |
-| `2xl:`     | Wide-screen reading-width caps, not ordinary page behavior        |
+| `sm:`          | Dialog width, button arrangement, small-screen layout corrections                                                                                                                                                                            |
+| `md:`          | Grid columns and form layout expansion                                                                                                                                                                                                       |
+| `lg:`          | Desktop toolbar visibility and secondary information density                                                                                                                                                                                 |
+| `xl:`          | Chat and complex content arrangements                                                                                                                                                                                                        |
+| `2xl:`         | Wide-screen reading-width caps, not ordinary page behavior                                                                                                                                                                                   |
 | `compact-web:` | Phone and narrow Web (`< 40rem` without a desktop platform class) layout corrections that must not change narrow desktop windows; CSS only, do not copy its condition into JS (see [settings narrow layout](docs/settings-narrow-layout.md)) |
 
 Start with the unprefixed layout, then add the fewest breakpoints needed. Prefer changing

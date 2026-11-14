@@ -122,7 +122,10 @@ function workspaceBasename(path: string): string {
   return path.replace(/\\/g, "/").split("/").filter(Boolean).pop() ?? path;
 }
 
-export function OffPeakEditView({
+// 编译期选择入口：禁用时不进入业务 hooks；原实现保持完整调用顺序。
+export const OffPeakEditView = CODING_PLAN_DISABLED ? () => null : OffPeakEditViewEnabled;
+
+function OffPeakEditViewEnabled({
   editing,
   initialDraft,
   modelSelectionView,
@@ -140,7 +143,6 @@ export function OffPeakEditView({
   onContinue,
   showToast = toast,
 }: OffPeakEditViewProps) {
-  if (CODING_PLAN_DISABLED) return null;
   const { intl } = useZCodeIntl();
   const { settings, update: updateSettings } = useSettings();
   const confirmDialog = useConfirmDialog();

@@ -739,11 +739,11 @@ Workspace / Repo / User files
   启动永久报 `Another ZCode Server instance is already running`。容器重启不换内核，`boot_id` 不变，所以只有开机标识不够。
   锁记录 `processIdentity`，持锁进程身份一致才算存活：
 
-  | 锁记录                                                       | 判定                                                                                                 |
+  | 锁记录                                                       | 判定                                                                                                               |
   | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
-  | PID 等于本进程                                               | 本进程当前持有该 `ownerToken` → active；否则 stale（重启前同 PID 的进程留下的锁）                    |
+  | PID 等于本进程                                               | 本进程当前持有该 `ownerToken` → active；否则 stale（重启前同 PID 的进程留下的锁）                                  |
   | 有 `processIdentity`                                         | 读取该 PID 当前的进程身份：进程不存在、已退出未回收或身份不同 → stale；身份相同 → active；读不到身份 → 按 PID 判定 |
-  | 没有 `processIdentity`（旧版本写入，或写锁的平台读不到身份） | 按 PID 判定                                                                                          |
+  | 没有 `processIdentity`（旧版本写入，或写锁的平台读不到身份） | 按 PID 判定                                                                                                        |
   | 按 PID 判定                                                  | Linux 上进程已退出未回收 → stale；否则 `kill(pid, 0)` 成功 → active；ESRCH、EPERM 等失败 → stale                   |
   - 已退出未回收的进程（僵尸）不算存活（2026-11-03，ZCT-2117275161536565248）。Docker 容器的 PID 1 常是
     `sleep infinity` 这类不回收子进程的程序：Supervisor 与 Core 非正常死亡后都成为 PID 1 名下的僵尸，

@@ -20,11 +20,7 @@ import {
   prepareSSHLifecycle,
   type SSHLifecycleProvider,
 } from "#e2e/helpers/ssh-remote-lifecycle";
-import {
-  readHostProcesses,
-  readRemoteTabSnapshot,
-  runSSHCommand,
-} from "#e2e/helpers/ssh-remote-p0";
+import { readHostProcesses, runSSHCommand } from "#e2e/helpers/ssh-remote-p0";
 import {
   getV4Messages,
   sendV4PromptAndWaitAccepted,

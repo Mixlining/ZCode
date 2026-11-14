@@ -20,8 +20,8 @@
 
 fault spec 在正式目录前可以先以 `manual-review/pending` 形式登记；pending 仍算 `missing`，不能计入 `covered`。
 
-| 缩写 | Spec                                                                                                     |
-| ---- | -------------------------------------------------------------------------------------------------------- |
+| 缩写 | Spec                                                                                                           |
+| ---- | -------------------------------------------------------------------------------------------------------------- |
 | NQ   | `packages/desktop/test/e2e/conversation-session/queue/conversation-session-turn-error-queue-preserved.test.ts` |
 
 ## 当前统计

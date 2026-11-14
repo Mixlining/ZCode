@@ -185,7 +185,7 @@ export function McpToolCallBlock(context: ToolCallBlockRenderContext) {
   const progress = toolCall.status === "in_progress" ? readToolCallProgress(toolCall.raw) : null;
   const stoppedSummaryStatus =
     toolCall.status === "stopped" ? (
-        <span>{context.statusLabel}</span>
+      <span>{context.statusLabel}</span>
     ) : progress ? (
       <ToolCallProgressIndicator progress={progress} />
     ) : undefined;

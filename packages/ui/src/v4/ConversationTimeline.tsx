@@ -1065,44 +1065,44 @@ function ConversationTimelineImpl({
   }, [floatingComposerDock, hasBottomDock]);
 
   const syncTurnNavigatorViewport = useCallback((element: HTMLDivElement) => {
-      if (!turnNavigatorEnabledRef.current) {
-        turnNavigatorAnchorsRef.current = null;
-        return;
-      }
-      let anchors = turnNavigatorAnchorsRef.current;
-      if (
-        !anchors ||
-        anchors.root !== element ||
-        anchors.mountedKey !== mountedRowsKeyRef.current ||
-        anchors.queryIds !== turnNavigatorQueryRowIdsRef.current ||
-        anchors.elements.some((anchor) => !anchor.isConnected)
-      ) {
-        anchors = {
-          root: element,
-          mountedKey: mountedRowsKeyRef.current,
-          queryIds: turnNavigatorQueryRowIdsRef.current,
+    if (!turnNavigatorEnabledRef.current) {
+      turnNavigatorAnchorsRef.current = null;
+      return;
+    }
+    let anchors = turnNavigatorAnchorsRef.current;
+    if (
+      !anchors ||
+      anchors.root !== element ||
+      anchors.mountedKey !== mountedRowsKeyRef.current ||
+      anchors.queryIds !== turnNavigatorQueryRowIdsRef.current ||
+      anchors.elements.some((anchor) => !anchor.isConnected)
+    ) {
+      anchors = {
+        root: element,
+        mountedKey: mountedRowsKeyRef.current,
+        queryIds: turnNavigatorQueryRowIdsRef.current,
         elements: Array.from(element.querySelectorAll<HTMLElement>("[data-row-id]")).filter((row) =>
           turnNavigatorQueryRowIdsRef.current.has(Number(row.dataset.rowId)),
-          ),
-        };
-        turnNavigatorAnchorsRef.current = anchors;
-      }
-      const viewportRect = element.getBoundingClientRect();
-      const queryPositions: ConversationTurnNavigatorQueryPosition[] = [];
-      // 虚拟窗口/目录成员变化时登记节点，滚动复用节点但读取实时几何；展开与流式测高不会过期。
-      for (const rowElement of anchors.elements) {
-        const rowId = Number(rowElement.dataset.rowId);
-        const rowRect = rowElement.getBoundingClientRect();
-        const start = element.scrollTop + rowRect.top - viewportRect.top;
-        queryPositions.push({ rowId, start, end: start + rowRect.height });
-      }
-      // 只发布语义变化。像素滚动已由 virtualizer 持有，不能再驱动整棵 timeline 状态。
-      const activeQueryRowId = resolveConversationTurnNavigatorActiveQueryRowId({
-        positions: queryPositions,
-        scrollOffsetPx: element.scrollTop,
-        viewportHeightPx: element.clientHeight,
-      });
-      setTurnNavigatorActiveQueryRowId(activeQueryRowId);
+        ),
+      };
+      turnNavigatorAnchorsRef.current = anchors;
+    }
+    const viewportRect = element.getBoundingClientRect();
+    const queryPositions: ConversationTurnNavigatorQueryPosition[] = [];
+    // 虚拟窗口/目录成员变化时登记节点，滚动复用节点但读取实时几何；展开与流式测高不会过期。
+    for (const rowElement of anchors.elements) {
+      const rowId = Number(rowElement.dataset.rowId);
+      const rowRect = rowElement.getBoundingClientRect();
+      const start = element.scrollTop + rowRect.top - viewportRect.top;
+      queryPositions.push({ rowId, start, end: start + rowRect.height });
+    }
+    // 只发布语义变化。像素滚动已由 virtualizer 持有，不能再驱动整棵 timeline 状态。
+    const activeQueryRowId = resolveConversationTurnNavigatorActiveQueryRowId({
+      positions: queryPositions,
+      scrollOffsetPx: element.scrollTop,
+      viewportHeightPx: element.clientHeight,
+    });
+    setTurnNavigatorActiveQueryRowId(activeQueryRowId);
   }, []);
 
   const buildCurrentScrollMemoryState = useCallback(
@@ -1195,6 +1195,7 @@ function ConversationTimelineImpl({
     syncTurnNavigatorViewport,
   ]);
 
+  const isHistoryEmpty = renderUnitCount === 0;
   useLayoutEffect(() => {
     const contentColumn = virtualHistoryRef.current;
     if (!contentColumn || typeof ResizeObserver === "undefined") return;
@@ -1256,10 +1257,10 @@ function ConversationTimelineImpl({
             pendingLayout ||
             Number.parseFloat(contentColumn.style.height) !== virtualizer.getTotalSize()
           ) {
-          flushSync(() => {
-            for (const item of measurements) virtualizer.resizeItem(item.index, item.height);
-            commitMeasuredLayout((revision) => revision + 1);
-          });
+            flushSync(() => {
+              for (const item of measurements) virtualizer.resizeItem(item.index, item.height);
+              commitMeasuredLayout((revision) => revision + 1);
+            });
           }
         } finally {
           committingMeasuredLayoutRef.current = false;
@@ -1319,7 +1320,7 @@ function ConversationTimelineImpl({
     getActiveUserScrollIntent,
     markLayoutScrollGuard,
     measureElement,
-    renderUnitCount === 0,
+    isHistoryEmpty,
     scrollToBottom,
     virtualizer,
   ]);

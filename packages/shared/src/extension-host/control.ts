@@ -11,7 +11,13 @@ import {
 const genSchema = z.number().int().positive();
 
 /** 扩展进程状态的唯一 owner 是 Main 的监管器。 */
-export const EXTENSION_HOST_STATES = ["starting", "running", "restarting", "stopped"] as const;
+export const EXTENSION_HOST_STATES = [
+  "idle",
+  "starting",
+  "running",
+  "restarting",
+  "stopped",
+] as const;
 export const extensionHostStatusSchema = z.strictObject({
   state: z.enum(EXTENSION_HOST_STATES),
   /** 当前（或即将启动的）代际。 */
@@ -68,6 +74,8 @@ export type MainToExtensionWindowMessage = z.infer<typeof mainToExtensionWindowM
 export const extensionWindowToMainMessageSchema = z.discriminatedUnion("type", [
   // Window Host 的服务已就绪，可以牵线。
   z.strictObject({ type: z.literal("extension-host/window-ready") }),
+  // 有效激活需求归 Window Host；Main 只管理它对应的进程资源。
+  z.strictObject({ type: z.literal("extension-host/demand"), required: z.boolean() }),
   // 重新加载：Main 清零崩溃预算并重启。不经过扩展进程，卡死或已停止时也能用。
   z.strictObject({ type: z.literal("extension-host/reload") }),
   // 日志快照请求（§16.8）：Main 收到即回 logs-snapshot，Window Host 不留副本。

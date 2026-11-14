@@ -150,7 +150,7 @@ function Anchor({
     void harness.event({ type: "phase", phase: host.phase, key: host.pageKey });
     if (host.phase === "running" || !host.supported) ready.resolve();
     if (host.phase === "error") ready.reject(new Error(host.error ?? "managed page failed"));
-  }, [host.phase, host.pageKey, enabled]);
+  }, [host.phase, host.pageKey, enabled, host.error, host.supported]);
   if (config.mode.startsWith("background-cold")) return null;
   return side ? (
     <PluginUiSidePaneView

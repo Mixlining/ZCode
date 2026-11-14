@@ -2,6 +2,8 @@
 
 设计见 `docs/plugins/extension-host.md` §12。本模块是全 App 唯一的扩展进程，以及 Main 侧的监管器 `main/extensionHostSupervisor.ts`。
 
+dev 生命周期见 `spec/upstream-3.18.1-merge.md`：Window Host 持有有效激活需求，Main 只保存其 L0 demand 投影；window-ready 不启动进程。需求到来才 fork/牵线和启动探测，无需求进入 idle、取消重启并回收进程与日志缓冲。最后 Host 退出等同需求归零；异步设置读取、旧 Host 或旧 generation 不能复活进程。已有故障预算与显式重新加载保留，无需求时重新加载不启动空进程。
+
 - 扩展进程只经 parentPort 与 Main 交换生命周期消息（初始化、牵线、探测、日志、计划重启、dispose）；业务数据只走 Main 牵线给 Window Host 的 L1 端口。不连 CLI，不连 Renderer。
 - 本进程不读 `plugin.json`：静态声明（清单状态、插槽条目、命令、视图）归 Window Host（§16.1）。Window Host 经 `setDeclarations` 只给合法、兼容的扩展声明；本进程对比声明后激活、停用，已激活扩展的声明变了就请求计划重启。
 - 贡献表的唯一 owner 是本进程的注册表，只含运行状态（`resolved`、`activating`、`active`、`failed`）与插槽动态值。状态变化推整份快照，`slots.update` 推增量，两者共用 `rev`。动态值只在内存里，进程重启后清空。

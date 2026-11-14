@@ -86,7 +86,7 @@ export function MarketingTouchProvider({
   );
   const refreshStartEntitlementRef = useRef(startEntitlement.refresh);
   refreshStartEntitlementRef.current = startEntitlement.refresh;
-  const identity = user?.id ?? "anonymous";
+  const isLoggedIn = Boolean(user);
   const createRuntime = useCallback(() => {
     const service = services.marketingTouchService;
     // 冷启动竞态修复：IntlProvider 读完 setting.json 之前 locale 只是占位初值（中文系统即 zh-CN），
@@ -246,7 +246,7 @@ export function MarketingTouchProvider({
             };
           }
         }
-        if (!user) {
+        if (!isLoggedIn) {
           requestLogin();
           return { status: "cancelled" };
         }
@@ -311,8 +311,7 @@ export function MarketingTouchProvider({
   }, [
     services,
     platform,
-    identity,
-    Boolean(user),
+    isLoggedIn,
     restoring,
     locale,
     localeResolved,

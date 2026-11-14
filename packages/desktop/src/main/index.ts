@@ -763,7 +763,6 @@ const UPDATE_STATUS_WINDOW_PROGRESS_HEIGHT = 224;
 const UPDATE_STATUS_WINDOW_READY_HEIGHT = UPDATE_STATUS_WINDOW_PROGRESS_HEIGHT - 54;
 const UPDATE_STATUS_WINDOW_TRAFFIC_LIGHT_POSITION = { x: 10, y: 10 } as const;
 const mainSettingService = createSettingService();
-const webRemoteControlCredentialService = createCredentialService();
 const appLaunchGate = createAppLaunchGate();
 const appLaunchCoordinator = createAppLaunchCoordinator(appLaunchGate);
 const appTelemetryCredentialService = createCredentialService();
@@ -843,8 +842,8 @@ const reportRemoteConversationTelemetry = ZCODE_TELEMETRY_ENABLED
       const locale = Intl.DateTimeFormat().resolvedOptions();
       const context = appTelemetryRuntime.getLatestRendererContext() ?? {
         clientTimezone: locale.timeZone,
-      // 没有 renderer context 时也用界面语言；TelemetryCore 发送时还会再按界面语言覆盖。
-      clientLanguage: currentApplicationLocale,
+        // 没有 renderer context 时也用界面语言；TelemetryCore 发送时还会再按界面语言覆盖。
+        clientLanguage: currentApplicationLocale,
         screenResolution: "",
       };
       await appTelemetryCore.reportEvent({ ...event, context });
@@ -901,22 +900,6 @@ const remoteSessionManager = createRemoteWorkspaceSessionManager({
   webRemoteControlManagerRef,
 });
 
-// 复用既有只读账号入口；HTTP 由 main 的 Node fetch 执行，不触发 host OAuth 登出。
-const loadRemoteControlUserId = createTelemetryUserIdLoader(webRemoteControlCredentialService);
-const loadRemoteControlAuthorization = createTelemetryAuthorizationLoader(
-  webRemoteControlCredentialService,
-);
-const webRemoteControlSharedHostAttachments = createWebRemoteControlSharedHostAttachments({
-  windowHostProcessMap,
-  // 远程 workspace 硬禁用：不注入附件接管依赖，桥内调用点因依赖缺失不可达；
-  // 管理员/远控路径即使被误触也只能得到 REMOTE_SESSION_MISSING。
-  ...(REMOTE_WORKSPACE_DISABLED
-    ? {}
-    : {
-        attachRemoteWorkspaceSessionHost: remoteSessionManager.attachRemoteWorkspaceSessionHost,
-      }),
-  logger,
-});
 const deviceMid = ensureDesktopDeviceMidSync();
 // 帮助和灰度共用当前凭据来源，但分别维护各自裁剪后的配置缓存。
 const readHelpConfig = createDesktopHelpConfigReader({
@@ -983,143 +966,170 @@ function getMobileLogSink(): MobileLogSink {
 // 手机远控永久禁用：管理器不构造——不注册 relay 监听、不建心跳/重连、不读启动快照。
 const webRemoteControlManager = PHONE_REMOTE_DISABLED
   ? null
-  : createWebRemoteControlManager({
-      mobileLogSink: { append: (target, events) => getMobileLogSink().append(target, events) },
-      getEndpointUrls: async () => {
-        const derived = buildZCodeEndpointUrls(await resolveCurrentZCodeEndpointOrigin(), {
-          appVersion: webRemoteControlAppVersion,
-        });
-        return {
-          ...derived,
-          relayWsUrl: resolveWebRemoteControlRelayWsUrl({
-            endpointOrigin: derived.origin,
-            overrideUrl: webRemoteControlRelayWsEnvOverride,
-          }),
-          remoteUrl: webRemoteControlUrlEnvOverride || derived.remoteUrl,
-        };
-      },
-      relayWsUrl: resolveWebRemoteControlRelayWsUrl({
-        endpointOrigin: DEFAULT_ZCODE_ENDPOINT_ORIGIN,
-        overrideUrl: webRemoteControlRelayWsEnvOverride,
-      }),
-      mobileRemoteControlUrl: webRemoteControlUrlEnvOverride || defaultZCodeEndpointUrls.remoteUrl,
-  // 远控通知轮询在模块加载时就启动，界面语言确定前不带语言头（不拿默认中文冒充）。
-  getClientLanguage: resolveKnownApplicationLocale,
-      deviceMid,
-      deviceName: hostname(),
-      appVersion: webRemoteControlAppVersion,
-      getLogin: async () => {
-        const userId = await loadRemoteControlUserId();
-        const authorization = await loadRemoteControlAuthorization(userId);
-        return authorization ? { userId, jwt: authorization.slice("Bearer ".length) } : undefined;
-      },
-      deviceStorage: createWebRemoteControlDeviceStorage({
-        deleteLegacyCredential: () =>
-          webRemoteControlCredentialService.delete("web-remote-control:external-relay:pass_hash"),
-        loadSettings: () => mainSettingService.get(),
-        patchSettings: (patch) => mainSettingService.update(patch),
-      }),
-      startupRestoreStorageProvider: {
-        load: async () => (await mainSettingService.get()).webRemoteControlLastEnabledContext,
-        save: async (context) => {
-          await mainSettingService.update({
-            webRemoteControlLastEnabledContext: {
-              workspacePath: context.workspacePath,
-              workspaceIdentity: context.workspaceIdentity,
-              initialTaskId: context.initialTaskId,
-            },
+  : (() => {
+      // 手机禁用时连附件桥与凭据适配器也不构造，避免常驻空 Map 和无用途读取器。
+      const webRemoteControlCredentialService = createCredentialService();
+      // 复用既有只读账号入口；HTTP 由 main 的 Node fetch 执行，不触发 host OAuth 登出。
+      const loadRemoteControlUserId = createTelemetryUserIdLoader(
+        webRemoteControlCredentialService,
+      );
+      const loadRemoteControlAuthorization = createTelemetryAuthorizationLoader(
+        webRemoteControlCredentialService,
+      );
+      const webRemoteControlSharedHostAttachments = createWebRemoteControlSharedHostAttachments({
+        windowHostProcessMap,
+        // 远程 workspace 硬禁用：不注入附件接管依赖，桥内调用点因依赖缺失不可达；
+        // 管理员/远控路径即使被误触也只能得到 REMOTE_SESSION_MISSING。
+        ...(REMOTE_WORKSPACE_DISABLED
+          ? {}
+          : {
+              attachRemoteWorkspaceSessionHost:
+                remoteSessionManager.attachRemoteWorkspaceSessionHost,
+            }),
+        logger,
+      });
+
+      return createWebRemoteControlManager({
+        mobileLogSink: { append: (target, events) => getMobileLogSink().append(target, events) },
+        getEndpointUrls: async () => {
+          const derived = buildZCodeEndpointUrls(await resolveCurrentZCodeEndpointOrigin(), {
+            appVersion: webRemoteControlAppVersion,
           });
+          return {
+            ...derived,
+            relayWsUrl: resolveWebRemoteControlRelayWsUrl({
+              endpointOrigin: derived.origin,
+              overrideUrl: webRemoteControlRelayWsEnvOverride,
+            }),
+            remoteUrl: webRemoteControlUrlEnvOverride || derived.remoteUrl,
+          };
         },
-        clear: async () => {
-          await mainSettingService.update({
-            webRemoteControlLastEnabledContext: undefined,
-          });
+        relayWsUrl: resolveWebRemoteControlRelayWsUrl({
+          endpointOrigin: DEFAULT_ZCODE_ENDPOINT_ORIGIN,
+          overrideUrl: webRemoteControlRelayWsEnvOverride,
+        }),
+        mobileRemoteControlUrl:
+          webRemoteControlUrlEnvOverride || defaultZCodeEndpointUrls.remoteUrl,
+        // 远控通知轮询在模块加载时就启动，界面语言确定前不带语言头（不拿默认中文冒充）。
+        getClientLanguage: resolveKnownApplicationLocale,
+        deviceMid,
+        deviceName: hostname(),
+        appVersion: webRemoteControlAppVersion,
+        getLogin: async () => {
+          const userId = await loadRemoteControlUserId();
+          const authorization = await loadRemoteControlAuthorization(userId);
+          return authorization ? { userId, jwt: authorization.slice("Bearer ".length) } : undefined;
         },
-      },
-      featureGate: createWebRemoteControlFeatureGate(),
-      logger,
-      relayMessageLogger: webRemoteControlRelayLogger,
-      platformHandlers: {
-        isDockerAvailable: () => isDockerDaemonAvailable(),
-        listWSLDistros: () => listAvailableWSLDistros(),
-        listDockerContainers: () => listAvailableDockerContainers(),
-        listSSHConfigAliases: () => listSSHConfigAliases(),
-        createTempTextAttachment: (payload) => createTempTextAttachment(payload),
-        loadMcpFromUserDirectory: (payload) => loadCliMcpFromUserDirectory(payload),
-        saveMcpToUserDirectory: async (payload) => {
-          try {
-            await saveCliMcpToUserDirectory(payload);
-            return { success: true };
-          } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            logger.warn("[web-remote-control] MCP save failed", message);
-            return { success: false, error: message };
+        deviceStorage: createWebRemoteControlDeviceStorage({
+          deleteLegacyCredential: () =>
+            webRemoteControlCredentialService.delete("web-remote-control:external-relay:pass_hash"),
+          loadSettings: () => mainSettingService.get(),
+          patchSettings: (patch) => mainSettingService.update(patch),
+        }),
+        startupRestoreStorageProvider: {
+          load: async () => (await mainSettingService.get()).webRemoteControlLastEnabledContext,
+          save: async (context) => {
+            await mainSettingService.update({
+              webRemoteControlLastEnabledContext: {
+                workspacePath: context.workspacePath,
+                workspaceIdentity: context.workspaceIdentity,
+                initialTaskId: context.initialTaskId,
+              },
+            });
+          },
+          clear: async () => {
+            await mainSettingService.update({
+              webRemoteControlLastEnabledContext: undefined,
+            });
+          },
+        },
+        featureGate: createWebRemoteControlFeatureGate(),
+        logger,
+        relayMessageLogger: webRemoteControlRelayLogger,
+        platformHandlers: {
+          isDockerAvailable: () => isDockerDaemonAvailable(),
+          listWSLDistros: () => listAvailableWSLDistros(),
+          listDockerContainers: () => listAvailableDockerContainers(),
+          listSSHConfigAliases: () => listSSHConfigAliases(),
+          createTempTextAttachment: (payload) => createTempTextAttachment(payload),
+          loadMcpFromUserDirectory: (payload) => loadCliMcpFromUserDirectory(payload),
+          saveMcpToUserDirectory: async (payload) => {
+            try {
+              await saveCliMcpToUserDirectory(payload);
+              return { success: true };
+            } catch (error) {
+              const message = error instanceof Error ? error.message : String(error);
+              logger.warn("[web-remote-control] MCP save failed", message);
+              return { success: false, error: message };
+            }
+          },
+          migrateLegacyCommonMcp: (payload) => migrateLegacyCommonMcp(payload),
+        },
+        reconnectWorkspace: reconnectWebRemoteControlWorkspaceInRenderer,
+        runRendererAction: runWebRemoteControlActionInRenderer,
+        prepareProjectWorkspace: async (windowId, project, requestId) => {
+          const win = BrowserWindow.fromId(windowId);
+          if (!win || win.isDestroyed()) throw new Error("项目导航窗口已关闭");
+          return remoteSessionManager.prepareProjectWorkspace(win, project, requestId);
+        },
+        cancelProjectPreparation: (windowId, requestId) => {
+          const win = BrowserWindow.fromId(windowId);
+          if (win && !win.isDestroyed())
+            remoteSessionManager.cancelPendingRemoteWorkspaceSessionsForWindow(
+              win.webContents.id,
+              "mobile-navigation-superseded",
+              requestId,
+            );
+        },
+        reportRendererTelemetryEvent: (event) => {
+          void appTelemetryCore.reportEvent(event).catch(() => {});
+        },
+        reportRemoteUsageEvent: (windowId, event) => {
+          const win = BrowserWindow.fromId(windowId);
+          if (!win || win.webContents.isDestroyed()) {
+            return;
           }
+          reportRemoteUsageEventForRenderer(win.webContents.id, event);
         },
-        migrateLegacyCommonMcp: (payload) => migrateLegacyCommonMcp(payload),
-      },
-      reconnectWorkspace: reconnectWebRemoteControlWorkspaceInRenderer,
-      runRendererAction: runWebRemoteControlActionInRenderer,
-      prepareProjectWorkspace: async (windowId, project, requestId) => {
-        const win = BrowserWindow.fromId(windowId);
-        if (!win || win.isDestroyed()) throw new Error("项目导航窗口已关闭");
-        return remoteSessionManager.prepareProjectWorkspace(win, project, requestId);
-      },
-      cancelProjectPreparation: (windowId, requestId) => {
-        const win = BrowserWindow.fromId(windowId);
-        if (win && !win.isDestroyed())
-          remoteSessionManager.cancelPendingRemoteWorkspaceSessionsForWindow(
-            win.webContents.id,
-            "mobile-navigation-superseded",
-            requestId,
-          );
-      },
-      reportRendererTelemetryEvent: (event) => {
-        void appTelemetryCore.reportEvent(event).catch(() => {});
-      },
-      reportRemoteUsageEvent: (windowId, event) => {
-        const win = BrowserWindow.fromId(windowId);
-        if (!win || win.webContents.isDestroyed()) {
-          return;
-        }
-        reportRemoteUsageEventForRenderer(win.webContents.id, event);
-      },
-      onStatusChanged: (windowId, status) => {
-        sendWebRemoteControlStatusChangedToWindow(BrowserWindow.fromId(windowId), status);
-      },
-      attachWorkspaceHost: webRemoteControlSharedHostAttachments.attachWorkspaceHost,
-      setTerminalOwner: webRemoteControlSharedHostAttachments.setTerminalOwner,
-      releaseWorkspaceHostAttachment: webRemoteControlSharedHostAttachments.releaseAttachment,
-      disposeWorkspaceHostAttachmentsForWindow: (windowId) =>
-        webRemoteControlSharedHostAttachments.disposeWindow(windowId),
-      disposeWorkspaceHostAttachmentsForRemoteSession: (remoteSessionId) =>
-        webRemoteControlSharedHostAttachments.disposeRemoteSession(remoteSessionId),
-    });
+        onStatusChanged: (windowId, status) => {
+          sendWebRemoteControlStatusChangedToWindow(BrowserWindow.fromId(windowId), status);
+        },
+        attachWorkspaceHost: webRemoteControlSharedHostAttachments.attachWorkspaceHost,
+        setTerminalOwner: webRemoteControlSharedHostAttachments.setTerminalOwner,
+        releaseWorkspaceHostAttachment: webRemoteControlSharedHostAttachments.releaseAttachment,
+        disposeWorkspaceHostAttachmentsForWindow: (windowId) =>
+          webRemoteControlSharedHostAttachments.disposeWindow(windowId),
+        disposeWorkspaceHostAttachmentsForRemoteSession: (remoteSessionId) =>
+          webRemoteControlSharedHostAttachments.disposeRemoteSession(remoteSessionId),
+      });
+    })();
 webRemoteControlManagerRef.current = webRemoteControlManager;
 // 手机推送归属 PHONE_REMOTE_DISABLED：不启动 60 秒资格轮询，不接 broadcast 事件，
 // 不注册 powerMonitor 恢复刷新与退出 dispose；管理器本身在禁用时也不构造。
-if (!PHONE_REMOTE_DISABLED) {
-webRemoteControlManager.startNotifications();
-broadcastHub.onMobilePushRun = (run) => webRemoteControlManager.observeNotificationRun(run);
-// owner 必须在事件到达时同步确认；开关与 locale 由 MobilePushConnection 在确认后再异步读取。
-broadcastHub.onMobilePushEvent = (event) =>
-  webRemoteControlManager.sendNotification(event, () =>
-    mainSettingService.get().then(
-      (settings) => ({
-        enabled: settings.mobilePushEnabled !== false,
-        // 手机推送契约只有中英两套文案，非中文界面语言推英文。
-        locale: toZhOrEnLocale(settings.locale),
-      }),
-      () => {
-        logger.warn("[mobile-push] notification settings unavailable");
-        throw new Error("settings_unavailable");
-      },
-    ),
-  );
-app
-  .whenReady()
-  .then(() => powerMonitor.on("resume", () => void webRemoteControlManager.refreshNotifications()));
-app.on("will-quit", () => webRemoteControlManager.disposeNotifications());
+if (!PHONE_REMOTE_DISABLED && webRemoteControlManager) {
+  webRemoteControlManager.startNotifications();
+  broadcastHub.onMobilePushRun = (run) => webRemoteControlManager.observeNotificationRun(run);
+  // owner 必须在事件到达时同步确认；开关与 locale 由 MobilePushConnection 在确认后再异步读取。
+  broadcastHub.onMobilePushEvent = (event) =>
+    webRemoteControlManager.sendNotification(event, () =>
+      mainSettingService.get().then(
+        (settings) => ({
+          enabled: settings.mobilePushEnabled !== false,
+          // 手机推送契约只有中英两套文案，非中文界面语言推英文。
+          locale: toZhOrEnLocale(settings.locale),
+        }),
+        () => {
+          logger.warn("[mobile-push] notification settings unavailable");
+          throw new Error("settings_unavailable");
+        },
+      ),
+    );
+  app
+    .whenReady()
+    .then(() =>
+      powerMonitor.on("resume", () => void webRemoteControlManager.refreshNotifications()),
+    );
+  app.on("will-quit", () => webRemoteControlManager.disposeNotifications());
 }
 
 let forceUpdateMainWindowCreationBlocked = false;

@@ -11,7 +11,15 @@
 //
 // 结构：生命周期收敛在纯控制器 startDraftSessionPrewarm（可单测，无 React 依赖），
 // useDraftSessionPrewarm 只做 effect 接线与 owner-scoped binding 暴露。
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
+import {
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import type { CommandAck, CommandType, SessionConfigState } from "@zcode/shared/zcode-protocol-v4";
 import { logger } from "@/logger.js";
 
@@ -629,13 +637,27 @@ export function useDraftSessionPrewarm(params: {
     () => ({ workspaceKey, paneId, transportIdentity }),
     [paneId, transportIdentity, workspaceKey],
   );
-  const generation = useMemo(() => ({ owner }), [enabled, invalidationVersion, owner]);
+  const generation = useMemo(
+    () => ({ owner, enabled, invalidationVersion }),
+    [enabled, invalidationVersion, owner],
+  );
   const acquired = useRef<AcquiredDraftPrewarm | null>(null);
+  // callbacks 更新只更新 coordinator；lease 的 acquire/release 仍仅由 owner/代际驱动。
+  const prepareCoordinator = useEffectEvent((currentOwner: typeof owner) => {
+    const coordinator = getDraftSessionPrewarmCoordinator({
+      ...currentOwner,
+      dispatchCommand,
+      resolveInitialConfig,
+      onSessionClosed,
+    });
+    coordinator.update(dispatchCommand, resolveInitialConfig, onSessionClosed);
+    return coordinator;
+  });
   useLayoutEffect(() => {
     if (acquired.current?.generation === generation) {
-      acquired.current.coordinator.update(dispatchCommand, resolveInitialConfig);
+      acquired.current.coordinator.update(dispatchCommand, resolveInitialConfig, onSessionClosed);
     }
-  }, [dispatchCommand, generation, resolveInitialConfig]);
+  }, [dispatchCommand, generation, resolveInitialConfig, onSessionClosed]);
   const [ready, setReady] = useState<{
     generation: typeof generation;
     binding: DraftPrewarmBinding;
@@ -645,12 +667,7 @@ export function useDraftSessionPrewarm(params: {
     if (!enabled) return;
     // 原先在 render 登记，未启用预热的历史页没有 acquire/release，Map 会永久保留闭包中的
     // 已关闭 store 和历史。登记与订阅必须同属已提交的 effect，中止 render 也不能留下 owner。
-    const coordinator = getDraftSessionPrewarmCoordinator({
-      ...owner,
-      dispatchCommand,
-      resolveInitialConfig,
-    });
-    coordinator.update(dispatchCommand, resolveInitialConfig);
+    const coordinator = prepareCoordinator(owner);
     acquired.current = { generation, coordinator };
     const release = coordinator.acquire({
       generation,

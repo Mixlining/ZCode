@@ -2,6 +2,7 @@
  * useCredentials —— 凭据服务 hooks
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import { useServices } from "@/hooks/useServices.js";
 import { logger } from "@/logger.js";
 
@@ -78,6 +79,7 @@ export function useAuthToken() {
   const { credentialService, oauthService } = useServices();
 
   const getToken = useCallback(async () => {
+    if (CODING_PLAN_DISABLED) return null;
     const activeProvider = await oauthService.getActiveProvider();
     if (!activeProvider) {
       return null;
@@ -98,6 +100,7 @@ export function useAuthToken() {
   }, [credentialService, oauthService]);
   const setToken = useCallback(
     async (token: string) => {
+      if (CODING_PLAN_DISABLED) return;
       const activeProvider = await oauthService.getActiveProvider();
       if (!activeProvider) {
         throw new Error("当前没有 active provider，无法写入 auth token");
@@ -107,6 +110,7 @@ export function useAuthToken() {
     [credentialService, oauthService],
   );
   const clearToken = useCallback(async () => {
+    if (CODING_PLAN_DISABLED) return;
     const activeProvider = await oauthService.getActiveProvider();
     if (!activeProvider) {
       return;

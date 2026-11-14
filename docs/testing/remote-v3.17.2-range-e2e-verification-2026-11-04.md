@@ -22,26 +22,26 @@
 
 ## 新改动生效
 
-| 提交 | 场景 | 结果（runId） |
-| --- | --- | --- |
-| `d05431d3fa7` `202c85eb886` | R3-UPDATE-INFLIGHT-01/02/03/04 | 4/4 通过（`local-docker-20261104155833-28af99`） |
-| `93b8662c5a6` `9a623c32416` `3a05c2e31e4` | R3-UPDATE-CANCEL-01/02/03/04 | 4/4 通过（`local-docker-20261104154835-5f2a60`） |
-| `196b85d0fca` `34434f5e7df` `9f22d500daa` `fec20b2df2a` `f7e76d6f0f2` | RPN-18a/b、DRS-RR-11、RPN-19～24b | 11/11 通过（`local-docker-20261104154837-fcccf7`） |
-| `e9ff0eda947` | 僵尸持锁接管（Docker transport） | 通过（`local-docker-20261104155948-129fb7`） |
-| `5ba3a06761c` | crash-loop 详情、Supervisor 取锁失败原因 | 2/2 通过（同上） |
-| `1b79b2d9c6d` | SSH-P0-LIFE-04 symlink 重连 | 通过（同上） |
-| `6661d0c6d8b` `c62185bb1c4` | R3A-BLD-09 old-glibc-runtime（glibc 2.27 实机） | 通过（`local-docker-20261104161606-913bc0`） |
-| `0bab7b0298f` | release 清理，手动容器探针（路径 B），见下 | 修复后保留 2 个，修复前增长到 4 个 |
-| `a47355f234b` `3ac993b1a6b` | RDUX-13 / RDUX-13-02（含 `::1` profile） | 通过（`local-docker-20261104155834-d9d5a1`） |
-| `2f406c1978e` | MEM-DEVICE-01/02/03 | 3/3 通过（同上） |
-| `2f406c1978e` | 手机浏览器 MEM-DEVICE-MOBILE local/remote，390/768px，深浅主题 | 通过（`memory-settings-mobile.mjs`） |
-| `09a44a38e14` `76b5538e4d5` `aa8136c1cfa` | DSYNC-09-01～05 | 5/5 通过（`local-docker-20261104160910-361164`） |
-| `7cd54617545` | AUTH-09 | 通过（`desktop-e2e-20261104162730712-p89168-8767adab241ff745`） |
-| `d8ffd0558c8` `7e61900cab3` | AUTH-09-R（离线 SSH 目标、手机、第 6 步弹窗） | 通过（`local-docker-20261104160911-648172`） |
-| `142faf84612` `754f846c4e9` `06850cdb772` `bdf273ccd19` | MRO04 远端终端（`ZCODE_E2E_MRO04_REMOTE=1`） | 2/2 通过（`local-docker-20261104172748-c238d7`） |
-| `b9ab416d23d` | status panel、v4 scroll、held queue | 通过（`desktop-e2e-20261104-160020-550`） |
-| `8237935aa07` `ab66f1db2a3` `351e5a523a2` | 设置页窄屏、usage 图表、供应商标题 | US-AU-01～05、UP-00～02、MP-UI-01～05 通过（同上）；390px 截图正常 |
-| `613750fb786` | `e2eConversationPreparation.test.ts` | 8/8 通过 |
+| 提交                                                                  | 场景                                                           | 结果（runId）                                                      |
+| --------------------------------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `d05431d3fa7` `202c85eb886`                                           | R3-UPDATE-INFLIGHT-01/02/03/04                                 | 4/4 通过（`local-docker-20261104155833-28af99`）                   |
+| `93b8662c5a6` `9a623c32416` `3a05c2e31e4`                             | R3-UPDATE-CANCEL-01/02/03/04                                   | 4/4 通过（`local-docker-20261104154835-5f2a60`）                   |
+| `196b85d0fca` `34434f5e7df` `9f22d500daa` `fec20b2df2a` `f7e76d6f0f2` | RPN-18a/b、DRS-RR-11、RPN-19～24b                              | 11/11 通过（`local-docker-20261104154837-fcccf7`）                 |
+| `e9ff0eda947`                                                         | 僵尸持锁接管（Docker transport）                               | 通过（`local-docker-20261104155948-129fb7`）                       |
+| `5ba3a06761c`                                                         | crash-loop 详情、Supervisor 取锁失败原因                       | 2/2 通过（同上）                                                   |
+| `1b79b2d9c6d`                                                         | SSH-P0-LIFE-04 symlink 重连                                    | 通过（同上）                                                       |
+| `6661d0c6d8b` `c62185bb1c4`                                           | R3A-BLD-09 old-glibc-runtime（glibc 2.27 实机）                | 通过（`local-docker-20261104161606-913bc0`）                       |
+| `0bab7b0298f`                                                         | release 清理，手动容器探针（路径 B），见下                     | 修复后保留 2 个，修复前增长到 4 个                                 |
+| `a47355f234b` `3ac993b1a6b`                                           | RDUX-13 / RDUX-13-02（含 `::1` profile）                       | 通过（`local-docker-20261104155834-d9d5a1`）                       |
+| `2f406c1978e`                                                         | MEM-DEVICE-01/02/03                                            | 3/3 通过（同上）                                                   |
+| `2f406c1978e`                                                         | 手机浏览器 MEM-DEVICE-MOBILE local/remote，390/768px，深浅主题 | 通过（`memory-settings-mobile.mjs`）                               |
+| `09a44a38e14` `76b5538e4d5` `aa8136c1cfa`                             | DSYNC-09-01～05                                                | 5/5 通过（`local-docker-20261104160910-361164`）                   |
+| `7cd54617545`                                                         | AUTH-09                                                        | 通过（`desktop-e2e-20261104162730712-p89168-8767adab241ff745`）    |
+| `d8ffd0558c8` `7e61900cab3`                                           | AUTH-09-R（离线 SSH 目标、手机、第 6 步弹窗）                  | 通过（`local-docker-20261104160911-648172`）                       |
+| `142faf84612` `754f846c4e9` `06850cdb772` `bdf273ccd19`               | MRO04 远端终端（`ZCODE_E2E_MRO04_REMOTE=1`）                   | 2/2 通过（`local-docker-20261104172748-c238d7`）                   |
+| `b9ab416d23d`                                                         | status panel、v4 scroll、held queue                            | 通过（`desktop-e2e-20261104-160020-550`）                          |
+| `8237935aa07` `ab66f1db2a3` `351e5a523a2`                             | 设置页窄屏、usage 图表、供应商标题                             | US-AU-01～05、UP-00～02、MP-UI-01～05 通过（同上）；390px 截图正常 |
+| `613750fb786`                                                         | `e2eConversationPreparation.test.ts`                           | 8/8 通过                                                           |
 
 ### release 清理探针（`0bab7b0298f`）
 
@@ -52,22 +52,22 @@
 
 ## 回归（已有功能）
 
-| spec | 结果（runId） |
-| --- | --- |
-| ssh-remote-p0、ssh-remote-connection-p0 | 2/2（`local-docker-20261104154633-0b391c`） |
-| ssh-remote-connection-management、banner-reconnect、ssh-disconnect-experience | 4/4（`local-docker-20261104162750-787898`） |
-| ssh-remote-cold-reconnect（SSH-P0-LIFE-01） | 通过（`local-docker-20261104164223-0ab0ff`） |
-| ssh-remote-three-screen（RDUX-10） | 通过（`local-docker-20261104165019-00c9b6`） |
-| background-connection（RDUX15-19/20） | 通过（`local-docker-20261104170731-ca7dfe`） |
-| r3-server-update cancel（R3A-UPG-03/04） | 通过（`local-docker-20261104165016-742545`） |
-| r3-restart-remote-service（R3A-BLD-11） | 通过（`local-docker-20261104165017-8e20b9`） |
-| r3-reinstall-damaged-release（R3A-BLD-12）、connection-log-contract | 通过（`local-docker-20261104162752-e107a4`） |
-| remote-install-progress（RDUX-16） | 通过（`local-docker-20261104165021-e094c5`） |
-| r3-settings-scopes（R3A-DEV-06） | 通过（`local-docker-20261104155834-d9d5a1`） |
-| data-sync scope-by-device、device-connect | 6/6（`local-docker-20261104161916-ec041b`、`local-docker-20261104160910-361164`） |
-| r3-mobile + r3-mobile-permission（同一次运行） | 3/3（`local-docker-20261104171310-6ad6ec`） |
-| AUTH-08 session events | 2/2，另在高负载下重复 2 次均通过（`desktop-e2e-20261104171031422-p5045-c7a00e65e70ae741` 等） |
-| 工程测试 r3LocalDockerRunner、remoteAssetHttpProxy、authGateFixture、sourceServerUpdateFixture | 全部通过 |
+| spec                                                                                           | 结果（runId）                                                                                 |
+| ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| ssh-remote-p0、ssh-remote-connection-p0                                                        | 2/2（`local-docker-20261104154633-0b391c`）                                                   |
+| ssh-remote-connection-management、banner-reconnect、ssh-disconnect-experience                  | 4/4（`local-docker-20261104162750-787898`）                                                   |
+| ssh-remote-cold-reconnect（SSH-P0-LIFE-01）                                                    | 通过（`local-docker-20261104164223-0ab0ff`）                                                  |
+| ssh-remote-three-screen（RDUX-10）                                                             | 通过（`local-docker-20261104165019-00c9b6`）                                                  |
+| background-connection（RDUX15-19/20）                                                          | 通过（`local-docker-20261104170731-ca7dfe`）                                                  |
+| r3-server-update cancel（R3A-UPG-03/04）                                                       | 通过（`local-docker-20261104165016-742545`）                                                  |
+| r3-restart-remote-service（R3A-BLD-11）                                                        | 通过（`local-docker-20261104165017-8e20b9`）                                                  |
+| r3-reinstall-damaged-release（R3A-BLD-12）、connection-log-contract                            | 通过（`local-docker-20261104162752-e107a4`）                                                  |
+| remote-install-progress（RDUX-16）                                                             | 通过（`local-docker-20261104165021-e094c5`）                                                  |
+| r3-settings-scopes（R3A-DEV-06）                                                               | 通过（`local-docker-20261104155834-d9d5a1`）                                                  |
+| data-sync scope-by-device、device-connect                                                      | 6/6（`local-docker-20261104161916-ec041b`、`local-docker-20261104160910-361164`）             |
+| r3-mobile + r3-mobile-permission（同一次运行）                                                 | 3/3（`local-docker-20261104171310-6ad6ec`）                                                   |
+| AUTH-08 session events                                                                         | 2/2，另在高负载下重复 2 次均通过（`desktop-e2e-20261104171031422-p5045-c7a00e65e70ae741` 等） |
+| 工程测试 r3LocalDockerRunner、remoteAssetHttpProxy、authGateFixture、sourceServerUpdateFixture | 全部通过                                                                                      |
 
 ## 测试环境与用例修复
 

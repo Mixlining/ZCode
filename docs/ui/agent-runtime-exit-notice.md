@@ -59,6 +59,5 @@
 - 可重复场景（Linux 桌面开发版）：会话中启动后台子代理执行长命令，对 app-server 子进程
   `kill -9`。期望：出现通用横幅；重连后胶囊不再有该子代理、目录中显示 `lost`；下一条消息时模型
   收到中断通知。
-- 内存不足文案：Windows 退出码无法在 Linux 用真实进程产生，分类规则由
-  `pnpm --filter @zcode/desktop test:agent-crash-diagnostic` 覆盖；需要时在 Windows 预览机耗尽可提交
-  内存复现。
+- 内存不足文案：Windows 退出码无法在 Linux 用真实进程产生，需要 Windows 专项人工复核。
+  dev 不恢复已退役 App 单测，不把上游纯函数取样标成当前覆盖；本轮只执行静态检查。

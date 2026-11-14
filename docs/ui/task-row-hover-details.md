@@ -11,13 +11,13 @@
 
 ## 覆盖范围
 
-| 视图 | 行组件 | 行为 |
-| --- | --- | --- |
-| 按项目 | `TaskListItem`（`variant="default"`） | 本地和远程会话行显示任务卡 |
-| 置顶区 | `TaskListItem` | 同上 |
-| 时间线 / 未读 | `TaskListItem`（`variant="timeline"`） | 同上 |
-| 按分组 | `GroupedTaskRow` | 用同一张任务卡替换原来的单行 Tooltip；原 Tooltip 的 `+/-` 变更统计并入卡片 |
-| Web remote（任意视图） | 不挂载 | 项目行由 `hoverEnabled=false` 禁用，分组行由 `disabled` 显式禁用 |
+| 视图                   | 行组件                                 | 行为                                                                       |
+| ---------------------- | -------------------------------------- | -------------------------------------------------------------------------- |
+| 按项目                 | `TaskListItem`（`variant="default"`）  | 本地和远程会话行显示任务卡                                                 |
+| 置顶区                 | `TaskListItem`                         | 同上                                                                       |
+| 时间线 / 未读          | `TaskListItem`（`variant="timeline"`） | 同上                                                                       |
+| 按分组                 | `GroupedTaskRow`                       | 用同一张任务卡替换原来的单行 Tooltip；原 Tooltip 的 `+/-` 变更统计并入卡片 |
+| Web remote（任意视图） | 不挂载                                 | 项目行由 `hoverEnabled=false` 禁用，分组行由 `disabled` 显式禁用           |
 
 所有会话都走同一个 `TaskRowIdentityHoverCard`，不按视图或本地/远程复制字段逻辑。
 
@@ -53,24 +53,24 @@
 
 ## 远程连接状态
 
-| 状态 | 标签 | 路径 | 活动 | 分支 | 设备徽标 | RPC |
-| --- | --- | --- | --- | --- | --- | --- |
-| 本地 | 显示 | 本地路径，`~` 缩写 | 显示 | 显示 | 不显示 | 本地 Git |
-| 远程已连接 | 显示 | 远程路径，远端 `~` 缩写 | 显示 | 显示 | 显示 | `system.info` + Git 各一次 |
-| 远程未连接 | 显示 | 原始远程路径 | 显示 | 静默隐藏 | 显示 | 不发 |
+| 状态       | 标签 | 路径                    | 活动 | 分支     | 设备徽标 | RPC                        |
+| ---------- | ---- | ----------------------- | ---- | -------- | -------- | -------------------------- |
+| 本地       | 显示 | 本地路径，`~` 缩写      | 显示 | 显示     | 不显示   | 本地 Git                   |
+| 远程已连接 | 显示 | 远程路径，远端 `~` 缩写 | 显示 | 显示     | 显示     | `system.info` + Git 各一次 |
+| 远程未连接 | 显示 | 原始远程路径            | 显示 | 静默隐藏 | 显示     | 不发                       |
 
 远程未连接时不额外增加“远程未连接”一行；分支区静默消失。设备徽标沿用自身短状态展示，不新增连接详情。连接恢复后，下次悬停重新查询，不做轮询。
 
 ## 数据源与边界
 
-| 字段 | 唯一数据源 | 说明 |
-| --- | --- | --- |
-| worktree 标签 | `tasks-index.worktree_root` → `formatWorktreeLabel` | 与头部胶囊、行内图标同源，不在 UI store 保存副本 |
-| 路径 | `tasks-index.root_path` → `task.cwd` | worktree 任务的 `workspacePath` 是项目主目录，不能拿来展示或查询 Git（`docs/git/worktree.md` §3.7） |
-| 最近活动 | `sessions-index.lastActivityAt` / `task.updatedAt` | 复用 `getTaskListRowActivity` |
-| 分支 | `git.getRepositorySummary({ workspacePath: task.cwd ?? task.workspacePath })` | 只在卡片打开且 `rpcReady` 时查询；失败或非 Git 仓库时隐藏分支行 |
-| 设备徽标 | `RemoteTaskDeviceLabel` + task/source 投影 | 只读既有元数据，不新增 RPC |
-| 变更统计 | `task.changeSummary` | 无统计时不显示 |
+| 字段          | 唯一数据源                                                                    | 说明                                                                                                |
+| ------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| worktree 标签 | `tasks-index.worktree_root` → `formatWorktreeLabel`                           | 与头部胶囊、行内图标同源，不在 UI store 保存副本                                                    |
+| 路径          | `tasks-index.root_path` → `task.cwd`                                          | worktree 任务的 `workspacePath` 是项目主目录，不能拿来展示或查询 Git（`docs/git/worktree.md` §3.7） |
+| 最近活动      | `sessions-index.lastActivityAt` / `task.updatedAt`                            | 复用 `getTaskListRowActivity`                                                                       |
+| 分支          | `git.getRepositorySummary({ workspacePath: task.cwd ?? task.workspacePath })` | 只在卡片打开且 `rpcReady` 时查询；失败或非 Git 仓库时隐藏分支行                                     |
+| 设备徽标      | `RemoteTaskDeviceLabel` + task/source 投影                                    | 只读既有元数据，不新增 RPC                                                                          |
+| 变更统计      | `task.changeSummary`                                                          | 无统计时不显示                                                                                      |
 
 分支查询是只读快照，不做轮询，也不写回任务或 workspace 状态；卡片关闭即丢弃。Git 状态的实时来源仍是当前会话 header 的 `useGitRepository`。
 

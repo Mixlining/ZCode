@@ -96,12 +96,14 @@ export function useModelProviderNavigation({
 
   const codingPlanItems = useMemo(
     () =>
-      CODING_PLAN_DISABLED ? [] : CODING_PLAN_PROVIDER_SPECS.filter((spec) =>
-        shouldShowCodingPlanForProviderFamilyDomain(
-          spec.oauthProviderId,
-          providerFamilyDomain,
-          availableFamilies,
-        ),
+      CODING_PLAN_DISABLED
+        ? []
+        : CODING_PLAN_PROVIDER_SPECS.filter((spec) =>
+            shouldShowCodingPlanForProviderFamilyDomain(
+              spec.oauthProviderId,
+              providerFamilyDomain,
+              availableFamilies,
+            ),
           ).map((spec) => {
             const provider = modelProviders.find((item) => item.providerId === spec.id) ?? null;
             const accountEntitled = entitledAccountProviderIds.has(spec.id);

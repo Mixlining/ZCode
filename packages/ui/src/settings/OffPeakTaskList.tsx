@@ -146,7 +146,10 @@ const STATUS_ICON: Record<OffPeakStatusIconKind, ComponentType<SVGProps<SVGSVGEl
   stopped: AutomationPausedIcon,
 };
 
-export function OffPeakTaskList({
+// 编译期选择入口：禁用时不进入业务 hooks；原实现保持完整调用顺序。
+export const OffPeakTaskList = CODING_PLAN_DISABLED ? () => null : OffPeakTaskListEnabled;
+
+function OffPeakTaskListEnabled({
   tasks,
   busyOperationId,
   onOpen,
@@ -156,7 +159,6 @@ export function OffPeakTaskList({
   onDelete,
   onOpenSession,
 }: OffPeakTaskListProps) {
-  if (CODING_PLAN_DISABLED) return null;
   const { intl } = useZCodeIntl();
   const sorted = sortOffPeakTasksByCreatedAt(tasks);
 

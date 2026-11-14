@@ -48,7 +48,9 @@ const MAX_RECORDS = 300;
 let records: HighspeedTurnRecord[] = [];
 const highspeedTpsByCardId = CODING_PLAN_DISABLED ? null : new Map<string, number>();
 let healthyAttemptSequence = 0;
-const healthyAttemptsByCardId = CODING_PLAN_DISABLED ? null : new Map<string, { expiry?: number; completion?: number }>();
+const healthyAttemptsByCardId = CODING_PLAN_DISABLED
+  ? null
+  : new Map<string, { expiry?: number; completion?: number }>();
 export interface HighspeedHealthyAttempt {
   cardId: string;
   phase: "expiry" | "completion";

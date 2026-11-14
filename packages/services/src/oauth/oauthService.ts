@@ -1,3 +1,4 @@
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 /* eslint-disable max-lines -- OAuthService 集中维护 OAuth 会话生命周期和 provider 切换边界，当前 review 修复只收窄后台迁移写入条件。 */
 import { randomBytes } from "node:crypto";
 import { Emitter } from "@zcode/rpc";
@@ -183,6 +184,9 @@ export class OAuthService implements IOAuthService {
   }
 
   async getProviders(): Promise<OAuthProviderMeta[]> {
+    // Host 已跳过装配；直接调用也不能读取、刷新或改写旧官方身份。
+    if (CODING_PLAN_DISABLED) return [];
+
     return [...this.adapters.values()]
       .map((adapter) => adapter.meta)
       .filter((meta) => meta.enabled)
@@ -190,20 +194,33 @@ export class OAuthService implements IOAuthService {
   }
 
   async getActiveProvider(): Promise<OAuthProviderId | null> {
+    // Host 已跳过装配；直接调用也不能读取、刷新或改写旧官方身份。
+    if (CODING_PLAN_DISABLED) return null;
+
     return this.repo.getActiveProvider();
   }
 
   async getAccountAvailability(): Promise<OAuthAccountAvailability> {
+    // Host 已跳过装配；直接调用也不能读取、刷新或改写旧官方身份。
+    if (CODING_PLAN_DISABLED)
+      return { loginProvider: null, userId: null, sessionRevision: null, families: [] };
+
     return this.repo.loadAccountAvailability();
   }
 
   getWebsiteSession() {
+    // Host 已跳过装配；直接调用也不能读取、刷新或改写旧官方身份。
+    if (CODING_PLAN_DISABLED) return Promise.resolve(null);
+
     return this.repo.loadWebsiteSession();
   }
 
   async refreshAccountProfile(
     expected?: Pick<OAuthAccountAvailability, "loginProvider" | "userId" | "sessionRevision">,
   ): Promise<OAuthAccountAvailability> {
+    // Host 已跳过装配；直接调用也不能读取、刷新或改写旧官方身份。
+    if (CODING_PLAN_DISABLED) return this.getAccountAvailability();
+
     const snapshot = await this.repo.loadSessionSnapshot();
     const provider = snapshot["oauth:active_provider"];
     const profile = provider ? this.repo.profileFromSnapshot(snapshot, provider) : null;
@@ -273,11 +290,17 @@ export class OAuthService implements IOAuthService {
   }
 
   async restoreCachedSession(): Promise<UserInfo | null> {
+    // Host 已跳过装配；直接调用也不能读取、刷新或改写旧官方身份。
+    if (CODING_PLAN_DISABLED) return null;
+
     const result = await this.restoreCachedSessionState();
     return result.status === "authenticated" ? result.userInfo : null;
   }
 
   async restoreCachedSessionState(): Promise<OAuthCachedSessionRestoreResult> {
+    // Host 已跳过装配；直接调用也不能读取、刷新或改写旧官方身份。
+    if (CODING_PLAN_DISABLED) return { status: "signed-out" };
+
     return this.withCurrentCredentialStore(() => this.restoreCachedSessionStateInternal());
   }
 
@@ -626,6 +649,9 @@ export class OAuthService implements IOAuthService {
   }
 
   async restoreSession(): Promise<UserInfo | null> {
+    // Host 已跳过装配；直接调用也不能读取、刷新或改写旧官方身份。
+    if (CODING_PLAN_DISABLED) return null;
+
     return this.withCurrentCredentialStore(() => this.restoreSessionInternal());
   }
 
@@ -733,11 +759,17 @@ export class OAuthService implements IOAuthService {
   }
 
   async startOAuth(provider: OAuthProviderId): Promise<OAuthStartResponse> {
+    // Host 已跳过装配；直接调用也不能读取、刷新或改写旧官方身份。
+    if (CODING_PLAN_DISABLED) throw new Error("coding_plan_disabled");
+
     if (provider === ZAI_CN_PROVIDER_ID) return this.startOAuthWithPolling(provider);
     return this.startOAuthInternal(provider);
   }
 
   async startOAuthWithPolling(provider: OAuthProviderId): Promise<OAuthStartResponse> {
+    // Host 已跳过装配；直接调用也不能读取、刷新或改写旧官方身份。
+    if (CODING_PLAN_DISABLED) throw new Error("coding_plan_disabled");
+
     if (!isBuiltinOAuthProvider(provider)) {
       return this.startOAuthInternal(provider);
     }
@@ -878,6 +910,9 @@ export class OAuthService implements IOAuthService {
   }
 
   async pollPendingOAuth(): Promise<OAuthCallbackResult | null> {
+    // Host 已跳过装配；直接调用也不能读取、刷新或改写旧官方身份。
+    if (CODING_PLAN_DISABLED) return null;
+
     const apiClient = this.apiClient;
     if (!apiClient) {
       return null;
@@ -1067,6 +1102,9 @@ export class OAuthService implements IOAuthService {
   }
 
   async handleCallback(url: string): Promise<OAuthCallbackResult | null> {
+    // Host 已跳过装配；直接调用也不能读取、刷新或改写旧官方身份。
+    if (CODING_PLAN_DISABLED) return null;
+
     const pending = this.pendingState;
     if (!pending) {
       const callbackState = new URL(url).searchParams.get("state")?.trim();
@@ -1189,6 +1227,9 @@ export class OAuthService implements IOAuthService {
   }
 
   async refreshToken(provider?: OAuthProviderId): Promise<void> {
+    // Host 已跳过装配；直接调用也不能读取、刷新或改写旧官方身份。
+    if (CODING_PLAN_DISABLED) return;
+
     return this.withCurrentCredentialStore(() => this.refreshTokenInternal(provider));
   }
 
@@ -1242,6 +1283,9 @@ export class OAuthService implements IOAuthService {
 
   /** Host 本地 401 提交入口，不扩展 IOAuthService 的跨端契约。 */
   logoutIfCurrentCredentialRequest(input: string | URL, headers: Headers): Promise<boolean> {
+    // Host 已跳过装配；直接调用也不能读取、刷新或改写旧官方身份。
+    if (CODING_PLAN_DISABLED) return Promise.resolve(false);
+
     return this.withCurrentCredentialStore(() =>
       this.logoutActiveSession(() =>
         isCurrentOAuthCredentialRequest({
@@ -1285,6 +1329,9 @@ export class OAuthService implements IOAuthService {
   }
 
   async logout(provider?: OAuthProviderId): Promise<void> {
+    // Host 已跳过装配；直接调用也不能读取、刷新或改写旧官方身份。
+    if (CODING_PLAN_DISABLED) return;
+
     return this.withCurrentCredentialStore(() => this.logoutInternal(provider));
   }
 
@@ -1316,6 +1363,9 @@ export class OAuthService implements IOAuthService {
   }
 
   async logoutAll(): Promise<void> {
+    // Host 已跳过装配；直接调用也不能读取、刷新或改写旧官方身份。
+    if (CODING_PLAN_DISABLED) return;
+
     return this.withCurrentCredentialStore(() => this.logoutAllInternal());
   }
 
@@ -1339,6 +1389,9 @@ export class OAuthService implements IOAuthService {
   }
 
   async cancelPending(provider?: OAuthProviderId): Promise<void> {
+    // Host 已跳过装配；直接调用也不能读取、刷新或改写旧官方身份。
+    if (CODING_PLAN_DISABLED) return;
+
     await this.runSessionMutation(async () => {
       if (!this.pendingState) {
         if (provider && this.oauthFlowStartProvider && this.oauthFlowStartProvider !== provider)

@@ -19,6 +19,8 @@ import {
   decideExtensionActivationInputSchema,
   describeExtensionEnableInputSchema,
   extensionEnvSchema,
+  ExtensionError,
+  extensionGlobalId,
   getExtensionRecentActionsInputSchema,
   grantExtensionInputSchema,
   revokeExtensionInputSchema,
@@ -63,6 +65,7 @@ import { createExtensionDraftRelay } from "#src/extensions/draftRelay.js";
 import { createEnvState } from "#src/extensions/envState.js";
 import { createGenerationPump } from "#src/extensions/generationPump.js";
 import { createModelsBackend } from "#src/extensions/modelsBackend.js";
+import { createExtensionInventoryReader } from "#src/extensions/inventoryReader.js";
 import { readPluginManifest } from "#src/extensions/manifestReader.js";
 import { createMentionItemsRouter } from "#src/extensions/mentionItems.js";
 import { createAuditLog } from "#src/extensions/auditLog.js";
@@ -85,13 +88,8 @@ import type { IExtensionViewsService } from "#src/extensions/views/contract.js";
 import type { IExtensionGrantsService } from "#src/extensions/grants/contract.js";
 import type { IProjectService } from "#src/project/contract.js";
 
-// Window Host 的扩展门面实现（docs/plugins/extension-host.md §3.4、§3.5、§13、§16.1）：
-// - 静态表的唯一 owner：插件清单的 owner 是 CLI，读出用户级启用的插件后逐个读 plugin.json 校验，
-//   整份推给 Renderer；只把合法、兼容的扩展声明推给扩展进程。启动、插件管理成功、重新加载时重读。
-// - 按代际连接扩展进程（Main 牵线的 L1 端口），只持最近一份贡献表快照（运行状态与动态值）并转给 Renderer。
-// - 扩展进程状态的 owner 是 Main：经 parentPort 收到后转给 Renderer。
-// - 日志缓冲的 owner 也是 Main（§16.8）：追加的批次与快照回包都只转发，不留副本。
-// - 能力网关：extension-window 频道的唯一服务端；后端是 Renderer 报告、两个数据泵与视图中转。
+// Window Host 独占静态表与发布串行链；清单 IO 由 inventoryReader 执行，CLI 仍是配置 owner。
+// 完整边界见本模块 CONTRACT.md 及 docs/plugins/extension-host.md §3.4、§3.5、§13、§16.1。
 
 export interface WindowHostExtensionsDeps {
   /** 读插件清单（静态表、settings.*）；settings.update 经 configurePlugin 写 user 层（§18.1 H1）。 */
@@ -163,11 +161,8 @@ export function createWindowHostExtensions(deps: WindowHostExtensionsDeps): Wind
   const hostStatus = new Emitter<ExtensionHostStatus>();
   const logs = new Emitter<ExtensionLogEntry[]>();
   /** 在途的日志快照请求：Main 收到即回，按 requestId 配对；本服务销毁时一起失败，不设超时。 */
-  const logRequests = new Map<
-    string,
-    { resolve(snapshot: ExtensionLogsSnapshot): void; reject(error: Error): void }
-  >();
-  let status: ExtensionHostStatus = { state: "starting", gen: 0 };
+  const logRequests = new Map<string, PromiseWithResolvers<ExtensionLogsSnapshot>>();
+  let status: ExtensionHostStatus = { state: "idle", gen: 0 };
   let snapshot: ContributionSnapshot | null = null;
   let table: ExtensionStaticTable = { rev: 0, plugins: [] };
   /** 由同一次读取生成；还没读完清单时为 null，不向扩展进程推空声明。 */
@@ -176,6 +171,65 @@ export function createWindowHostExtensions(deps: WindowHostExtensionsDeps): Wind
   /** 重读与推送串行：牵线时的推送排在在途的重读之后，扩展进程总是收到最新一份声明。 */
   let staticChain: Promise<void> = Promise.resolve();
   let disposed = false;
+  // 这是已接受的激活需求，不复制扩展进程的运行状态；禁用/卸载/撤权时移除。
+  const activationRequests = new Set<string>();
+  let reportedDemand: boolean | undefined;
+  let connectionWait: PromiseWithResolvers<void> | null = null;
+  const settleConnectionWait = (error?: Error) => {
+    const pending = connectionWait;
+    connectionWait = null;
+    if (error) pending?.reject(error);
+    else pending?.resolve();
+  };
+  const runnableDeclarations = () =>
+    (declarations?.plugins ?? []).filter((plugin) => {
+      const extension = table.plugins.find(
+        (entry) => entry.pluginId === plugin.pluginId,
+      )?.extension;
+      return (
+        Boolean(plugin.main) &&
+        extension?.state === "ok" &&
+        extension.grants.every((grant) => grants.covers(plugin.pluginId, grant))
+      );
+    });
+  const reportDemand = (force = false) => {
+    if (disposed) return;
+    const runnable = runnableDeclarations();
+    for (const id of activationRequests) {
+      if (!runnable.some((plugin) => plugin.pluginId === id)) activationRequests.delete(id);
+    }
+    const required = runnable.some(
+      (plugin) =>
+        plugin.activationEvents.includes("onAvailable") || activationRequests.has(plugin.pluginId),
+    );
+    if (!required)
+      settleConnectionWait(new ExtensionError("cancelled", "extension demand removed"));
+    if (force || reportedDemand !== required) {
+      reportedDemand = required;
+      deps.postToMain({ type: "extension-host/demand", required });
+    }
+  };
+  const ensureActivated = async (id: string, kind: "commands" | "views") => {
+    await staticChain;
+    if (disposed) throw new ExtensionError("cancelled", "extensions service disposed");
+    const plugin = declarations?.plugins.find((candidate) =>
+      candidate[kind].some((localId) => extensionGlobalId(candidate.pluginId, localId) === id),
+    );
+    if (!plugin)
+      throw new ExtensionError("not-declared", `extension target is not declared: ${id}`);
+    if (!runnableDeclarations().some((candidate) => candidate.pluginId === plugin.pluginId)) {
+      throw new ExtensionError("not-granted", "extension activation is not authorized");
+    }
+    activationRequests.add(plugin.pluginId);
+    const ready = connection
+      ? undefined
+      : (connectionWait ??= Promise.withResolvers<void>()).promise;
+    reportDemand(true);
+    await ready;
+    if (disposed || !connection || !activationRequests.has(plugin.pluginId)) {
+      throw new ExtensionError("cancelled", "extension activation became stale");
+    }
+  };
   const workbench = createWorkbenchState();
   const env = createEnvState();
   const contextPump = createContextPump({ agent: deps.agent, workbench, logger });
@@ -198,6 +252,7 @@ export function createWindowHostExtensions(deps: WindowHostExtensionsDeps): Wind
     staticTable: () => table,
     connection: () => (connection ? { gen: connection.gen, host: connection.host } : null),
     agent: deps.agent,
+    ensureCommand: (id) => ensureActivated(id, "commands"),
     logger,
   });
   // 用户授权的唯一 owner（grants.json）与审计日志（§17.7、§17.8）。
@@ -223,7 +278,14 @@ export function createWindowHostExtensions(deps: WindowHostExtensionsDeps): Wind
   });
   /** 网关复查开着的需授权订阅的信号：授权状态变化、静态表重发。 */
   const grantFactsChanged = new Emitter<void>();
-  const grantsSubscription = grants.onDidChange(() => grantFactsChanged.fire());
+  const grantsSubscription = grants.onDidChange(() => {
+    grantFactsChanged.fire();
+    // 与清单发布共用串行链，避免 reconcile 中途使用旧声明暂时归零并重启进程。
+    void enqueueStatic("refresh extension demand after grants", async () => {
+      reportDemand();
+      await pushDeclarations();
+    });
+  });
   const models = createModelsBackend({ modelSelection: deps.modelSelection, logger });
   const grantState = (pluginId: string) =>
     grants.snapshot().plugins.find((plugin) => plugin.pluginId === pluginId);
@@ -347,98 +409,21 @@ export function createWindowHostExtensions(deps: WindowHostExtensionsDeps): Wind
     );
     contributions.fire({ kind: "static", table });
     grantFactsChanged.fire();
+    reportDemand();
   };
 
-  /**
-   * 从插件商店安装后、激活前的确认（§17.7，P3b）：安装的成功信号没有插件 id，所以按静态表判断。
-   * 新出现、扩展合法且有 main 的插件，在已有别的插件持有生效会话权限时先不激活，记为 pending。
-   */
-  const holdNewlyInstalled = async (
-    resolved: typeof resolvedPlugins,
-    previousIds: ReadonlySet<string>,
-  ) => {
-    for (const { entry } of resolved) {
-      const extension = entry.extension;
-      if (previousIds.has(entry.pluginId) || extension?.state !== "ok" || !extension.main) continue;
-      if (grants.activationHold(entry.pluginId)) continue;
-      const holders = grants.holders(entry.pluginId);
-      if (holders.length === 0) continue;
-      try {
-        await grants.holdActivation(entry.pluginId, entry.version);
-        logger.info(
-          undefined,
-          `extension activation held plugin=${entry.pluginId} holders=${holders.length} (installed while other extensions hold session grants)`,
-        );
-      } catch (error) {
-        logger.warn(undefined, `hold extension activation failed plugin=${entry.pluginId}`, {
-          code: (error as { code?: unknown } | null)?.code,
-        });
-      }
-    }
-  };
-
-  /** 读插件清单与每个插件的 plugin.json，整份替换静态表与扩展声明（§16.1）。 */
+  const readInventory = createExtensionInventoryReader({
+    pluginManagement: deps.pluginManagement,
+    inventoryWorkspacePath: deps.inventoryWorkspacePath,
+    grants,
+    abortPlugin: (pluginId) => sessions.abortPlugin(pluginId),
+    isDisposed: () => disposed,
+    logger,
+  });
   const readStaticTable = async (reason: string, options: { installed?: boolean } = {}) => {
-    // 授权记录读完再算静态表：之后推的扩展声明让扩展激活，激活时的会话调用要看到已有的授权。
-    await grants.ready;
-    const result = await deps.pluginManagement.listPlugins({
-      workspacePath: deps.inventoryWorkspacePath,
-      configScope: "user",
-    });
-    // 扩展只认用户级启用（§13）：工作区级启用不激活扩展代码；未物化的插件包没有可读的清单。
-    const plugins = result.plugins.filter(
-      (plugin) =>
-        plugin.enabled &&
-        plugin.enabledSource !== "workspace" &&
-        plugin.packageStatus !== "missing",
-    );
-    const resolved = await Promise.all(
-      plugins.map(async (plugin) =>
-        resolvePluginManifest(
-          {
-            pluginId: plugin.id,
-            name: plugin.name,
-            ...(plugin.version ? { version: plugin.version } : {}),
-            rootPath: plugin.rootPath,
-            ...(plugin.dataPath ? { dataPath: plugin.dataPath } : {}),
-          },
-          await readPluginManifest(plugin.rootPath),
-        ),
-      ),
-    );
-    if (disposed) return;
-    const previousIds = new Set(table.plugins.map((plugin) => plugin.pluginId));
-    // 按新清单重算授权（插件更新：不变多不询问、变多待授权、变少收窄）；生效档位变少的插件中止在途调用。
-    for (const pluginId of grants.reconcile({
-      rev: table.rev,
-      plugins: resolved.map(({ entry }) => entry),
-    }))
-      sessions.abortPlugin(pluginId);
-    if (options.installed) await holdNewlyInstalled(resolved, previousIds);
-    if (disposed) return;
+    const resolved = await readInventory(table, options);
+    if (!resolved) return;
     resolvedPlugins = resolved;
-    // 清单问题按插件记一次（重读只在插件清单变化与重新加载时发生，频率低）。
-    for (const { entry } of resolved) {
-      const extension = entry.extension;
-      if (extension && extension.state !== "ok") {
-        logger.warn(
-          undefined,
-          `extension ${extension.state} ${entry.pluginId}: ${extension.reason}${extension.state === "invalid" ? ` (${extension.path})` : ""}`,
-        );
-      }
-      for (const problem of entry.problems) {
-        logger.warn(
-          undefined,
-          `manifest item unusable ${entry.pluginId} ${problem.path}: ${problem.reason}`,
-        );
-      }
-      for (const ignored of entry.ignored) {
-        logger.info(
-          undefined,
-          `manifest ignored ${entry.pluginId} ${ignored.path}: ${ignored.reason}`,
-        );
-      }
-    }
     publishStatic(reason);
   };
 
@@ -446,7 +431,7 @@ export function createWindowHostExtensions(deps: WindowHostExtensionsDeps): Wind
     const target = connection;
     const current = declarations;
     if (!target || !current) return;
-    await target.host.setDeclarations(current);
+    await target.host.setDeclarations({ plugins: runnableDeclarations() });
     logger.info(
       undefined,
       `declarations pushed gen=${target.gen} extensions=${current.plugins.length}`,
@@ -499,7 +484,14 @@ export function createWindowHostExtensions(deps: WindowHostExtensionsDeps): Wind
     });
     logger.info(undefined, `extension host paired gen=${gen}`);
     // 新代际收一份声明：排在在途的重读之后，推的总是最新一份；还没读完清单时由重读完成后推。
-    void enqueueStatic("push extension declarations", pushDeclarations);
+    void enqueueStatic("push extension declarations", async () => {
+      await pushDeclarations();
+      if (connection?.protocol === protocol) settleConnectionWait();
+    }).catch((error: unknown) => {
+      if (connection?.protocol === protocol) {
+        settleConnectionWait(error instanceof Error ? error : new Error(String(error)));
+      }
+    });
   };
 
   const service: IExtensionsService = {
@@ -516,6 +508,7 @@ export function createWindowHostExtensions(deps: WindowHostExtensionsDeps): Wind
       }) satisfies Event<ExtensionHostStatus>,
     async executeCommand(input) {
       const parsed = executeCommandInputSchema.parse(input);
+      await ensureActivated(parsed.commandId, "commands");
       const target = connection;
       if (!target) throw new Error("extension host is not connected");
       await target.host.executeCommand(parsed);
@@ -548,15 +541,15 @@ export function createWindowHostExtensions(deps: WindowHostExtensionsDeps): Wind
       const parsed = getExtensionLogsInputSchema.parse(input ?? {});
       if (disposed) return Promise.reject(new Error("extensions service disposed"));
       const requestId = randomUUID();
-      return new Promise<ExtensionLogsSnapshot>((resolve, reject) => {
-        logRequests.set(requestId, { resolve, reject });
-        try {
-          deps.postToMain({ type: "extension-host/logs-request", requestId, ...parsed });
-        } catch (error) {
-          logRequests.delete(requestId);
-          reject(error instanceof Error ? error : new Error(String(error)));
-        }
-      });
+      const pending = Promise.withResolvers<ExtensionLogsSnapshot>();
+      logRequests.set(requestId, pending);
+      try {
+        deps.postToMain({ type: "extension-host/logs-request", requestId, ...parsed });
+      } catch (error) {
+        logRequests.delete(requestId);
+        pending.reject(error instanceof Error ? error : new Error(String(error)));
+      }
+      return pending.promise;
     },
     onDynamicLogs: () => logs.event,
   };
@@ -675,12 +668,14 @@ export function createWindowHostExtensions(deps: WindowHostExtensionsDeps): Wind
   };
 
   const viewsService: IExtensionViewsService = {
-    prepareView: (input) =>
-      views.prepareView({
+    prepareView: async (input) => {
+      await ensureActivated(input.viewId, "views");
+      return views.prepareView({
         ...input,
         scope: resolvedScopeSchema.parse(input.scope),
         ...(input.input ? { input: extensionViewInputSchema.parse(input.input) } : {}),
-      }),
+      });
+    },
     viewRequest: (input) => views.viewRequest(viewRequestInputSchema.parse(input)),
     closeView: (input) => views.closeView(input.instanceId),
     onDynamicViewNotifications: (input) => views.onViewNotifications(input.instanceId),
@@ -706,8 +701,8 @@ export function createWindowHostExtensions(deps: WindowHostExtensionsDeps): Wind
     viewsService,
     grantsService,
     announceReady() {
-      refreshStatic("startup");
       deps.postToMain({ type: "extension-host/window-ready" });
+      refreshStatic("startup");
     },
     receiveControl(message, port) {
       if (disposed) return;
@@ -726,6 +721,9 @@ export function createWindowHostExtensions(deps: WindowHostExtensionsDeps): Wind
         status = message.status;
         // 扩展进程不在运行：旧代际的连接与快照作废。
         if (message.status.state !== "running") detach(`status ${message.status.state}`);
+        if (message.status.state === "stopped") {
+          settleConnectionWait(new ExtensionError("host-unavailable", "extension host stopped"));
+        }
         hostStatus.fire(status);
         return;
       }
@@ -769,7 +767,10 @@ export function createWindowHostExtensions(deps: WindowHostExtensionsDeps): Wind
       }
     },
     dispose() {
+      deps.postToMain({ type: "extension-host/demand", required: false });
       disposed = true;
+      activationRequests.clear();
+      settleConnectionWait(new ExtensionError("cancelled", "extensions service disposed"));
       detach("window host disposed");
       views.dispose();
       contextPump.dispose();

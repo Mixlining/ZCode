@@ -1,4 +1,5 @@
 import type { BuiltinModelProviderId, IPlatformService } from "@zcode/shared";
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import type { IOAuthService } from "@zcode/services";
 import { resolveOAuthProviderIdByPreset } from "./utils.js";
 import {
@@ -13,6 +14,7 @@ export async function startPresetSubscriptionLogin(params: {
   platform: IPlatformService;
   clearPending: () => void;
 }) {
+  if (CODING_PLAN_DISABLED) return;
   const oauthProviderId = resolveOAuthProviderIdByPreset(params.presetId);
   if (!oauthProviderId) {
     return;

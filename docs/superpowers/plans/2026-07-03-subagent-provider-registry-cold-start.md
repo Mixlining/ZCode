@@ -86,6 +86,7 @@
 ## Phase 0: Baseline Red Evidence
 
 **Files:**
+
 - Test: `packages/desktop/test/e2e/conversation-session/subagents/conversation-session-subagent-provider-registry-cold-start.test.ts`
 - Fixture: `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-subagent-provider-registry-cold-start.json`
 
@@ -804,6 +805,7 @@ If remote helper changed, stop and explain why the change is necessary before co
 ## Phase 6: E2E Acceptance
 
 **Files:**
+
 - Test: `packages/desktop/test/e2e/conversation-session/subagents/conversation-session-subagent-provider-registry-cold-start.test.ts`
 - Fixture: `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-subagent-provider-registry-cold-start.json`
 - Modify after green: `docs/testing/conversation-session-e2e-coverage-matrix.md`

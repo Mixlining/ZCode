@@ -247,7 +247,6 @@ function TurnChatLoadingSlot({
 function useConversationAssistantWorkItems(
   rows: readonly AssistantWorkRow[],
   context: ConversationRowRenderContext,
-  stageTailIsRunning = false,
 ) {
   const showReasoning = context.messageStreamShowReasoning === true;
   const firstReasoningRowId = context.messageStreamFirstReasoningRowId;
@@ -282,13 +281,11 @@ function ConversationAssistantWorkItems(
 
 function ConversationAssistantWorkItemsContent({
   rows,
-  stageTailIsRunning = false,
   ...props
 }: {
   rows: readonly AssistantWorkRow[];
-  stageTailIsRunning?: boolean;
 } & Omit<React.ComponentProps<typeof ConversationAssistantWorkContent>, "items">) {
-  const items = useConversationAssistantWorkItems(rows, props.context, stageTailIsRunning);
+  const items = useConversationAssistantWorkItems(rows, props.context);
   return <ConversationAssistantWorkContent items={items} {...props} />;
 }
 
@@ -320,15 +317,15 @@ function ConversationAssistantWorkContent({
   }
 
   const renderItem = (item: ConversationAssistantWorkRenderItem) =>
-        item.kind === "row" ? (
-          <ConversationTurnRow
-            key={item.key}
-            row={item.row}
-            context={context}
-            hideAssistantActions={item.row.kind === "assistantText"}
-            assistantCodeCommentProjectionEnabled={assistantCodeCommentProjectionEnabled}
-          />
-        ) : (
+    item.kind === "row" ? (
+      <ConversationTurnRow
+        key={item.key}
+        row={item.row}
+        context={context}
+        hideAssistantActions={item.row.kind === "assistantText"}
+        assistantCodeCommentProjectionEnabled={assistantCodeCommentProjectionEnabled}
+      />
+    ) : (
       <ConversationAgentToolCallRow key={item.key} item={item} context={context} />
     );
   const content = (
@@ -608,23 +605,23 @@ function AssistantHistoryStatus({
           collapsible ? testId(TID_CHAT_ASSISTANT_HISTORY_TRIGGER, segment.key) : undefined
         }
         data-history-open={collapsible ? String(open) : undefined}
-          className="group/history-message inline-flex max-w-full items-center gap-2 text-left text-ui-base text-foreground-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-input-border-focused)]"
+        className="group/history-message inline-flex max-w-full items-center gap-2 text-left text-ui-base text-foreground-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-input-border-focused)]"
+      >
+        <span
+          className={cn("truncate", highspeed && "font-medium leading-5 text-icon-purple")}
+          data-highspeed-duration={highspeed ? "true" : undefined}
         >
-          <span
-            className={cn("truncate", highspeed && "font-medium leading-5 text-icon-purple")}
-            data-highspeed-duration={highspeed ? "true" : undefined}
-          >
-            {label}
-          </span>
+          {label}
+        </span>
         {collapsible && !segment.assistantHistoryDefaultOpen ? (
-            <ChevronRightIcon
-              aria-hidden
-              className={cn(
-                "size-4 shrink-0 text-[var(--color-foreground-subtlest)] opacity-70 transition-transform",
-                open ? "rotate-90" : "rotate-0",
-              )}
-            />
-          ) : null}
+          <ChevronRightIcon
+            aria-hidden
+            className={cn(
+              "size-4 shrink-0 text-[var(--color-foreground-subtlest)] opacity-70 transition-transform",
+              open ? "rotate-90" : "rotate-0",
+            )}
+          />
+        ) : null}
       </Status>
       {highspeed ? (
         <div className="ml-auto flex shrink-0 items-center gap-2 text-icon-purple">
@@ -1192,10 +1189,10 @@ function ConversationBackgroundResultWork({
       )}
       <ConversationAssistantWorkContent
         items={historyItems}
-                context={context}
-                assistantCodeCommentProjectionEnabled={assistantCodeCommentProjectionEnabled}
+        context={context}
+        assistantCodeCommentProjectionEnabled={assistantCodeCommentProjectionEnabled}
         historyContainer={{ chunkKey: unit.key, open }}
-              />
+      />
       {latestAssistantTextRow ? (
         <ConversationTurnRow
           key={`${latestAssistantTextRow.rowId}:${latestAssistantTextRow.entityId ?? ""}`}
@@ -1341,10 +1338,16 @@ function ConversationTurnGroupImpl({
   // 判据用 latestAssistantTextRow.state 而不是 unit.isRunning：回合可能还在跑
   // （模型说完一段正在调工具），但最新文本行已经终态，那时 copyText 仍须可用。
   const assistantTextTerminal =
-    latestAssistantTextRow?.state === "complete" ||
-    latestAssistantTextRow?.state === "interrupted";
+    latestAssistantTextRow?.state === "complete" || latestAssistantTextRow?.state === "interrupted";
   const assistantRawCopyText = useMemo(
-    () => (assistantTextTerminal ? resolveAssistantCopyText(unit) : undefined),
+    () =>
+      assistantTextTerminal
+        ? resolveAssistantCopyText({
+            latestAssistantTextRow: unit.latestAssistantTextRow,
+            assistantTextRows: unit.assistantTextRows,
+            assistantWorkRows: unit.assistantWorkRows,
+          })
+        : undefined,
     [
       assistantTextTerminal,
       unit.assistantTextRows,
@@ -1516,202 +1519,204 @@ function ConversationTurnGroupImpl({
 
   return (
     <SummaryGroupBoundaryContext.Provider value={summaryGroupBoundary}>
-    <section
-      data-turn-id={unit.turnId}
-      data-turn-key={unit.key}
-      data-highspeed-gradient={showHighspeedAnimatedGradient ? "true" : undefined}
-      className={cn(
-        "relative mx-auto flex w-full flex-col gap-5 px-4 @md/conversation:px-6 pb-5",
-        startsWithoutUserBubble || topClearedByTimeline ? "pt-0" : "pt-14",
-        showHighspeedAnimatedGradient && "highspeed-animated-gradient-text",
-      )}
-    >
-      {unit.leadingBoundaryRows.map((row) => (
-        <ConversationTurnRow
-          key={`${row.rowId}:${row.entityId ?? ""}`}
-          row={row}
-          context={context}
-        />
-      ))}
-      {hasAssistantTurnContent ? (
-        // deferAssistantActions 后工具栏被移到文件 summary 之后，
-        // 之前 hover group 只包住工具栏自己，导致必须悬停到不可见按钮位置才出现。
-        // 这里把 assistant work、summary 和工具栏放进同一轮 hover 容器，对齐旧版。
-        <div className="group/assistant-turn flex w-full flex-col gap-5">
-          {backgroundResultTitle ? (
-            <>
-              {visibleUserRows.map((row) => (
-                <ConversationTurnRow
-                  key={`${row.rowId}:${row.entityId ?? ""}`}
-                  row={row}
-                  context={context}
-                  onEdit={row.actions?.canEdit === true ? onEdit : undefined}
-                  editWorkspaceRewindAvailability={editWorkspaceRewindAvailability}
+      <section
+        data-turn-id={unit.turnId}
+        data-turn-key={unit.key}
+        data-highspeed-gradient={showHighspeedAnimatedGradient ? "true" : undefined}
+        className={cn(
+          "relative mx-auto flex w-full flex-col gap-5 px-4 @md/conversation:px-6 pb-5",
+          startsWithoutUserBubble || topClearedByTimeline ? "pt-0" : "pt-14",
+          showHighspeedAnimatedGradient && "highspeed-animated-gradient-text",
+        )}
+      >
+        {unit.leadingBoundaryRows.map((row) => (
+          <ConversationTurnRow
+            key={`${row.rowId}:${row.entityId ?? ""}`}
+            row={row}
+            context={context}
+          />
+        ))}
+        {hasAssistantTurnContent ? (
+          // deferAssistantActions 后工具栏被移到文件 summary 之后，
+          // 之前 hover group 只包住工具栏自己，导致必须悬停到不可见按钮位置才出现。
+          // 这里把 assistant work、summary 和工具栏放进同一轮 hover 容器，对齐旧版。
+          <div className="group/assistant-turn flex w-full flex-col gap-5">
+            {backgroundResultTitle ? (
+              <>
+                {visibleUserRows.map((row) => (
+                  <ConversationTurnRow
+                    key={`${row.rowId}:${row.entityId ?? ""}`}
+                    row={row}
+                    context={context}
+                    onEdit={row.actions?.canEdit === true ? onEdit : undefined}
+                    editWorkspaceRewindAvailability={editWorkspaceRewindAvailability}
+                  />
+                ))}
+                <ConversationBackgroundResultWork
+                  unit={unit}
+                  apiRetry={apiRetry}
+                  context={assistantRowContext}
+                  onFork={canForkLatestAssistant ? onFork : undefined}
+                  onRetry={onRetry}
+                  title={backgroundResultTitle}
+                  assistantCopyText={assistantCopyText}
+                  assistantCodeCommentCards={assistantCodeCommentCards}
+                  assistantCodeCommentProjectionEnabled={assistantCodeCommentProjectionEnabled}
+                  assistantPreviewCardsAutoOpenKey={
+                    assistantPreviewPptxAutoOpenTarget?.turnId === unit.turnId
+                      ? assistantPreviewPptxAutoOpenTarget.key
+                      : undefined
+                  }
                 />
-              ))}
-              <ConversationBackgroundResultWork
+              </>
+            ) : (
+              <ConversationTurnFlow
                 unit={unit}
                 apiRetry={apiRetry}
                 context={assistantRowContext}
                 onFork={canForkLatestAssistant ? onFork : undefined}
                 onRetry={onRetry}
-                title={backgroundResultTitle}
+                onEdit={onEdit}
+                editWorkspaceRewindAvailability={editWorkspaceRewindAvailability}
                 assistantCopyText={assistantCopyText}
                 assistantCodeCommentCards={assistantCodeCommentCards}
                 assistantCodeCommentProjectionEnabled={assistantCodeCommentProjectionEnabled}
+                highspeed={isHighspeed}
+                highspeedMeta={highspeedMeta}
                 assistantPreviewCardsAutoOpenKey={
                   assistantPreviewPptxAutoOpenTarget?.turnId === unit.turnId
                     ? assistantPreviewPptxAutoOpenTarget.key
                     : undefined
                 }
               />
-            </>
-          ) : (
-            <ConversationTurnFlow
-              unit={unit}
-              apiRetry={apiRetry}
-              context={assistantRowContext}
-              onFork={canForkLatestAssistant ? onFork : undefined}
-              onRetry={onRetry}
-              onEdit={onEdit}
-              editWorkspaceRewindAvailability={editWorkspaceRewindAvailability}
-              assistantCopyText={assistantCopyText}
-              assistantCodeCommentCards={assistantCodeCommentCards}
-              assistantCodeCommentProjectionEnabled={assistantCodeCommentProjectionEnabled}
-              highspeed={isHighspeed}
-              highspeedMeta={highspeedMeta}
-              assistantPreviewCardsAutoOpenKey={
-                assistantPreviewPptxAutoOpenTarget?.turnId === unit.turnId
-                  ? assistantPreviewPptxAutoOpenTarget.key
-                  : undefined
-              }
-            />
-          )}
-          {/* 完成卡：这一轮消化的那条 run 做了什么、花了多少，紧跟最后一段正文。 */}
-          {workflowTurnCompletion === undefined ? null : (
-            <ConversationWorkflowCompletion
-              completion={workflowTurnCompletion}
+            )}
+            {/* 完成卡：这一轮消化的那条 run 做了什么、花了多少，紧跟最后一段正文。 */}
+            {workflowTurnCompletion === undefined ? null : (
+              <ConversationWorkflowCompletion
+                completion={workflowTurnCompletion}
+                context={context}
+                turnKey={unit.key}
+              />
+            )}
+            {/* 轮尾摘要：这一轮留下在跑的 run，排在完成卡之后、其余轮尾块之前。 */}
+            <ConversationWorkflowDigests
               context={context}
+              digests={workflowTurnDigests}
               turnKey={unit.key}
             />
-          )}
-          {/* 轮尾摘要：这一轮留下在跑的 run，排在完成卡之后、其余轮尾块之前。 */}
-          <ConversationWorkflowDigests
-            context={context}
-            digests={workflowTurnDigests}
-            turnKey={unit.key}
-          />
-          {/* 修复原因：CronCreate/CronUpdate 工具本身仍按普通工具行展示；成功卡片属于整轮
+            {/* 修复原因：CronCreate/CronUpdate 工具本身仍按普通工具行展示；成功卡片属于整轮
               完成后的结果摘要，必须等回复结束再跟随最终 assistant 正文收尾。 */}
-          <CronAutomationTurnCards cards={cronAutomationTurnCards} context={context} />
-          {!CODING_PLAN_DISABLED && <OffPeakTurnCards cards={offPeakTurnCards} context={context} />}
-          {!isOfficeMode && unit.header?.fileChanges ? (
-            <ConversationFileSummaryPanel
-              header={unit.header}
-              context={context}
-              assistantText={assistantFileSummaryText}
-            />
-          ) : null}
-          {unit.browserTurnEndRows.length > 0 ? (
-            // 自动截图表达轮次结束时页面最终状态；放在 assistant work 内会
-            // 穿插到 Website 预览和 file diff 摘要之间。它应是操作栏之前的最后一个内容块。
-            <ConversationAssistantWorkItems
-              rows={unit.browserTurnEndRows}
-              context={assistantRowContext}
-              assistantCodeCommentProjectionEnabled={assistantCodeCommentProjectionEnabled}
-            />
-          ) : null}
-          {canRenderAssistantActions && latestAssistantTextRow ? (
-            // 文件 summary 是整轮完成后的聚合结果；轮尾工具栏如果跟着
-            // assistant text 内联渲染，会插到 summary 前面，读起来像 summary 不是本轮收尾。
-            <ConversationAssistantTextActions
-              rowId={latestAssistantTextRow.rowId}
-              entityId={latestAssistantTextRow.entityId}
-              text={assistantCopyText}
-              createdAt={latestAssistantTextRow.createdAt}
-              compactForRemoteControl={context.compactForRemoteControl}
-              feedback={readAssistantFeedback(latestAssistantTextRow)}
-              sessionId={context.sessionId}
-              onFork={canForkLatestAssistant ? onFork : undefined}
-              onRetry={canRetryLatestAssistant ? onRetry : undefined}
-              onFeedbackChange={onFeedbackChange}
-              hookInvocations={unit.hookInvocations}
-              turnId={unit.turnId}
-              sourceCommandIds={deliverySourceCommandIds}
-              className={cn(
-                "flex items-center gap-1",
-                context.compactForRemoteControl
-                  ? "opacity-100"
-                  : "opacity-0 transition-opacity group-hover/assistant-turn:opacity-100 focus-within:opacity-100 has-[[data-bot-group-delivery]]:opacity-100",
-              )}
-            />
-          ) : (hasHookActions || !unit.isRunning) && !canRenderAssistantActions ? (
-            // 冲突合并曾把此兜底接到 Highspeed 页脚的 else，导致普通回复重复入口，
-            // Highspeed 无正文轮又丢失入口；它只与普通操作栏互斥，页脚独立渲染。
-            <MessageActions
-              className={cn(
-                context.compactForRemoteControl
-                  ? "opacity-100"
-                  : "opacity-0 transition-opacity group-hover/assistant-turn:opacity-100 focus-within:opacity-100 has-[[data-bot-group-delivery]]:opacity-100",
-              )}
-            >
-              {hasHookActions ? (
-                <ConversationHookDetailsAction rows={unit.hookInvocations} turnId={unit.turnId} />
-              ) : null}
-              {!BOTS_DISABLED && (
-                <ConnectedBotGroupDeliveryAction
-                  turnId={unit.turnId}
-                  sourceCommandIds={deliverySourceCommandIds}
-                />
-              )}
-            </MessageActions>
-          ) : null}
-          {showHighspeedOutputFooter ? (
-            <HighspeedOutputFooter
-              generatedLabel={intl.formatMessage({ id: "chat.highspeed.generatedBy" })}
-              shareLabel={intl.formatMessage({ id: "chat.highspeed.viewAction" })}
-              shareAriaLabel={intl.formatMessage({ id: "chat.highspeed.share" })}
-              shareEnabled={highspeedShareTarget !== null}
-              sharePending={false}
-              onShare={() => setHighspeedShareDialogOpen(true)}
-            />
-          ) : null}
-          {highspeedShareTarget ? (
-            <HighspeedShareDialog
-              metrics={highspeedShareTarget.metrics}
-              open={highspeedShareDialogOpen}
-              onOpenChange={setHighspeedShareDialogOpen}
-            />
-          ) : null}
-          {unit.assistantTailRows.length > 0 ? (
-            // turnTailBoundary 之前虽然从工作历史中拆出，却仍在 flow 内渲染，
-            // 使 CronCreate、文件 summary 与操作栏看起来落在 fork 分割线之后。boundary
-            // 必须统一收在全部 turn-local 附属 UI 之后，才是真正的 logical turn 结尾。
-            <ConversationAssistantWorkItems
-              rows={unit.assistantTailRows}
-              context={assistantRowContext}
-              assistantCodeCommentProjectionEnabled={assistantCodeCommentProjectionEnabled}
-            />
-          ) : null}
-        </div>
-      ) : (
-        <ConversationTurnFlow
-          unit={unit}
-          apiRetry={apiRetry}
-          context={assistantRowContext}
-          onEdit={onEdit}
-          editWorkspaceRewindAvailability={editWorkspaceRewindAvailability}
-          assistantCopyText={assistantCopyText}
-          assistantCodeCommentCards={assistantCodeCommentCards}
-          assistantCodeCommentProjectionEnabled={assistantCodeCommentProjectionEnabled}
-          highspeed={isHighspeed}
-          highspeedMeta={highspeedMeta}
-        />
-      )}
-      {!BOTS_DISABLED && unit.topicPreparations?.length ? (
-        <BotTopicPreparation items={unit.topicPreparations} />
-      ) : null}
-    </section>
+            <CronAutomationTurnCards cards={cronAutomationTurnCards} context={context} />
+            {!CODING_PLAN_DISABLED && (
+              <OffPeakTurnCards cards={offPeakTurnCards} context={context} />
+            )}
+            {!isOfficeMode && unit.header?.fileChanges ? (
+              <ConversationFileSummaryPanel
+                header={unit.header}
+                context={context}
+                assistantText={assistantFileSummaryText}
+              />
+            ) : null}
+            {unit.browserTurnEndRows.length > 0 ? (
+              // 自动截图表达轮次结束时页面最终状态；放在 assistant work 内会
+              // 穿插到 Website 预览和 file diff 摘要之间。它应是操作栏之前的最后一个内容块。
+              <ConversationAssistantWorkItems
+                rows={unit.browserTurnEndRows}
+                context={assistantRowContext}
+                assistantCodeCommentProjectionEnabled={assistantCodeCommentProjectionEnabled}
+              />
+            ) : null}
+            {canRenderAssistantActions && latestAssistantTextRow ? (
+              // 文件 summary 是整轮完成后的聚合结果；轮尾工具栏如果跟着
+              // assistant text 内联渲染，会插到 summary 前面，读起来像 summary 不是本轮收尾。
+              <ConversationAssistantTextActions
+                rowId={latestAssistantTextRow.rowId}
+                entityId={latestAssistantTextRow.entityId}
+                text={assistantCopyText}
+                createdAt={latestAssistantTextRow.createdAt}
+                compactForRemoteControl={context.compactForRemoteControl}
+                feedback={readAssistantFeedback(latestAssistantTextRow)}
+                sessionId={context.sessionId}
+                onFork={canForkLatestAssistant ? onFork : undefined}
+                onRetry={canRetryLatestAssistant ? onRetry : undefined}
+                onFeedbackChange={onFeedbackChange}
+                hookInvocations={unit.hookInvocations}
+                turnId={unit.turnId}
+                sourceCommandIds={deliverySourceCommandIds}
+                className={cn(
+                  "flex items-center gap-1",
+                  context.compactForRemoteControl
+                    ? "opacity-100"
+                    : "opacity-0 transition-opacity group-hover/assistant-turn:opacity-100 focus-within:opacity-100 has-[[data-bot-group-delivery]]:opacity-100",
+                )}
+              />
+            ) : (hasHookActions || !unit.isRunning) && !canRenderAssistantActions ? (
+              // 冲突合并曾把此兜底接到 Highspeed 页脚的 else，导致普通回复重复入口，
+              // Highspeed 无正文轮又丢失入口；它只与普通操作栏互斥，页脚独立渲染。
+              <MessageActions
+                className={cn(
+                  context.compactForRemoteControl
+                    ? "opacity-100"
+                    : "opacity-0 transition-opacity group-hover/assistant-turn:opacity-100 focus-within:opacity-100 has-[[data-bot-group-delivery]]:opacity-100",
+                )}
+              >
+                {hasHookActions ? (
+                  <ConversationHookDetailsAction rows={unit.hookInvocations} turnId={unit.turnId} />
+                ) : null}
+                {!BOTS_DISABLED && (
+                  <ConnectedBotGroupDeliveryAction
+                    turnId={unit.turnId}
+                    sourceCommandIds={deliverySourceCommandIds}
+                  />
+                )}
+              </MessageActions>
+            ) : null}
+            {showHighspeedOutputFooter ? (
+              <HighspeedOutputFooter
+                generatedLabel={intl.formatMessage({ id: "chat.highspeed.generatedBy" })}
+                shareLabel={intl.formatMessage({ id: "chat.highspeed.viewAction" })}
+                shareAriaLabel={intl.formatMessage({ id: "chat.highspeed.share" })}
+                shareEnabled={highspeedShareTarget !== null}
+                sharePending={false}
+                onShare={() => setHighspeedShareDialogOpen(true)}
+              />
+            ) : null}
+            {highspeedShareTarget ? (
+              <HighspeedShareDialog
+                metrics={highspeedShareTarget.metrics}
+                open={highspeedShareDialogOpen}
+                onOpenChange={setHighspeedShareDialogOpen}
+              />
+            ) : null}
+            {unit.assistantTailRows.length > 0 ? (
+              // turnTailBoundary 之前虽然从工作历史中拆出，却仍在 flow 内渲染，
+              // 使 CronCreate、文件 summary 与操作栏看起来落在 fork 分割线之后。boundary
+              // 必须统一收在全部 turn-local 附属 UI 之后，才是真正的 logical turn 结尾。
+              <ConversationAssistantWorkItems
+                rows={unit.assistantTailRows}
+                context={assistantRowContext}
+                assistantCodeCommentProjectionEnabled={assistantCodeCommentProjectionEnabled}
+              />
+            ) : null}
+          </div>
+        ) : (
+          <ConversationTurnFlow
+            unit={unit}
+            apiRetry={apiRetry}
+            context={assistantRowContext}
+            onEdit={onEdit}
+            editWorkspaceRewindAvailability={editWorkspaceRewindAvailability}
+            assistantCopyText={assistantCopyText}
+            assistantCodeCommentCards={assistantCodeCommentCards}
+            assistantCodeCommentProjectionEnabled={assistantCodeCommentProjectionEnabled}
+            highspeed={isHighspeed}
+            highspeedMeta={highspeedMeta}
+          />
+        )}
+        {!BOTS_DISABLED && unit.topicPreparations?.length ? (
+          <BotTopicPreparation items={unit.topicPreparations} />
+        ) : null}
+      </section>
     </SummaryGroupBoundaryContext.Provider>
   );
 }

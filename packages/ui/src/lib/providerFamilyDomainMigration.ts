@@ -1,6 +1,7 @@
 import type { IServiceAccessor } from "@zcode/services";
 import {
   type ProviderFamilyDomain,
+  CODING_PLAN_DISABLED,
   resolveModelProviderFamilyIdByProviderId,
   resolveProviderFamilyDomainFromOAuthProvider,
 } from "@zcode/shared";
@@ -26,6 +27,8 @@ function inferProviderFamilyDomainFromSelection(
 export async function ensureProviderFamilyDomainMigration(
   services: Pick<IServiceAccessor, "settingService" | "oauthService" | "modelSelectionService">,
 ): Promise<void> {
+  // 官方账号关闭时不从旧 OAuth 推断家族，也不写入一份套餐迁移结果。
+  if (CODING_PLAN_DISABLED) return;
   const settings = await services.settingService.get();
   if (settings.providerFamilyDomain || settings.providerFamilyDomainMigrated) {
     return;

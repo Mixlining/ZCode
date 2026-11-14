@@ -7,8 +7,14 @@ export function useZCodeSessionService(
   preferredRemoteSessionId?: string | null,
   workspaceIdentity?: string | null,
 ): IZCodeSessionService {
-  const services = workspacePath
-    ? useWorkspaceServices(workspacePath, preferredRemoteSessionId, workspaceIdentity)
-    : useServices();
+  const contextServices = useServices();
+  // 路径切换不能改变 Hook 顺序；无路径保持原上下文，有路径保留身份和断连边界。
+  const services = useWorkspaceServices(
+    workspacePath,
+    preferredRemoteSessionId,
+    workspaceIdentity,
+    undefined,
+    workspacePath ? undefined : { unscopedServices: contextServices, forceUnscoped: true },
+  );
   return services.zcodeSessionService;
 }

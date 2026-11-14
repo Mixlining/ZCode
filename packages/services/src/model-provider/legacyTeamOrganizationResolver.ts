@@ -13,9 +13,7 @@ import type {
 /** 仅供旧连接导入：只读 OAuth 用户信息，不依赖当前 Provider，也不申请团队 Key。退役旧版后删除。 */
 export function createLegacyTeamOrganizationResolver(dependencies: {
   apiClient: ApiClient;
-  loadOAuthTokenSet: (
-    family: ProviderFamilyDomain,
-  ) => Promise<{
+  loadOAuthTokenSet: (family: ProviderFamilyDomain) => Promise<{
     accessToken: string;
     zcodeJwtToken?: string | null;
     sessionRevision?: string | null;

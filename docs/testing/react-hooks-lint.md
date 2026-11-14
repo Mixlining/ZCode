@@ -8,16 +8,14 @@
 
 配置沿用根 `.oxlintrc.json`。在 override 中启用 React 插件和这两条规则，保留
 原有 unicorn、typescript、oxc 插件；不同时引入其他 React 默认规则。
-现有 ignorePatterns、各包独立 lint 入口和 nested config 的边界保持不变。
-根配置排除的组件目录与 CLI React 源码需要在专项扫描中显式纳入；嵌套配置仍按包独立生效，
+根 lint/lint:fix 命令通过 `--ignore-pattern apps/zcode-cli` 排除独立 CLI 工作区；该排除不放在可继承配置中，避免 CLI 包继承后扫描不到任何源码。各包入口和 nested config 仍按包生效。
+根配置排除的基础组件目录与 CLI React 源码需要在专项扫描中显式纳入；
 不能把根 lint 的 Hooks 诊断称为全库结果。
 
 ## 接入策略
 
 - `react/exhaustive-deps` 先设为 `warn`，存量诊断逐项复核后修复。
-- `react/rules-of-hooks` 默认 `error`；2026-11-04 首次扫描发现的七个文件精确登记为
-  `warn`，诊断仍可见。该例外覆盖这些文件中的同规则诊断，不是按行或按条数冻结的基线。
-  后续逐文件清理并删除例外，不放宽其他规则或新增文件。
+- `react/rules-of-hooks` 统一为 `error`。2026-11-13 合并适配已修复首次登记的七个文件，删除全部调用位置降级例外；不放宽其他规则或新增豁免。
 - `pnpm lint` 自动执行这些检查；CI/pre-push 沿用同一入口。
 - 不使用 `lint:fix` 批量修复 Hooks。新增依赖可能重建订阅或扩大渲染范围，删除依赖
   可能移除业务上的失效条件，均须结合 owner、调用方与运行时场景判断。
@@ -40,7 +38,7 @@
 
 工程回归：`node --test scripts/test/react-hooks-lint.test.mjs scripts/test/source-size-policy.test.mjs`。
 该回归也纳入现有 `test:architecture` 入口。验证缺失/多余依赖可见、普通文件非法
-Hook 调用阻断、精确存量文件仍告警、包内运行继承配置，以及原有插件规则不丢失。
+Hook 调用阻断、原七个例外文件同样阻断非法 Hook 调用、包内运行继承配置，以及原有插件规则不丢失。
 正确的精确依赖和完整对象依赖均保持规则原有语义，不把静态检查包装成性能证明。
 
 专项扫描使用独立的临时配置，只启用两条 Hooks 规则。Oxlint 1.60.0 的 `--no-ignore`

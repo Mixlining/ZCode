@@ -61,8 +61,8 @@
     "ci:assert-node": "node scripts/assert-node-version.mjs",
     "build:cua": "pnpm --filter @zcode/zcode-cua build",
     "doctor:macos-release": "bash scripts/doctor-macos-release-app.sh",
-    "lint": "oxlint && node scripts/architecture/session-control-boundary.mjs",
-    "lint:fix": "oxlint --fix --fix-suggestions",
+    "lint": "oxlint --ignore-pattern apps/zcode-cli && node scripts/architecture/session-control-boundary.mjs",
+    "lint:fix": "oxlint --ignore-pattern apps/zcode-cli --fix --fix-suggestions",
     "bootstrap": "node scripts/bootstrap.mjs",
     "bootstrap:with-remote": "node scripts/bootstrap.mjs --with-remote",
     "release": "release-it",
@@ -120,6 +120,5 @@
   "engines": {
     "node": ">=24.22.2"
   },
-  "packageManager": "pnpm@11.27.1",
-  "license": "Apache-2.0"
+  "packageManager": "pnpm@11.27.1"
 }

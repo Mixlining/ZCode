@@ -1,4 +1,3 @@
-import { resolve } from "node:path";
 import { SessionLifecycleError } from "../session-lifecycle/index.js";
 import { closeSessionRuntime, getSessionLifecycle } from "./session-residency.js";
 import { CODING_PLAN_DISABLED, isReadonlyAgentSessionKind } from "@zcode/shared";
@@ -357,7 +356,9 @@ export function resolveInputCommandForAdmission(
         : { text: payload.text }),
       attachments: payload.attachments ?? [],
       ...(payload.context_refs ? { sharedContextRefs: payload.context_refs } : {}),
-      ...(!CODING_PLAN_DISABLED && payload.highspeedMeta ? { highspeed: payload.highspeedMeta } : {}),
+      ...(!CODING_PLAN_DISABLED && payload.highspeedMeta
+        ? { highspeed: payload.highspeedMeta }
+        : {}),
       ...(payload.inputOrigin ? { inputOrigin: payload.inputOrigin } : {}),
       ...(payload.conversationQuotes ? { conversationQuotes: payload.conversationQuotes } : {}),
       ...(payload.botGroupSource ? { botGroupSource: payload.botGroupSource } : {}),
@@ -707,7 +708,9 @@ export function createConversationV4Gateway(
   const autoDrainRetryTimers = new Map<string, ReturnType<typeof setTimeout>>();
   // Highspeed 执行材料含临时凭据：只按 session/sourceCommandId 驻留内存，绝不进入
   // TurnSteerQueued、snapshot 或 transcript。CLI 重启后缺失时队列提升自动走原模型。
-  const queuedTurnExecutions = CODING_PLAN_DISABLED ? null : new Map<string, Map<string, V4QueuedTurnExecution>>();
+  const queuedTurnExecutions = CODING_PLAN_DISABLED
+    ? null
+    : new Map<string, Map<string, V4QueuedTurnExecution>>();
   const autoDrainV4QueueIfReady = async (record: ZCodeProtocolSessionRecord): Promise<void> => {
     const head = context.v4Gateway?.getQueueHead(record.app.sessionId);
     if (!head) {
@@ -1570,27 +1573,24 @@ export function createConversationV4Gateway(
   };
   nativeExecutor = new V4CommandExecutor(coreHost);
   // 存储元信息 → SessionSummary；目录扫描与受管 worktree 白名单两条读取路径共用。
-  const storedSessionSummary = (
-    session: SessionInfo,
-    workspaceId: string,
-  ) => ({
-        sessionId: String(session.id),
-        workspaceId,
-        ...(session.parentID ? { parentSessionId: String(session.parentID) } : {}),
-        title: session.title ?? "",
-        titleSource: normalizeStoredTitleSource(session.titleSource),
-        phase:
-          session.lastOutcome === "error"
-            ? ("error" as const)
-            : session.lastOutcome === "interrupted"
-              ? ("completedInterrupted" as const)
-              : ("completedSuccess" as const),
-        ...(session.lastOutcome ? { lastOutcome: session.lastOutcome } : {}),
-        sessionEnded: true,
-        hasBackgroundWork: false,
-        lastActivityAt: session.time?.updated ?? 0,
-        createdAt: session.time?.created ?? 0,
-      });
+  const storedSessionSummary = (session: SessionInfo, workspaceId: string) => ({
+    sessionId: String(session.id),
+    workspaceId,
+    ...(session.parentID ? { parentSessionId: String(session.parentID) } : {}),
+    title: session.title ?? "",
+    titleSource: normalizeStoredTitleSource(session.titleSource),
+    phase:
+      session.lastOutcome === "error"
+        ? ("error" as const)
+        : session.lastOutcome === "interrupted"
+          ? ("completedInterrupted" as const)
+          : ("completedSuccess" as const),
+    ...(session.lastOutcome ? { lastOutcome: session.lastOutcome } : {}),
+    sessionEnded: true,
+    hasBackgroundWork: false,
+    lastActivityAt: session.time?.updated ?? 0,
+    createdAt: session.time?.created ?? 0,
+  });
   /**
    * 本地 workspace 下 cwd 位于受管 worktree 的会话（docs/git/worktree.md §6.6.2）：目录扫描看不到，
    * Host 从 tasks-index 精确提供 id。只读：逐个读取，校验 cwd 映射回该 workspace 目录后才返回，
@@ -1751,9 +1751,11 @@ export function createConversationV4Gateway(
           });
         });
     },
-    onHighspeedTurnTerminal: CODING_PLAN_DISABLED ? undefined : (sessionId, event, snapshot) => {
-      persistHighspeedTimingOnTurnTerminal(context, sessionId, event, snapshot);
-    },
+    onHighspeedTurnTerminal: CODING_PLAN_DISABLED
+      ? undefined
+      : (sessionId, event, snapshot) => {
+          persistHighspeedTimingOnTurnTerminal(context, sessionId, event, snapshot);
+        },
     // Gateway 的单一 READY promise 负责并发与水位；binder 只恢复 runtime 并返回 M0/M1。
     retainSessionRuntime: async (sessionId) =>
       (await context.sessionResidentPool?.acquireOperation(sessionId)) ?? (() => undefined),

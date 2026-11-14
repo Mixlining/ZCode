@@ -34,6 +34,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useEffectEvent,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -1181,6 +1182,8 @@ function ConversationComposerImpl({
 
   // 最近一次已把草稿载入 Lexical 的 edit scope；只用于编辑态顶部内容的显示时机。
   const [appliedDraftScopeId, setAppliedDraftScopeId] = useState<string | null>(null);
+  // 草稿正文只在 owner 切换时读取；逐字编辑不能重放恢复并重置 undo。
+  const readDraftForRestore = useEffectEvent(() => composerDraft);
   // scope 切换：先落旧 scope 草稿，再恢复新 scope（editorStateJson 优先，退纯文本）。
   useEffect(() => {
     const previousTarget = draftTargetRef.current;
@@ -1221,7 +1224,7 @@ function ConversationComposerImpl({
       scopeToken: composerDraftScopeToken,
     };
 
-    const draft = transferredDraft ?? composerDraft;
+    const draft = transferredDraft ?? readDraftForRestore();
     const restoreDraftInto = (api: LexicalChatInputHandle) => {
       // Composer 跨会话复用时，恢复正文也曾推入同一 undo 栈，留下旧会话内容。
       // 在新 scope 回填前断开旧历史；晋升沿用 token，项目解绑沿用正文，都不结束编辑周期。
@@ -1304,6 +1307,7 @@ function ConversationComposerImpl({
     workspaceIdentity,
     workspacePath,
     replaceComposerDraft,
+    workspaceKey,
   ]);
 
   useEffect(() => {
@@ -1957,7 +1961,6 @@ function ConversationComposerImpl({
       sessionId,
       snapshotDraftOfEditor,
       updateText,
-      updateComposerContent,
       webElementContexts,
       pptxElementReferences,
       workspaceIdentity,
@@ -2597,7 +2600,6 @@ function ConversationComposerImpl({
     removePluginUiContext,
     removePptxElementReference,
     conversationSelectionReferences,
-    pendingShareContext,
     pillWebElementContexts,
     pluginUiContexts,
     pptxElementReferences,
@@ -2608,6 +2610,7 @@ function ConversationComposerImpl({
     selectionCommentEnabled,
     sessionId,
     workspaceKey,
+    videoAttachmentPreviewTitle,
   ]);
   // Bug 根因：草稿正文晚一帧（rAF）才载入 Lexical，状态条与附件行却随 scope 切换立即渲染；
   // 多行编辑时队列面板会先因状态条上移、下一帧再因正文上移（两次跳位，B09g 逐帧采样复现）。
@@ -2775,7 +2778,6 @@ function ConversationComposerImpl({
       highspeedPresented,
       highspeedSweepActive,
       isWebRemoteControl,
-      mode,
       handleSelectModelTrace,
       modelSelectionReload,
       modelSelectionRefresh,
@@ -2792,14 +2794,14 @@ function ConversationComposerImpl({
       resolvedSendTooltipTitle,
       sendTooltipOpen,
       remoteAvailable,
-      sendShortcut,
-      sendTooltipTitle,
       sessionId,
       pluginUiSessionId,
       showStopControl,
       stopTooltipTitle,
       workspaceIdentity,
       workspacePath,
+      isMobileTextInputViewport,
+      intl,
     ],
   );
 

@@ -262,7 +262,6 @@ automation 轮与普通轮不受影响。测试：`core/tests/off-peak-tool.test
 
 真实模型显式传入 `sessionId: current` 时，工具 executor 的 JSON Schema 校验将正则字符串与字面量的联合转换为 `oneOf`，而最小校验器未应用正则，因此两个分支同时匹配，错误拒绝调用。当前话题选择器应使用单个字符串模式表达 `current | sess_*`，在 executor 入参校验与 handler 运行时解析两层验证；非话题策略仍要求明确任务 ID。不能仅直接调用 handler 的单测宣称真实工具入口可用。
 
-
 ## Agent 官方插件发现与确认安装
 
 `SearchPlugins` / `SuggestPluginInstall` 经 contracts -> Core handler -> 注入的 PluginDiscoveryPort -> Bootstrap 官方目录/安装适配器；V4 pluginInstall 专用交互由 CLI 发出，桌面/手机通过 resolveInteraction 回应。UI 仅提交选择，安装继续复用 storage lock、内置恢复和 User/Workspace 启用原语。工具内部显式确认合同绕过重复通用弹窗，但 project deny/ask 和 plan 限制保留；yolo 也必须点击卡片，绝不套用 AskUserQuestion 自动结束。能力刷新仅注入 PluginActivationPort，未接入返回 refreshRequired。两个工具均为 deferred（`shouldDefer`），经 ToolSearch 按需加载；Session-specific guidance 暂不注入插件推荐提示。详见 docs/plugins/agent-plugin-discovery.md。

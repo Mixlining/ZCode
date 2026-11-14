@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { IDisposable } from "@zcode/rpc";
 import type { AppSessionRef } from "@zcode/session-control/contracts";
 import {
@@ -44,12 +45,12 @@ import {
 } from "#src/extensions/sessionListPump.js";
 import type { SessionsBackend } from "#src/extensions/sessionsBackend.js";
 
-// 会话读连接（docs/plugins/extension-host.md §17.5，P3b）：插件是与手机同级的客户端，读走自己的连接。
+// 会话读连接（docs/plugins/extension-host.md §17.5，P3b）：插件作为本地内部客户端，读走自己的连接。
 //
 //   ctx.sessions.onDidChangeRows({ sessionId }) ──► 网关（已查声明、协议、授权）
 //       ├─ 上限：该插件的不同会话 ≤ 8，全局镜像 ≤ 32（limit-exceeded）
 //       ├─ 解析：facade readSession(view: summary) → 会话引用（与模型工具同一份授权）
-//       └─ 镜像（按会话共享）：scope（extension-host:<gen>，replayable）订阅 conversation topic，
+//       └─ 镜像（按会话共享）：本地 scope（extension-host:<gen>）订阅 conversation topic，
 //          snapshot → reset；deltas → apply 后的整行；断档 → forceSnapshot 重同步 → reset
 //
 // 连接作用域属于一代扩展进程：detach 时 scope.dispose() 全部退订，插件重连后重订，第一个事件是 reset。
@@ -184,10 +185,12 @@ export function createSessionReads(deps: SessionReadsDeps): SessionReads {
     if (!deps.agent) throw new ExtensionError("unavailable", "session reads are unavailable");
     releaseConnection("replaced");
     const agent = deps.agent;
-    const connectionId = `extension-host:${gen}`;
+    // 同代也会按需重建 scope；唯一后缀阻止旧 scope 的异步清理误退订新读取。
+    const connectionId = `extension-host:${gen}:${randomUUID()}`;
     const scope = createZCodeAgentConnectionScope(agent, {
       connectionId,
-      clientMode: "web-remote-replayable",
+      // 扩展属于本地 Host 内部调用方，复用既有可信 scope；不能借正文订阅接入手机回放链路。
+      clientMode: "desktop-continuous",
     });
     const ready = (async () => {
       await scope.service.helloConversationV4();
@@ -223,14 +226,11 @@ export function createSessionReads(deps: SessionReadsDeps): SessionReads {
       for (const disposable of disposables) disposable.dispose();
     }
     for (const disposable of current.runtime) disposable.dispose();
-    // scope.dispose() 向 CLI 退订本连接的全部订阅（与手机断开相同）。
+    // scope.dispose() 经既有本地边界向 CLI 退订本连接的全部订阅。
     void current.scope.dispose().catch((error: unknown) => {
       logger.warn(undefined, `session read connection dispose failed (${describe(error)})`);
     });
-    logger.info(
-      undefined,
-      `session read connection closed connectionId=extension-host:${current.gen} (${reason})`,
-    );
+    logger.info(undefined, `session read connection closed gen=${current.gen} (${reason})`);
   };
 
   /** 每个工作区只挂一次帧流与生命周期流；按 topic 交给镜像。 */
@@ -436,8 +436,7 @@ export function createSessionReads(deps: SessionReadsDeps): SessionReads {
     logger.warn(undefined, `session mirror failed session=${mirror.target.sessionId} (${reason})`);
     const error = new ExtensionError("unavailable", "the session is not available to read");
     for (const registration of mirror.registrations) {
-      registration.disposed = true;
-      registrations.delete(registration);
+      release(registration);
       registration.fail(error);
     }
     mirror.registrations.clear();
@@ -610,8 +609,14 @@ export function createSessionReads(deps: SessionReadsDeps): SessionReads {
     registration.disposed = true;
     registrations.delete(registration);
     const mirror = registration.mirror;
+    registration.mirror = null;
+    mirror?.registrations.delete(registration);
+    // 最后一个读消费者离开后，scope 的工作区与 runtime 监听也失去用途，应一起释放。
+    if (registrations.size === 0) {
+      releaseConnection("last reader released");
+      return;
+    }
     if (!mirror) return;
-    mirror.registrations.delete(registration);
     if (mirror.registrations.size === 0) closeMirror(mirror, true);
   };
 
@@ -660,8 +665,7 @@ export function createSessionReads(deps: SessionReadsDeps): SessionReads {
       })
       .catch((error: unknown) => {
         if (registration.disposed) return;
-        registration.disposed = true;
-        registrations.delete(registration);
+        release(registration);
         fail(
           error instanceof ExtensionError
             ? error

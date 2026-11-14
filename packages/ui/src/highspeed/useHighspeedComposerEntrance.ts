@@ -16,7 +16,11 @@ function resolveEntrance(
  * 切回 Task、快照恢复与组件重挂载一律 restore（spec §9.2）。
  * 锁定后立即回调消费请求，之后的重挂载读不到请求，因而不会重播。
  */
-export function useHighspeedComposerEntrance({
+// 编译期选择入口：禁用时不进入业务 hooks；原实现保持完整调用顺序。
+export const useHighspeedComposerEntrance: typeof useHighspeedComposerEntranceEnabled =
+  CODING_PLAN_DISABLED ? () => "restore" : useHighspeedComposerEntranceEnabled;
+
+function useHighspeedComposerEntranceEnabled({
   cardId,
   activationCardId,
   onActivationApplied,
@@ -25,7 +29,6 @@ export function useHighspeedComposerEntrance({
   activationCardId: string | null;
   onActivationApplied?: (cardId: string) => void;
 }): HighspeedComposerEntrance {
-  if (CODING_PLAN_DISABLED) return "restore";
   const [latch, setLatch] = useState(() => ({
     cardId,
     entrance: resolveEntrance(cardId, activationCardId),

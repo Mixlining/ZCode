@@ -79,10 +79,10 @@
           "id": "call_resource",
           "name": "ReadTopicResource",
           "input": {
-              "messageId": "om_archive",
-              "index": 0
-            }
+            "messageId": "om_archive",
+            "index": 0
           }
+        }
       },
       "maxMatches": 1
     },

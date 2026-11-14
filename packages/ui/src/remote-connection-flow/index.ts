@@ -500,12 +500,15 @@ export function useRemoteConnectionFlow(options: RemoteConnectionFlowOptions) {
   );
   useEffect(() => () => onFlowTargetChange?.(null), [onFlowTargetChange]);
 
-  const applyOpenState = (nextOpen: boolean) => {
-    onOpenChange?.(nextOpen);
-    if (controlledOpen === undefined) {
-      setUncontrolledOpen(nextOpen);
-    }
-  };
+  const applyOpenState = useCallback(
+    (nextOpen: boolean) => {
+      onOpenChange?.(nextOpen);
+      if (controlledOpen === undefined) {
+        setUncontrolledOpen(nextOpen);
+      }
+    },
+    [controlledOpen, onOpenChange],
+  );
 
   /** 连接成功后由本 flow 打开指定目录时才有“打开项目目录”这一步；设备管理和交给调用方的完成没有。 */
   const resolveWorkspaceStepPath = (path?: string) =>
@@ -593,7 +596,6 @@ export function useRemoteConnectionFlow(options: RemoteConnectionFlowOptions) {
       addingDevice,
       cancelActiveTrace,
       cancelPendingRemoteConnection,
-      connectedSessionId,
       connectingRequestId,
       currentStep,
       handleCancelSession,
@@ -601,6 +603,10 @@ export function useRemoteConnectionFlow(options: RemoteConnectionFlowOptions) {
       resetDirectorySelectionState,
       updateConnectingRequestId,
       updatePendingRemoteTarget,
+      resetDraft,
+      resetConnectionLogs,
+      applyOpenState,
+      setConnectedSessionId,
     ],
   );
 
@@ -727,7 +733,7 @@ export function useRemoteConnectionFlow(options: RemoteConnectionFlowOptions) {
         if (isCurrent()) setUpgradeLoading(false);
       }
     },
-    [applySourceManagementSnapshot, confirmDialog, intl, sourceManagement, upgradeLoading],
+    [applySourceManagementSnapshot, intl, sourceManagement, upgradeLoading],
   );
 
   const startRemoteConnection = async (
@@ -1482,6 +1488,9 @@ export function useRemoteConnectionFlow(options: RemoteConnectionFlowOptions) {
       resetDirectorySelectionState,
       updateConnectingRequestId,
       updatePendingRemoteTarget,
+      resetConnectionLogs,
+      applyOpenState,
+      setConnectedSessionId,
     ],
   );
 
@@ -2012,13 +2021,13 @@ export function useRemoteConnectionFlow(options: RemoteConnectionFlowOptions) {
                 : error,
             reason:
               error && !upgradeLoading
-              ? intl.formatMessage({
-                  id: classifyRemoteConnectionError({
-                    errorCode,
-                    target: pendingRemoteTarget ?? undefined,
-                  }).reasonId,
-                })
-              : "",
+                ? intl.formatMessage({
+                    id: classifyRemoteConnectionError({
+                      errorCode,
+                      target: pendingRemoteTarget ?? undefined,
+                    }).reasonId,
+                  })
+                : "",
             waiting:
               aliasCredentialsPending ||
               Boolean(pendingInstallConfirmation) ||

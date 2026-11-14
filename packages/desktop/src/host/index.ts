@@ -3056,13 +3056,13 @@ async function disposeHostResources(reason: string): Promise<HostShutdownResult>
     // 根因：先等远端连接会耗尽本地 CLI 的正常退出窗口；两个 owner 同时开始收口。
     const serviceDisposal = runHostShutdownPhases(
       servicesToDispose
-          ? [
-              {
-                name: "service-dispose",
-                run: () => disposeServiceResourcesAndWait(servicesToDispose),
-                timeoutMs: 3_500,
-              },
-            ]
+        ? [
+            {
+              name: "service-dispose",
+              run: () => disposeServiceResourcesAndWait(servicesToDispose),
+              timeoutMs: 3_500,
+            },
+          ]
         : [],
       { phaseTimeoutMs: 3_500, log: (message, details) => logger.warn(message, details) },
     );
@@ -4368,7 +4368,7 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
           const resolveSourceServerRelease = async (
             probe: Parameters<typeof resolveSourceServerReleaseAsset>[0],
             target: Parameters<typeof resolveSourceServerReleaseAsset>[2],
-          options?: Parameters<typeof resolveSourceServerReleaseAsset>[4],
+            options?: Parameters<typeof resolveSourceServerReleaseAsset>[4],
           ) =>
             await resolveSourceServerReleaseAsset(
               probe,
@@ -4411,12 +4411,12 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
               windowHostAttachmentRegistry.detachSourceSettingsAttachments(sourceServerId);
               sourceServerDisplayNameById.delete(sourceServerId);
             },
-          releaseUnboundProfileHost: async (profile, profiles) =>
-            await releaseRemoteProjectProfileHost(
-              services.get(IRemoteProjectService),
-              profile,
-              profiles,
-            ),
+            releaseUnboundProfileHost: async (profile, profiles) =>
+              await releaseRemoteProjectProfileHost(
+                services.get(IRemoteProjectService),
+                profile,
+                profiles,
+              ),
           });
           sourceSettingsStateSubscription = sourceServerConnectionManager.onDidChangeState(
             (state) => {

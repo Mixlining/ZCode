@@ -196,6 +196,9 @@ function ToolCallBlockComponent({
       codePreviewSettings,
       toolPreviewCodeViewer,
       workspacePath,
+      onOpenWorkflowRun,
+      disableSummaryContentAnimation,
+      animateDiffCountOnMount,
     ],
   );
 

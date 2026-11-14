@@ -1668,9 +1668,9 @@ async function bootstrapExternalRelayWebRemoteControl(
       result.bridge,
       navigation === "open" ? "chat" : undefined,
       {
-      ...request,
-      projectId,
-      ...(pendingDraft ? { draftId: pendingDraft.draftId } : {}),
+        ...request,
+        projectId,
+        ...(pendingDraft ? { draftId: pendingDraft.draftId } : {}),
       },
     );
   };

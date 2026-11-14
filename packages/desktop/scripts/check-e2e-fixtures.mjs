@@ -186,7 +186,7 @@ function resolveE2ESpecContract(specPath) {
     );
     if (
       canonicalRelative.includes("manual-review/") ||
-      /[*?\[{}]/u.test(canonicalRelative) ||
+      /[*?[{}]/u.test(canonicalRelative) ||
       !canonicalRelative.endsWith(".test.ts")
     ) {
       return null;

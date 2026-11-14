@@ -26,6 +26,7 @@ export interface MentionItemsRouterDeps {
   staticTable(): ExtensionStaticTable;
   /** 当前代际的扩展进程连接；没有时为 null。 */
   connection(): { gen: number; host: IExtensionHostChannel } | null;
+  ensureCommand(commandId: string): Promise<void>;
   agent: Pick<IZCodeAgentService, "getPluginMentionItems">;
   logger: Pick<ServiceLogger, "debug" | "warn">;
 }
@@ -71,10 +72,11 @@ export function createMentionItemsRouter(
     input: ProvideMentionItemsInput,
     item: StaticSlotItem,
   ): Promise<MentionItemsResult> => {
-    const target = deps.connection();
-    if (!target) return fail(input.seq, MENTION_ITEMS_ERROR_CODES.hostUnavailable);
     let value: unknown;
     try {
+      await deps.ensureCommand(item.target.id);
+      const target = deps.connection();
+      if (!target) return fail(input.seq, MENTION_ITEMS_ERROR_CODES.hostUnavailable);
       value = await target.host.executeCommand({
         commandId: item.target.id,
         scope: input.scope,

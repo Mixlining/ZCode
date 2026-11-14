@@ -294,9 +294,15 @@ export function useZCodeTaskService(
   workspaceIdentity?: string | null,
 ): IZCodeTaskService {
   // ZCode task 服务按 workspace 身份解析，保证所有 task RPC 都落到对应的 host。
-  const services = workspacePath
-    ? useWorkspaceServices(workspacePath, preferredRemoteSessionId, workspaceIdentity)
-    : useServices();
+  const contextServices = useServices();
+  // 路径切换不能改变 Hook 顺序；无路径保持原上下文，有路径保留身份和断连边界。
+  const services = useWorkspaceServices(
+    workspacePath,
+    preferredRemoteSessionId,
+    workspaceIdentity,
+    undefined,
+    workspacePath ? undefined : { unscopedServices: contextServices, forceUnscoped: true },
+  );
   const rawService = services.zcodeTaskService;
   if (!rawService || typeof rawService !== "object") {
     return rawService;

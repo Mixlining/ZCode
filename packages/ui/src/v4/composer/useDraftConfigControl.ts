@@ -250,7 +250,16 @@ export function useDraftConfigControl(params: {
           ? "new-task"
           : "session",
     };
-  }, [scopeKey]);
+  }, [
+    scopeKey,
+    workspacePath,
+    workspaceIdentity,
+    scopeId,
+    rootScope,
+    workspaceKey,
+    navigationInitialization,
+    sessionId,
+  ]);
   const [storedState, setStoredState] = useState(loadedScope);
   const stagedContentRef = useRef<
     | (ComposerDraftPersistenceTarget & {
@@ -521,7 +530,7 @@ export function useDraftConfigControl(params: {
       pending.baseDraft = currentState.draft;
       pending.persist = draftPersistenceRef.current;
     }
-  }, [currentState.draft, scopeKey, scopePersistenceTarget]);
+  }, [currentState.draft, scopeKey, scopePersistenceTarget, bumpScopeContentRevision]);
   useEffect(
     () => () => {
       const pending = stagedContentRef.current;
@@ -579,7 +588,14 @@ export function useDraftConfigControl(params: {
       persistDraft(next);
       lastPersistedDraftRef.current = next;
     },
-    [isCurrentScope, mergeStagedContent, persistDraft, scopePersistenceTarget],
+    [
+      isCurrentScope,
+      mergeStagedContent,
+      persistDraft,
+      scopePersistenceTarget,
+      scopeKey,
+      bumpScopeContentRevision,
+    ],
   );
   const updateDraftConfig = useCallback(
     (update: (current: Partial<SessionConfigState>) => Partial<SessionConfigState>) => {

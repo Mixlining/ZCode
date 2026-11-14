@@ -71,11 +71,11 @@ XLSX 单元格 / 形状 / 图片 → 同一外链回调 → URL 白名单 → �
 PPTX tooltip            → 动态字段转义 → HTML 只包含静态格式和文本
 ```
 
-| Case  | 场景与断言                                                                                                                          | 状态                   |
-| ----- | ----------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
-| OPS01 | 打开包含 HTML 系列名的真实 PPTX 并悬浮气泡；tooltip 显示字面文本，不生成攻击节点，不执行标记脚本；打印路径使用相同修复              | covered：本轮通过，文件保留 pending |
+| Case  | 场景与断言                                                                                                                          | 状态                                     |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| OPS01 | 打开包含 HTML 系列名的真实 PPTX 并悬浮气泡；tooltip 显示字面文本，不生成攻击节点，不执行标记脚本；打印路径使用相同修复              | covered：本轮通过，文件保留 pending      |
 | OPS02 | 真实 XLSX 的单元格、形状、图片点击危险协议，既不调用原生 `window.open`，也不打开 Browser；合法 HTTP(S) 仍路由，内部工作表跳转仍可用 | failing：Canvas 前置超时，后续断言未执行 |
-| OPS03 | 主窗口直接请求危险协议 popup，主窗口地址与原生窗口数量不变；HTTP(S) 转入 Browser，仍不创建原生窗口                                  | covered：本轮通过，文件保留 pending |
+| OPS03 | 主窗口直接请求危险协议 popup，主窗口地址与原生窗口数量不变；HTTP(S) 转入 Browser，仍不创建原生窗口                                  | covered：本轮通过，文件保留 pending      |
 
 候选 E2E：`packages/desktop/test/e2e/ui-shell/panels/manual-review/pending/office-preview-security.test.ts`。
 
@@ -178,7 +178,7 @@ HTTP、HTTPS 和工作表内跳转正常；PPTX browser 入口与打印渲染也
 | 边界           | 决策                                                                                                                                                                                      | 原因                                                                                                                      |
 | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | Excel 扩展名   | 支持 `.xlsx`、`.xlsm`、`.xls`；`.xlsx` 是完整支持路径，`.xlsm` / `.xls` 按渲染库的有限解析能力展示                                                                                        | `react-xlsx` 官方声明主要支持 OOXML `.xlsx`，旧格式只展示底层解析器能够读取的数据                                         |
-| 入口分流      | 仅 `.xlsx` 参与插件面板分流；`.xlsm` / `.xls` 永远走 Preview Pane 旧渲染                                                                                                                   | 插件声明 `office.kinds: ["xlsx"]`，旧格式交给插件只会得到 `unsupported_type` 错误                                           |
+| 入口分流       | 仅 `.xlsx` 参与插件面板分流；`.xlsm` / `.xls` 永远走 Preview Pane 旧渲染                                                                                                                  | 插件声明 `office.kinds: ["xlsx"]`，旧格式交给插件只会得到 `unsupported_type` 错误                                         |
 | Word 扩展名    | OOXML `.docx` 使用 `docx-preview` 的稳定 `renderAsync` API；旧二进制 `.doc` 继续使用 `@extend-ai/react-docx` 的只读 editor viewer                                                         | `docx-preview` 面向 ZIP/OOXML DOCX，不能解析 OLE `.doc`；分开路由既替换问题较多的 DOCX 渲染链路，也不回退已有 `.doc` 能力 |
 | 交互模式       | 统一只读；不暴露编辑、保存、复制粘贴或导出能力                                                                                                                                            | Preview Pane 的产品职责是展示，不拥有文件写入语义                                                                         |
 | 文件来源       | 继续使用当前 source 的 `workspacePath`、`workspaceIdentity`、`workspaceRemoteSessionId` 解析 workspace-scoped `fileService`                                                               | 保持本地、SSH / WSL / Docker、独立 Web 和手机远控共享同一服务边界                                                         |
@@ -207,26 +207,26 @@ HTTP、HTTPS 和工作表内跳转正常；PPTX browser 入口与打印渲染也
 
 ## Candidate Combinations
 
-| ID     | 文件 / 环境                               | 操作                 | 预期结果                                                          | 状态                     |
-| ------ | ----------------------------------------- | -------------------- | ----------------------------------------------------------------- | ------------------------ |
-| OFP-01 | 本地 `.xlsx`                              | 从文件树打开         | 读取完整字节并显示只读 workbook，可切换 sheet                     | accepted                 |
-| OFP-02 | 本地 `.docx`                              | 从文件树打开         | 通过 `docx-preview.renderAsync` 显示只读分页文档                  | accepted                 |
-| OFP-03 | `.xlsm` / `.xls`                          | 从文件树打开         | 尝试显示底层解析器支持的数据；失败进入统一错误态                  | accepted                 |
-| OFP-04 | SSH / WSL / Docker / Web workspace        | 打开 Office 文件     | 使用对应 workspace-scoped `fileService`，不读取本机同路径         | accepted                 |
-| OFP-05 | 手机窄屏或较窄的桌面 Preview Pane         | 打开 Office 文件     | DOCX 生成页面按可用宽度等比缩小且无横向溢出，滚动时能访问最后一页 | accepted                 |
-| OFP-06 | 文件超过 25 MB                            | 打开                 | 拒绝跨 RPC 读取并显示本地化超限错误                               | accepted                 |
-| OFP-07 | 文件损坏、加密或解析器不支持              | 打开                 | 显示本地化不可预览错误，不影响其他 tab                            | accepted                 |
-| OFP-08 | 普通文本、Markdown、SVG、图片             | 打开                 | 保持原渲染和菜单行为                                              | accepted                 |
-| OFP-09 | 旧二进制 `.doc`                           | 从文件树打开         | 读取完整字节并通过 Word 只读渲染链路显示分页文档                  | accepted                 |
-| OFP-10 | Office 文件编辑/保存                      | 在 Preview Pane 操作 | 不提供该能力                                                      | pruned：超出只读预览职责 |
-| OFP-11 | 任意受支持的 Office 文件                  | 打开预览             | 加载期间保持空白，不闪现可见 loading 文案；完成后直接显示内容     | accepted                 |
-| OFP-12 | 封面零边距、正文有页边距的双 section DOCX | 打开预览             | 生成两张独立页面；正文保留自己的左右页边距，不被封面 section 合并 | accepted                 |
-| OFP-13 | ZIP entry 使用反斜杠的 `.xlsx`            | 打开预览             | 归一化 entry 路径并正常显示 workbook，不进入文件损坏错误态        | accepted                 |
-| OFP-14 | 本地 `.xlsx`，插件面板可用                | 文件树 / 文件链接打开 | 打开 spreadsheets 面板 tab 并自动加载该文件；不创建 `code-viewer` tab | accepted                 |
-| OFP-18 | 先后打开多个不同 `.xlsx`，或重复打开同一个 | 打开                 | 每个文件各占一个面板 tab，晚返回的加载结果不覆盖其他 tab；同一文件聚焦已有 tab | accepted                 |
-| OFP-15 | `.xlsx`，远程 workspace / web / 无沙箱 / 无有效 session | 打开      | 静默回退 Preview Pane 旧渲染，行为与分流前一致                    | accepted                 |
-| OFP-16 | `.xlsx`，`open_document` 失败或面板就绪超时 | 打开            | 回退打开 `code-viewer` tab，logger.warn 留痕；面板 tab 不强制关闭 | accepted                 |
-| OFP-17 | source 归属其他 workspace、工作区外绝对路径或 `..` 越界的 `.xlsx` | 打开 | 分流的严格相对化返回空并回退 Preview Pane；绝不把路径退化成文件名交给 `open_document`（否则会在当前工作区静默打开同名文件） | accepted                 |
+| ID     | 文件 / 环境                                                       | 操作                  | 预期结果                                                                                                                    | 状态                     |
+| ------ | ----------------------------------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| OFP-01 | 本地 `.xlsx`                                                      | 从文件树打开          | 读取完整字节并显示只读 workbook，可切换 sheet                                                                               | accepted                 |
+| OFP-02 | 本地 `.docx`                                                      | 从文件树打开          | 通过 `docx-preview.renderAsync` 显示只读分页文档                                                                            | accepted                 |
+| OFP-03 | `.xlsm` / `.xls`                                                  | 从文件树打开          | 尝试显示底层解析器支持的数据；失败进入统一错误态                                                                            | accepted                 |
+| OFP-04 | SSH / WSL / Docker / Web workspace                                | 打开 Office 文件      | 使用对应 workspace-scoped `fileService`，不读取本机同路径                                                                   | accepted                 |
+| OFP-05 | 手机窄屏或较窄的桌面 Preview Pane                                 | 打开 Office 文件      | DOCX 生成页面按可用宽度等比缩小且无横向溢出，滚动时能访问最后一页                                                           | accepted                 |
+| OFP-06 | 文件超过 25 MB                                                    | 打开                  | 拒绝跨 RPC 读取并显示本地化超限错误                                                                                         | accepted                 |
+| OFP-07 | 文件损坏、加密或解析器不支持                                      | 打开                  | 显示本地化不可预览错误，不影响其他 tab                                                                                      | accepted                 |
+| OFP-08 | 普通文本、Markdown、SVG、图片                                     | 打开                  | 保持原渲染和菜单行为                                                                                                        | accepted                 |
+| OFP-09 | 旧二进制 `.doc`                                                   | 从文件树打开          | 读取完整字节并通过 Word 只读渲染链路显示分页文档                                                                            | accepted                 |
+| OFP-10 | Office 文件编辑/保存                                              | 在 Preview Pane 操作  | 不提供该能力                                                                                                                | pruned：超出只读预览职责 |
+| OFP-11 | 任意受支持的 Office 文件                                          | 打开预览              | 加载期间保持空白，不闪现可见 loading 文案；完成后直接显示内容                                                               | accepted                 |
+| OFP-12 | 封面零边距、正文有页边距的双 section DOCX                         | 打开预览              | 生成两张独立页面；正文保留自己的左右页边距，不被封面 section 合并                                                           | accepted                 |
+| OFP-13 | ZIP entry 使用反斜杠的 `.xlsx`                                    | 打开预览              | 归一化 entry 路径并正常显示 workbook，不进入文件损坏错误态                                                                  | accepted                 |
+| OFP-14 | 本地 `.xlsx`，插件面板可用                                        | 文件树 / 文件链接打开 | 打开 spreadsheets 面板 tab 并自动加载该文件；不创建 `code-viewer` tab                                                       | accepted                 |
+| OFP-18 | 先后打开多个不同 `.xlsx`，或重复打开同一个                        | 打开                  | 每个文件各占一个面板 tab，晚返回的加载结果不覆盖其他 tab；同一文件聚焦已有 tab                                              | accepted                 |
+| OFP-15 | `.xlsx`，远程 workspace / web / 无沙箱 / 无有效 session           | 打开                  | 静默回退 Preview Pane 旧渲染，行为与分流前一致                                                                              | accepted                 |
+| OFP-16 | `.xlsx`，`open_document` 失败或面板就绪超时                       | 打开                  | 回退打开 `code-viewer` tab，logger.warn 留痕；面板 tab 不强制关闭                                                           | accepted                 |
+| OFP-17 | source 归属其他 workspace、工作区外绝对路径或 `..` 越界的 `.xlsx` | 打开                  | 分流的严格相对化返回空并回退 Preview Pane；绝不把路径退化成文件名交给 `open_document`（否则会在当前工作区静默打开同名文件） | accepted                 |
 
 ## Accepted Cases
 

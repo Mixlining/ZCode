@@ -9,7 +9,6 @@ import {
 } from "@zcode/session-control/contracts";
 import type { ProjectTask } from "#src/project/contract.js";
 import type {
-  AppControlBinding,
   AppControlService,
   AppControlServiceDependencies,
 } from "#src/app-control/contract.js";

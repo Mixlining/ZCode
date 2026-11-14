@@ -1,3 +1,4 @@
+import type { OffPeakEligibilityHook } from "@/off-peak-eligibility/contract.js";
 import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import { useEffect } from "react";
 import type { AppSettings } from "@zcode/shared";
@@ -9,12 +10,17 @@ import { useOffPeakTaskStore } from "@/store/offPeakTaskStore.js";
  *
  * 闲时任务随套餐永久禁用：入口不订阅、不初始化；store 守卫仅作纵深防御。
  */
-export function useOffPeakEligibility(
+// 编译期选择入口：禁用时不进入业务 hooks；原实现保持完整调用顺序。
+export const useOffPeakEligibility: OffPeakEligibilityHook = CODING_PLAN_DISABLED
+  ? () => undefined
+  : useOffPeakEligibilityEnabled;
+
+function useOffPeakEligibilityEnabled(
   settings: AppSettings | null | undefined,
   registryRevision: number | undefined,
 ): void {
   // 禁用域不进入 hooks，避免初始化调用、store 订阅与资格 key 派生。
-  if (CODING_PLAN_DISABLED) return;
+
   const { offPeakTaskService, codingPlanSubscriptionService } = useServices();
   const initialize = useOffPeakTaskStore((state) => state.initialize);
   const refresh = useOffPeakTaskStore((state) => state.refreshCodingPlanSupport);

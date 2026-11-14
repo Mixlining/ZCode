@@ -6,7 +6,11 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { OAuthProviderId, OAuthProviderMeta } from "@zcode/shared";
-import { isBuiltinOAuthProvider, resolveSafeTelemetryHostname } from "@zcode/shared";
+import {
+  CODING_PLAN_DISABLED,
+  isBuiltinOAuthProvider,
+  resolveSafeTelemetryHostname,
+} from "@zcode/shared";
 import { reportAppTelemetryEvent } from "@/lib/appTelemetry.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import type { LoginEntryPurpose } from "@/store/index.js";
@@ -17,7 +21,30 @@ import { useServices } from "@/hooks/useServices.js";
 
 type OAuthStatus = "idle" | "waiting" | "error";
 
-export function useOAuth() {
+const noop = () => {};
+const noopAsync = async () => {};
+const DISABLED_OAUTH: ReturnType<typeof useOAuthEnabled> = {
+  startLogin: noopAsync,
+  cancel: noopAsync,
+  reset: noop,
+  status: "idle",
+  error: null,
+  providers: [],
+  activeProvider: null,
+  loadingProviders: false,
+  pendingProvider: null,
+  authorizeUrl: null,
+  refreshProviders: noopAsync,
+  setOAuthError: noop,
+  setOAuthSuccess: noopAsync,
+};
+
+// 官方登录已永久禁用：不访问未注册频道，也不注册登录/轮询状态；API key 页面仍可正常呈现。
+export const useOAuth: typeof useOAuthEnabled = CODING_PLAN_DISABLED
+  ? () => DISABLED_OAUTH
+  : useOAuthEnabled;
+
+function useOAuthEnabled() {
   const { oauthService } = useServices();
   const platform = usePlatform();
   const { intl } = useZCodeIntl();

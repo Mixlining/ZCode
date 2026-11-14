@@ -1260,15 +1260,15 @@ export class ZCodeAgentProcessManager {
     });
     const spawnRequestedAt = Date.now();
     const childEnv = {
-        ...sanitizeZCodeRuntimeEnv(process.env),
-        [ZCODE_RUNTIME_ENV_KEY]: runtimeEnv,
-        ...spawnEnv,
-        ...effectiveCommand.env,
-        // 生成文件根目录由执行端 Host 唯一决定，保证 Agent 写入与 Host 读取授权一致。
-        [GEN_UI_OUTPUT_ROOT_ENV]: join(getAppConfigDir(), GEN_UI_OUTPUT_DIRECTORY),
-        // 身份/隔离语义使用 workspaceIdentity；cwd 继续使用 workspacePath。
-        ...buildAgentWorkspaceIdentityEnv(params.workspaceIdentity),
-        ...buildE2EAgentCoverageEnv(),
+      ...sanitizeZCodeRuntimeEnv(process.env),
+      [ZCODE_RUNTIME_ENV_KEY]: runtimeEnv,
+      ...spawnEnv,
+      ...effectiveCommand.env,
+      // 生成文件根目录由执行端 Host 唯一决定，保证 Agent 写入与 Host 读取授权一致。
+      [GEN_UI_OUTPUT_ROOT_ENV]: join(getAppConfigDir(), GEN_UI_OUTPUT_DIRECTORY),
+      // 身份/隔离语义使用 workspaceIdentity；cwd 继续使用 workspacePath。
+      ...buildAgentWorkspaceIdentityEnv(params.workspaceIdentity),
+      ...buildE2EAgentCoverageEnv(),
     };
     const windowsRuntime =
       process.platform === "win32"
@@ -1286,8 +1286,8 @@ export class ZCodeAgentProcessManager {
         cwd: spawnPreflight.cwd,
         detached: shouldSpawnInDetachedProcessGroup(),
         env: childEnv,
-      stdio: ["pipe", "pipe", "pipe"],
-    });
+        stdio: ["pipe", "pipe", "pipe"],
+      });
     let runtimePid = windowsRuntime ? undefined : child.pid;
     const startedAt = Date.now();
     const stderrTail = createAgentStderrTail();
@@ -1346,7 +1346,7 @@ export class ZCodeAgentProcessManager {
       if (runtimePid) {
         const unregister = localRuntimeNetworkCapture.register(client, runtimePid);
         child.once("close", unregister);
-    }
+      }
     };
     if (!windowsRuntime) registerNetworkCapture();
     // Agent 进程重启后，Host 仍需要 runtime identity 区分新旧订阅和运行命令。
@@ -1700,8 +1700,8 @@ export class ZCodeAgentProcessManager {
     const workspaceKey = this.processKey(params);
     const closing = this.closing.get(workspaceKey);
     if (closing) {
-        await closing;
-        return;
+      await closing;
+      return;
     }
     this.restartGenerationByWorkspaceKey.set(
       workspaceKey,

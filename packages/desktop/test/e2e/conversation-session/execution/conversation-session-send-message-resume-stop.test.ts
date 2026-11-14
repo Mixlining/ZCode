@@ -13,7 +13,6 @@ import {
   prepareV4ConversationE2E,
   sendV4PromptAndWaitAccepted,
   waitForV4AssistantMessageContaining,
-  waitForV4ComposerText,
   waitForV4ConversationState,
 } from "#e2e/helpers/v4-conversation";
 import {

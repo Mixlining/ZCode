@@ -656,7 +656,7 @@ workspace 级“不要再提示”能力，应作为可见、可撤销的用户�
 | ----------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
 | Trust 粒度        | 永久信任整个 workspace                      | 后续新增或替换 Hook 会自动获得执行权，授权范围随项目内容增长                                                         | 有签名策略、受控仓库身份或发布者策略                    |
 | Trust 粒度        | 仅按 digest、跨 workspace 信任              | 相同声明可在不同 workspace/remote 中复用，缺少项目身份边界                                                           | 存在全局发布者签名和可信 publisher identity             |
-| Trust 粒度        | 只按完整 bundle 做 all-or-nothing Trust     | 任一无关 Hook 变化都会使全部 Trust 失效；无法支持逐条审查与 revoke                                                 | 产品重新明确要求极简 bundle-only 模型                   |
+| Trust 粒度        | 只按完整 bundle 做 all-or-nothing Trust     | 任一无关 Hook 变化都会使全部 Trust 失效；无法支持逐条审查与 revoke                                                   | 产品重新明确要求极简 bundle-only 模型                   |
 | Trust 粒度        | 按整个 Hook event 放行                      | 同一 event 下可能有多个不同命令，授权对象过宽                                                                        | 有受控 event policy 且禁止任意命令                      |
 | 交互位置          | 任务聊天页独立 Trust Dialog                 | 与 Hook 配置、来源、toggle、revoke 分离；产生第二套管理入口，且不符合现有设置设计                                    | 任务页必须支持无法进入设置的特殊 Host                   |
 | 交互位置          | 单独的 Runtime Inspector / 决策流程页       | 信息密度和视觉改动过大，不符合现有设置产品风格                                                                       | 仅作为内部调试工具，不作为用户界面                      |
@@ -2143,37 +2143,37 @@ HookRunBlocked
 
 ### 24.1 Config / Digest / Settings Alignment
 
-| ID    | 场景                                                    | 预期                                                                                 |
-| ----- | ------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| CFG01 | command Hook                                            | 生成 project candidate、declaration digest 和 bundle digest，不进入 executable hooks |
-| CFG02 | process Hook                                            | `command` 为 executable，`args` 保序进入 digest；无独立 `process` 字段               |
-| CFG03 | command `async` 变化                                    | declaration digest 变化                                                              |
-| CFG04 | command `shell` 在 undefined/true/string 间变化         | declaration digest 变化                                                              |
-| CFG05 | `{timeout:30}` 与 `{timeoutMs:30000}`                   | resolver 结果相同时 declaration digest 相同                                          |
-| CFG06 | effective timeout 改变                                  | declaration digest 变化                                                              |
-| CFG07 | root `timeoutMs` / `maxOutputBytes` 改变                | effective declaration 与 bundle digest 按归一结果变化                                |
-| CFG08 | command/matcher/event/source identity/order 变化        | 对应 declaration digest 变化                                                         |
-| CFG09 | 仅 `statusMessage` 变化                                 | declaration digest 不变                                                              |
-| CFG10 | `.passthrough()` unknown 字段变化                       | digest 不变；Runtime 不消费该字段                                                    |
-| CFG11 | 新增 Runtime 消费字段但 canonical schema 未更新         | exhaustive test 失败，禁止发布                                                       |
-| CFG12 | source-root / declaration / merged-runtime enabled 组合 | `configuredEnabled` 与 Runtime 真实语义一致                                          |
-| CFG13 | 仅 configured gates 变化                                | declaration digest 不变，bundle digest 变化                                          |
-| CFG14 | Settings `hooks.enabled` 缺省                           | 与 Runtime `enabled !== false` 的权威 resolver 一致                                  |
-| CFG15 | root 与 cwd 多配置文件                                  | source 顺序、provenance 与 digest 稳定                                               |
-| CFG16 | 祖先 `zcode.json` / 上游 `.zcode/config.json`           | 进入 snapshot；Settings row `editable=false`                                         |
-| CFG17 | `.claude/.agents` compatibility Hook                    | disabled/read-only，不进入 Trust snapshot/pending count                              |
-| CFG18 | 非 Git workspace                                        | 只扫描 cwd，不纳入父目录                                                             |
-| CFG19 | JSON 空白/key 排列变化                                  | digest 不变                                                                          |
-| CFG20 | 无效 schema                                             | 不创建 executable snapshot，诊断并 fail closed                                       |
-| CFG21 | symlink/用户自建 worktree                               | 遵循 identity/source 规则，不扩大 Trust                                              |
-| CFG26 | 受管 worktree，源仓库已信任同一份已提交声明                    | Trust identity 归一为源仓库并直接命中，无需重新审核（D23）                                     |
-| CFG27 | 受管 worktree 的反向链接缺失、指向其他 checkout 或经 symlink 逃出 | 校验失败，Trust identity 退回 worktree 路径，不继承                                      |
-| CFG28 | 在 worktree 中撤销 Trust                                   | 源仓库与其他 worktree 同时失效，各 runtime 的 Security Revision 提升                     |
-| CFG29 | 源仓库有未提交的 Hook 修改                                  | worktree 中只有未包含该修改的那一条回到 pending                                          |
-| CFG22 | explicit `projectConfigPath`                            | 标记显式来源并进入 digest                                                            |
-| CFG23 | Settings atomic write success                           | temp + flush/close + rename 后 watcher 只看到完整 JSON                               |
-| CFG24 | Settings atomic write failure                           | 原文件保持可解析；不安装新 review generation                                         |
-| CFG25 | project candidate admitted 后合并                       | 按原 scope/discovery/matcher provenance 插回，不简单 append                          |
+| ID    | 场景                                                              | 预期                                                                                 |
+| ----- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| CFG01 | command Hook                                                      | 生成 project candidate、declaration digest 和 bundle digest，不进入 executable hooks |
+| CFG02 | process Hook                                                      | `command` 为 executable，`args` 保序进入 digest；无独立 `process` 字段               |
+| CFG03 | command `async` 变化                                              | declaration digest 变化                                                              |
+| CFG04 | command `shell` 在 undefined/true/string 间变化                   | declaration digest 变化                                                              |
+| CFG05 | `{timeout:30}` 与 `{timeoutMs:30000}`                             | resolver 结果相同时 declaration digest 相同                                          |
+| CFG06 | effective timeout 改变                                            | declaration digest 变化                                                              |
+| CFG07 | root `timeoutMs` / `maxOutputBytes` 改变                          | effective declaration 与 bundle digest 按归一结果变化                                |
+| CFG08 | command/matcher/event/source identity/order 变化                  | 对应 declaration digest 变化                                                         |
+| CFG09 | 仅 `statusMessage` 变化                                           | declaration digest 不变                                                              |
+| CFG10 | `.passthrough()` unknown 字段变化                                 | digest 不变；Runtime 不消费该字段                                                    |
+| CFG11 | 新增 Runtime 消费字段但 canonical schema 未更新                   | exhaustive test 失败，禁止发布                                                       |
+| CFG12 | source-root / declaration / merged-runtime enabled 组合           | `configuredEnabled` 与 Runtime 真实语义一致                                          |
+| CFG13 | 仅 configured gates 变化                                          | declaration digest 不变，bundle digest 变化                                          |
+| CFG14 | Settings `hooks.enabled` 缺省                                     | 与 Runtime `enabled !== false` 的权威 resolver 一致                                  |
+| CFG15 | root 与 cwd 多配置文件                                            | source 顺序、provenance 与 digest 稳定                                               |
+| CFG16 | 祖先 `zcode.json` / 上游 `.zcode/config.json`                     | 进入 snapshot；Settings row `editable=false`                                         |
+| CFG17 | `.claude/.agents` compatibility Hook                              | disabled/read-only，不进入 Trust snapshot/pending count                              |
+| CFG18 | 非 Git workspace                                                  | 只扫描 cwd，不纳入父目录                                                             |
+| CFG19 | JSON 空白/key 排列变化                                            | digest 不变                                                                          |
+| CFG20 | 无效 schema                                                       | 不创建 executable snapshot，诊断并 fail closed                                       |
+| CFG21 | symlink/用户自建 worktree                                         | 遵循 identity/source 规则，不扩大 Trust                                              |
+| CFG26 | 受管 worktree，源仓库已信任同一份已提交声明                       | Trust identity 归一为源仓库并直接命中，无需重新审核（D23）                           |
+| CFG27 | 受管 worktree 的反向链接缺失、指向其他 checkout 或经 symlink 逃出 | 校验失败，Trust identity 退回 worktree 路径，不继承                                  |
+| CFG28 | 在 worktree 中撤销 Trust                                          | 源仓库与其他 worktree 同时失效，各 runtime 的 Security Revision 提升                 |
+| CFG29 | 源仓库有未提交的 Hook 修改                                        | worktree 中只有未包含该修改的那一条回到 pending                                      |
+| CFG22 | explicit `projectConfigPath`                                      | 标记显式来源并进入 digest                                                            |
+| CFG23 | Settings atomic write success                                     | temp + flush/close + rename 后 watcher 只看到完整 JSON                               |
+| CFG24 | Settings atomic write failure                                     | 原文件保持可解析；不安装新 review generation                                         |
+| CFG25 | project candidate admitted 后合并                                 | 按原 scope/discovery/matcher provenance 插回，不简单 append                          |
 
 ### 24.2 Review Generation / Trust Evaluation
 

@@ -4816,9 +4816,9 @@ export const config: WebdriverIO.Config = {
             // 探测校验用例同样经过真实首装与已有设备故障恢复，不能在到达状态断言前被截断。
             // Mocha 外层须与用例的 15 分钟预算一致，不能在首装解压时被默认 120 秒截断。
             matched: configuredE2ESpecs.some(
-        (spec) =>
-          spec.endsWith("conversation-session-remote-sidebar-menus.test.ts") ||
-          spec.endsWith("conversation-session-ssh-probe-validation.test.ts"),
+              (spec) =>
+                spec.endsWith("conversation-session-remote-sidebar-menus.test.ts") ||
+                spec.endsWith("conversation-session-ssh-probe-validation.test.ts"),
             ),
             ms: 15 * 60_000,
           },
@@ -4840,7 +4840,7 @@ export const config: WebdriverIO.Config = {
           },
           {
             // 此用例串行完成真实 SSH 安装、两次 relay 配对和断网恢复；同步其原定预算，
-              // 避免 WDIO 在手机离线期间按默认 120 秒截断，this.timeout 无法覆盖外层。
+            // 避免 WDIO 在手机离线期间按默认 120 秒截断，this.timeout 无法覆盖外层。
             matched: configuredE2ESpecs.some((spec) =>
               spec.endsWith("conversation-session-r3-mobile.test.ts"),
             ),
@@ -4849,9 +4849,9 @@ export const config: WebdriverIO.Config = {
           {
             matched:
               pluginNoGitGitHubArchiveE2E ||
-                workspacePluginRemoteExplicitSyncE2E ||
-                configuredE2ESpecs.some((spec) =>
-                  spec.endsWith("conversation-session-subagent-cross-host.test.ts"),
+              workspacePluginRemoteExplicitSyncE2E ||
+              configuredE2ESpecs.some((spec) =>
+                spec.endsWith("conversation-session-subagent-cross-host.test.ts"),
               ),
             ms: 600000,
           },
@@ -4866,7 +4866,7 @@ export const config: WebdriverIO.Config = {
           {
             // 后台 Bash 冷恢复回归等待真实 child 结束、120s publisher grace 及 60s 清理节拍。
             matched: configuredE2ESpecs.some((spec) =>
-                    spec.endsWith("conversation-session-background-bash-output.test.ts"),
+              spec.endsWith("conversation-session-background-bash-output.test.ts"),
             ),
             ms: 360000,
           },
@@ -5018,8 +5018,8 @@ export const config: WebdriverIO.Config = {
         credentialOwnerProbe
           ? "packages/desktop/test/e2e/helpers/credential-owner-probe.mjs"
           : storageDiagnostics
-          ? "packages/desktop/test/e2e/helpers/storage-worker-diagnostics.mjs"
-          : "packages/desktop/test/e2e/helpers/subagent-config-proxy.mjs",
+            ? "packages/desktop/test/e2e/helpers/storage-worker-diagnostics.mjs"
+            : "packages/desktop/test/e2e/helpers/subagent-config-proxy.mjs",
       );
       // Bug 根因：Windows 上 `--import="C:\..."` 会被 ESM loader 当作协议 `c:` 拒绝
       // （ERR_UNSUPPORTED_ESM_URL_SCHEME）；Host utility process 继承 NODE_OPTIONS 后启动即
@@ -5028,8 +5028,8 @@ export const config: WebdriverIO.Config = {
       const diagnostics = credentialOwnerProbe
         ? `process.env.ZCODE_E2E_CREDENTIAL_OWNER_LOG = ${JSON.stringify(resolve(E2E_HOME_DIR, "credential-owner.ndjson"))};\nawait import(${JSON.stringify(pathToFileURL(proxy).href)});\n`
         : storageDiagnostics
-        ? `process.env.ZCODE_E2E_STORAGE_WORKER_DIAGNOSTICS_DIR = ${JSON.stringify(resolve(e2eReporter.artifactDir, "storage-workers"))};\n`
-        : "";
+          ? `process.env.ZCODE_E2E_STORAGE_WORKER_DIAGNOSTICS_DIR = ${JSON.stringify(resolve(e2eReporter.artifactDir, "storage-workers"))};\n`
+          : "";
       await writeFile(
         entry,
         `${diagnostics}process.env.NODE_OPTIONS = ${JSON.stringify(preload)};\nawait import(${JSON.stringify(pathToFileURL(E2E_APP_ENTRY_POINT).href)});\n`,

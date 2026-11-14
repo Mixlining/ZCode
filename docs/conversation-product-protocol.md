@@ -526,7 +526,7 @@ Fork 是从父 session 的某个稳定 assistant turn 派生 child session。它
 | `fork.backgroundPolicy` | 父 session 的 live background bash/subagent、pending background result 和 continuation inbox 不复制到 child；已在 fork 点之前 materialize 成稳定 transcript 的 background result 才会随历史复制 |
 | `fork.workspacePolicy`  | running fork 只复制对话，不 rewind 共享 workspace；completed/idle 既有 checkpoint 行为本轮不扩大                                                                                                |
 | `fork.timeline`         | fork notice 是 turn boundary，不进入 assistant 工作历史，也不被“已工作”折叠                                                                                                                     |
-| `fork.targetCwd` | 可选 `{ cwd, childSessionId, worktreeCreation }`。缺省时 child 在父 cwd；带上时 child 留在父 workspace，cwd 换成受管 worktree，ID 用 Host 预分配值，仍只复制对话 |
+| `fork.targetCwd`        | 可选 `{ cwd, childSessionId, worktreeCreation }`。缺省时 child 在父 cwd；带上时 child 留在父 workspace，cwd 换成受管 worktree，ID 用 Host 预分配值，仍只复制对话                                |
 
 `forkAssistant.targetCwd`（受管 worktree 的“在新 worktree 中分叉”使用，见 `docs/git/worktree.md` §8.2、§9.3）：
 
@@ -659,23 +659,23 @@ fork 目标只定义在 assistant message/turn 上。edit 目标只定义在 use
 
 ### User Events
 
-| Event ID             | Surface                        | Payload                                   | 常见目标                    |
-| -------------------- | ------------------------------ | ----------------------------------------- | --------------------------- |
-| `sendText`           | composer                       | 普通文本                                  | `composer`                  |
-| `sendGoalCommand`    | composer 或 goal control       | `/goal xxx` 或 goal text                  | `composer`                  |
-| `sendCompactCommand` | composer                       | `/compact`                                | `composer`                  |
-| `clickCompact`       | toolbar 或 action menu         | compact intent                            | current session             |
-| `stop`               | toolbar                        | stop current session activity             | current session active work |
-| `forkAssistant`      | turn actions                   | fork intent                               | latest/old assistant turn   |
-| `retryTurn`          | 协议兼容入口（产品 UI 已隐藏） | retry intent                              | latest assistant turn       |
-| `editUserQuery` | composer 编辑态 | edited text/goal text + attachments + modelSelection/mode/planEnabled；保留原 intent kind | latest real-user input |
-| `sendQueuedNow`      | queue actions                  | queue item id                             | `queueItem`                 |
-| `lockQueueItemEdit` | queue actions | queue item id + editorId | `queueItem` |
-| `editQueueItem` | composer 编辑态 | edited text + attachments + modelSelection/mode/planEnabled + editorId | `queueItem`（须持有锁） |
-| `releaseQueueItemEdit` | composer 取消 / queue「解除」 | queue item id | `queueItem` |
-| `reorderQueueItem`   | queue actions                  | new order                                 | `queueItem`                 |
-| `deleteQueueItem`    | queue actions                  | queue item id                             | `queueItem`                 |
-| `switchModelConfig`  | toolbar/model selector         | provider/model/thought config             | current session             |
+| Event ID               | Surface                        | Payload                                                                                   | 常见目标                    |
+| ---------------------- | ------------------------------ | ----------------------------------------------------------------------------------------- | --------------------------- |
+| `sendText`             | composer                       | 普通文本                                                                                  | `composer`                  |
+| `sendGoalCommand`      | composer 或 goal control       | `/goal xxx` 或 goal text                                                                  | `composer`                  |
+| `sendCompactCommand`   | composer                       | `/compact`                                                                                | `composer`                  |
+| `clickCompact`         | toolbar 或 action menu         | compact intent                                                                            | current session             |
+| `stop`                 | toolbar                        | stop current session activity                                                             | current session active work |
+| `forkAssistant`        | turn actions                   | fork intent                                                                               | latest/old assistant turn   |
+| `retryTurn`            | 协议兼容入口（产品 UI 已隐藏） | retry intent                                                                              | latest assistant turn       |
+| `editUserQuery`        | composer 编辑态                | edited text/goal text + attachments + modelSelection/mode/planEnabled；保留原 intent kind | latest real-user input      |
+| `sendQueuedNow`        | queue actions                  | queue item id                                                                             | `queueItem`                 |
+| `lockQueueItemEdit`    | queue actions                  | queue item id + editorId                                                                  | `queueItem`                 |
+| `editQueueItem`        | composer 编辑态                | edited text + attachments + modelSelection/mode/planEnabled + editorId                    | `queueItem`（须持有锁）     |
+| `releaseQueueItemEdit` | composer 取消 / queue「解除」  | queue item id                                                                             | `queueItem`                 |
+| `reorderQueueItem`     | queue actions                  | new order                                                                                 | `queueItem`                 |
+| `deleteQueueItem`      | queue actions                  | queue item id                                                                             | `queueItem`                 |
+| `switchModelConfig`    | toolbar/model selector         | provider/model/thought config                                                             | current session             |
 
 ### System Events
 
@@ -812,7 +812,7 @@ fork 目标只定义在 assistant message/turn 上。edit 目标只定义在 use
 | `forkDoesNotCopyQueue`                    | `forkAssistant`                                                                                                          | `allow`             | child 继承稳定历史和 fork 点配置，不复制父 queue                                                                                                                                        |
 | `forkDoesNotCopyBackgroundWork`           | `forkAssistant`                                                                                                          | `allow`             | child 不复制父 session 的 live background work 或 pending background result                                                                                                             |
 | `queueContentIndependence`                | `editQueueItem/reorderQueueItem/deleteQueueItem`                                                                         | `allow`             | 只改 queue，不触发消费                                                                                                                                                                  |
-| `queuedEditFreezesItemInPlace` | `lockQueueItemEdit/editQueueItem/releaseQueueItemEdit` | `allow/reject` | 仅 `queued` 且无锁的项可加锁；冻结项拒绝 send-now/delete/reorder，自动 promotion 到冻结队首暂停；`editQueueItem` 锁不符返回 `guard.queueEditLockLost` |
+| `queuedEditFreezesItemInPlace`            | `lockQueueItemEdit/editQueueItem/releaseQueueItemEdit`                                                                   | `allow/reject`      | 仅 `queued` 且无锁的项可加锁；冻结项拒绝 send-now/delete/reorder，自动 promotion 到冻结队首暂停；`editQueueItem` 锁不符返回 `guard.queueEditLockLost`                                   |
 
 ## Pending Product Boundaries
 

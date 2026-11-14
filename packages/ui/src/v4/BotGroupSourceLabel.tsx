@@ -5,8 +5,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import type { BotGroupInputSource } from "@zcode/shared";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 
-export function BotGroupSourceLabel({ source }: { source?: BotGroupInputSource }) {
-  if (BOTS_DISABLED) return null;
+// 编译期选择入口：禁用时不进入业务 hooks；原实现保持完整调用顺序。
+export const BotGroupSourceLabel = BOTS_DISABLED ? () => null : BotGroupSourceLabelEnabled;
+
+function BotGroupSourceLabelEnabled({ source }: { source?: BotGroupInputSource }) {
   const { intl } = useZCodeIntl();
   const members = useContext(BotGroupMemberNamesContext);
   if (!source) return null;

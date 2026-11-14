@@ -116,7 +116,9 @@ describe("NSIS old uninstaller cleanup protection", () => {
     expect(patched.indexOf("!insertmacro customOldUninstallPrepare")).toBeLessThan(
       patched.indexOf("UninstallLoop:"),
     );
-    expect(patched).toContain("!ifmacrodef customOldUninstallPrepare\n  !insertmacro customOldUninstallPrepare\n!endif");
+    expect(patched).toContain(
+      "!ifmacrodef customOldUninstallPrepare\n  !insertmacro customOldUninstallPrepare\n!endif",
+    );
     expect(patched).not.toContain("ZCodeStopPreviousInstallProcesses");
     expect(patched.indexOf("!insertmacro customOldUninstallRetryFailed")).toBeGreaterThan(
       patched.indexOf("UninstallLoop:"),

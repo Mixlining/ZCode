@@ -180,6 +180,7 @@ const fixtures = options.fixturePaths.flatMap((path) =>
 ### Task 5: Verify fixtures and the original cross-platform failure path
 
 **Files:**
+
 - Verify: `packages/desktop/test/e2e/conversation-session/subagents/conversation-session-subagent-respond-to-coordinator.test.ts`
 - Verify: `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-background.test.ts`
 - Verify: `packages/desktop/test/e2e/conversation-session/permissions/conversation-session-v4-permission.test.ts`

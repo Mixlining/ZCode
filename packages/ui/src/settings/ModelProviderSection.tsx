@@ -257,7 +257,7 @@ export function ModelProviderSection({
   const { intl, locale } = useZCodeIntl();
   const confirmDialog = useConfirmDialog();
   const platform = usePlatform();
-  const { modelSelectionService, oauthService } = useServices();
+  const { oauthService } = useServices();
   const {
     modelProviders,
     providerTemplates,
@@ -452,7 +452,10 @@ export function ModelProviderSection({
       authenticatedZaiEnterpriseProducts.snapshot?.productList,
     ],
   );
-  const connectionSelections = sharedSettings?.providerFamilyConnectionSelections ?? {};
+  const connectionSelections = useMemo(
+    () => sharedSettings?.providerFamilyConnectionSelections ?? {},
+    [sharedSettings?.providerFamilyConnectionSelections],
+  );
   const familyConnectionSettingsFailed = sharedSettingsError !== null && sharedSettings === null;
   const effectiveConnectionSelections = useMemo(
     () => ({
@@ -836,11 +839,11 @@ export function ModelProviderSection({
           try {
             await refreshProviderPanelAfterAuthChange({});
           } finally {
-          setPresetSubscriptionProviderId((current) => (current === presetId ? null : current));
-          setCodingPlanStatusSyncProviderId((current) => (current === presetId ? null : current));
+            setPresetSubscriptionProviderId((current) => (current === presetId ? null : current));
+            setCodingPlanStatusSyncProviderId((current) => (current === presetId ? null : current));
           }
-        return;
-      }
+          return;
+        }
         const provider = availability?.loginProvider;
         requestLoginEntry(provider && isZaiOAuthProvider(provider) ? provider : undefined);
       })().catch((error) =>
@@ -905,9 +908,7 @@ export function ModelProviderSection({
       platform,
       updateSharedSettings,
       sharedSettings?.providerFamilyDomain,
-      modelSelectionService,
       refresh,
-      refreshCodingPlanEntitlements,
       refreshCodingPlanProducts,
       refreshCodingPlanPurchaseTokenState,
     ],
@@ -1022,9 +1023,9 @@ export function ModelProviderSection({
   );
 
   const handleSelectNavItem = useCallback((item: (typeof navigationItems)[number]) => {
-      setInvalidProviderTarget(false);
-      setSelectedNodeKey(resolveModelProviderSideSelectionKey(item));
-      setTemplatePickerOpen(false);
+    setInvalidProviderTarget(false);
+    setSelectedNodeKey(resolveModelProviderSideSelectionKey(item));
+    setTemplatePickerOpen(false);
   }, []);
 
   const handleSelectConnectionItem = useCallback(
@@ -1160,9 +1161,9 @@ export function ModelProviderSection({
           }
           await refreshCodingPlanPurchaseTokenState();
           await refreshModelProviderSection({
-          refresh,
-          refreshTeamPlanProducts: refreshAuthenticatedEnterpriseProducts,
-        });
+            refresh,
+            refreshTeamPlanProducts: refreshAuthenticatedEnterpriseProducts,
+          });
           await refreshCodingPlanEntitlements();
         })().catch((error) =>
           logger.warn("[ModelProviderSection] 刷新套餐失败", {
@@ -1247,6 +1248,7 @@ export function ModelProviderSection({
           }}
           onCodingPlanDisconnect={handleCodingPlanDisconnect}
           onOpenApiKeyUrl={handleOpenApiKeyUrl}
+          onAddProvider={() => setTemplatePickerOpen(true)}
           onSelectNavItem={handleSelectConnectionItem}
           onOpenBigModelRegistration={() => {
             // 未注册提示来自一次失败的 OAuth checking 状态；跳转注册后要恢复普通状态，避免提示卡住。

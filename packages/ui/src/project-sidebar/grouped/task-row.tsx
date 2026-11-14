@@ -42,27 +42,7 @@ import { useOptionalTabStore } from "@/store/TabStoreProvider.js";
 import { isWorkspaceReadOnly } from "@/store/tabStore.js";
 import { TaskTitleOverflowText } from "@/components/TaskTitleOverflowText.js";
 
-function GroupedTaskRowComponent({
-  task,
-  currentGroupId,
-  groups,
-  remoteSessionId,
-  isActive,
-  isMobileActive,
-  workspaceLabel,
-  onSelectTask,
-  onCloseTask,
-  onOpenFileTree,
-  onMoveTaskToGroup,
-  onMoveTaskToTop,
-  onStartRenameTask,
-  onArchiveTask,
-  onMarkTaskAsUnread,
-  dragId,
-  dragging,
-  dragOverlay,
-  tooltipsDisabled,
-}: {
+type GroupedTaskRowProps = {
   task: ZCodeTaskMeta;
   currentGroupId?: string;
   groups: TaskGroupMenuItem[];
@@ -82,7 +62,17 @@ function GroupedTaskRowComponent({
   dragging?: boolean;
   dragOverlay?: boolean;
   tooltipsDisabled?: boolean;
-}) {
+};
+
+function useGroupedTaskRowPresentation({
+  task,
+  remoteSessionId,
+  isActive,
+  isMobileActive,
+  onOpenFileTree,
+  dragging,
+  dragOverlay,
+}: GroupedTaskRowProps) {
   const { intl } = useZCodeIntl();
   const presentation = useContext(ProjectTaskListContext);
   const workspaceActionsDisabled = useOptionalTabStore((state) =>
@@ -230,9 +220,75 @@ function GroupedTaskRowComponent({
       </span>
     </div>
   );
+  return {
+    intl,
+    presentation,
+    workspaceActionsDisabled,
+    workspaceActionsDisabledReason,
+    snoozeInteractionAutoResolution,
+    workspaceKey,
+    hasPendingInteraction,
+    canOpenFileTree,
+    taskAttentionDisplay,
+    leadingIndicator,
+    taskTitle,
+    taskTimeLabel,
+    isTaskCron,
+    isTaskOffPeak,
+    worktreeLabel,
+    statusDotClassName,
+    workflowRunLinesNode,
+    taskRow,
+  };
+}
 
-  // DragOverlay 高频渲染时只返回纯展示节点，避免隐藏 action tooltip 的 Radix ref 循环和 task 路径 RPC。
-  if (dragOverlay) return taskRow;
+function GroupedTaskRowComponent(props: GroupedTaskRowProps) {
+  const model = useGroupedTaskRowPresentation(props);
+  // 预览不挂载交互子树，保留零路径 RPC，同时让每个组件的 Hook 顺序固定。
+  return props.dragOverlay ? model.taskRow : <GroupedTaskRowInteractive {...props} model={model} />;
+}
+
+function GroupedTaskRowInteractive({
+  task,
+  currentGroupId,
+  groups,
+  remoteSessionId,
+  isActive,
+  isMobileActive,
+  workspaceLabel,
+  onSelectTask,
+  onCloseTask,
+  onOpenFileTree,
+  onMoveTaskToGroup,
+  onMoveTaskToTop,
+  onStartRenameTask,
+  onArchiveTask,
+  onMarkTaskAsUnread,
+  dragId,
+  dragging,
+  dragOverlay,
+  tooltipsDisabled,
+  model,
+}: GroupedTaskRowProps & { model: ReturnType<typeof useGroupedTaskRowPresentation> }) {
+  const {
+    intl,
+    presentation,
+    workspaceActionsDisabled,
+    workspaceActionsDisabledReason,
+    snoozeInteractionAutoResolution,
+    workspaceKey,
+    hasPendingInteraction,
+    canOpenFileTree,
+    taskAttentionDisplay,
+    leadingIndicator,
+    taskTitle,
+    taskTimeLabel,
+    isTaskCron,
+    isTaskOffPeak,
+    worktreeLabel,
+    statusDotClassName,
+    workflowRunLinesNode,
+  } = model;
 
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const [taskRowHovered, setTaskRowHovered] = useState(false);
@@ -529,4 +585,5 @@ function GroupedTaskRowComponent({
     </ContextMenu>
   );
 }
+
 export const GroupedTaskRow = memo(GroupedTaskRowComponent);

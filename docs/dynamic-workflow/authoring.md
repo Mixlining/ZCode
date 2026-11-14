@@ -118,8 +118,14 @@ declare class ModelRef {
   private readonly modelRef: never;
 }
 declare function model(id: string): ModelRef;
-declare interface AgentPersona { system?: string; model?: ModelRef | string; budget?: { webSearch?: number } }
-declare interface Agent { ask<T = string>(instructions: string): Node<T> }
+declare interface AgentPersona {
+  system?: string;
+  model?: ModelRef | string;
+  budget?: { webSearch?: number };
+}
+declare interface Agent {
+  ask<T = string>(instructions: string): Node<T>;
+}
 declare function agent(name?: string, persona?: string | AgentPersona): Agent;
 ```
 

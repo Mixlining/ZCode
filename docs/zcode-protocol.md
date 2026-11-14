@@ -58,15 +58,15 @@ epoch、CAS 和 product guard 裁决。
 
 当前命令全集以 `packages/shared/src/zcode-protocol-v4/command.ts` 为唯一类型事实源，主要分组如下：
 
-| 分组          | 命令                                                                                                           |
-| ------------- | -------------------------------------------------------------------------------------------------------------- |
-| 会话/输入     | `createSession`、`createSelectionSideSession`、`sendText`、`sendGoalCommand`、`renameSession`、`deleteSession` |
-| 生成控制      | `stop`、`compact`、`retryTurn`、`editUserQuery`、`forkAssistant`                                               |
-| 文件回退      | `applyFileRewind`                                                                                              |
+| 分组          | 命令                                                                                                                                 |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| 会话/输入     | `createSession`、`createSelectionSideSession`、`sendText`、`sendGoalCommand`、`renameSession`、`deleteSession`                       |
+| 生成控制      | `stop`、`compact`、`retryTurn`、`editUserQuery`、`forkAssistant`                                                                     |
+| 文件回退      | `applyFileRewind`                                                                                                                    |
 | 队列          | `sendQueuedNow`、`lockQueueItemEdit`、`editQueueItem`、`releaseQueueItemEdit`、`reorderQueueItem`、`deleteQueueItem`、`setAutoDrain` |
-| 配置          | `switchModelConfig`、`switchCollaborationMode`、`setFollowupMode`                                              |
-| Goal/后台工作 | `pauseGoal`、`resumeGoal`、`cancelBackgroundWork`                                                              |
-| 阻塞交互      | `resolveInteraction`、`snoozeInteractionAutoResolution`                                                        |
+| 配置          | `switchModelConfig`、`switchCollaborationMode`、`setFollowupMode`                                                                    |
+| Goal/后台工作 | `pauseGoal`、`resumeGoal`、`cancelBackgroundWork`                                                                                    |
+| 阻塞交互      | `resolveInteraction`、`snoozeInteractionAutoResolution`                                                                              |
 
 `lockQueueItemEdit`、`releaseQueueItemEdit`，`editQueueItem` 的附件/配置/`editorId` 字段，以及 `editUserQuery` 的 `mode`/`planEnabled` 字段属于队列冻结编辑，见 [Composer 编辑态](ui/composer-edit-mode.md)。`editQueueItem` 不要求 `baseRevision`，并发保护由编辑锁承担。
 

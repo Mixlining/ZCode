@@ -52,11 +52,11 @@ Electron 在 Windows 通过 `BrowserWindow.setOverlayIcon(image, description)` �
 
 ## 平台矩阵
 
-| 平台                  | 机制                                       | 状态         |
+| 平台                  | 机制                                       | 状态                                     |
 | --------------------- | ------------------------------------------ | ---------------------------------------- |
 | macOS                 | `app.setBadgeCount`（Dock 红色数字）       | 已上线；计数同新语义（本次运行新增未读） |
 | Linux（Unity/KDE 等） | `app.setBadgeCount`（LauncherEntry D-Bus） | 已上线；计数同新语义（本次运行新增未读） |
-| Linux（原生 GNOME）   | 系统无 badge API                           | 无角标       |
+| Linux（原生 GNOME）   | 系统无 badge API                           | 无角标                                   |
 | Windows               | `BrowserWindow.setOverlayIcon`             | 本文新增；计数同新语义                   |
 
 ## 测试与验证

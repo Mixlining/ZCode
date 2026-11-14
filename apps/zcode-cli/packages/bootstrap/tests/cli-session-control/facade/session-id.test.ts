@@ -1,35 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { createCliSessionControl } from "#session-control/application/cli/index";
-import { createAppSessionControl } from "#session-control/application/app/index";
-import { createOperationFeed, createTestPorts } from "#session-control/testing/index";
+import { createCliSessionControl } from "@zcode/session-control/cli";
+
+import { createOperationFeed, createTestPorts } from "@zcode/session-control/testing";
 import { z } from "zod";
 import {
-  appReadSessionInputSchema,
-  appRenameSessionInputSchema,
-  appWaitSessionsInputSchema,
   cliReadSessionInputSchema,
+  cliWaitSessionsInputSchema,
   cliSendToSessionInputSchema,
-  type AppSessionRef,
   type CliSessionRef,
   cliListSessionsInputSchema,
-} from "#session-control/contract";
+} from "@zcode/session-control/contracts";
 
 // 会话 ID 写法：与完整引用二选一，由可信端口解析后沿原有授权与 owner 校验执行。
 const cliRoot: CliSessionRef = { kind: "cli", workspacePath: "/workspace", sessionId: "sess_root" };
-const appRoot: AppSessionRef = {
-  kind: "app",
-  workspacePath: "/workspace",
-  sourceServerId: "source-a",
-  sessionId: "sess_root",
-};
 
 function cli() {
   const ports = createTestPorts("cli", cliRoot);
   return { ports, ctx: ports.context, control: createCliSessionControl(ports.cli) };
-}
-function app() {
-  const ports = createTestPorts("app", appRoot);
-  return { ports, ctx: ports.context, control: createAppSessionControl(ports.app) };
 }
 
 describe("sessionId target", () => {
@@ -47,66 +34,6 @@ describe("sessionId target", () => {
       prompt: "go",
       requestId: "r",
     });
-  });
-
-  it("requires exactly one of session or sessionId on every target tool", async () => {
-    const { control, ctx, ports } = app();
-    const session = { ...appRoot, sessionId: "sess_target" };
-    await expect(
-      control.readSession(ctx, { session, sessionId: "sess_target", view: "summary" }),
-    ).rejects.toMatchObject({ code: "invalid_input" });
-    await expect(control.readSession(ctx, { view: "summary" })).rejects.toMatchObject({
-      code: "invalid_input",
-    });
-    await expect(
-      control.setSessionPinned(ctx, { pinned: true, requestId: "r" }),
-    ).rejects.toMatchObject({ code: "invalid_input" });
-    expect(ports.calls).toEqual([]);
-  });
-
-  it("reports an unknown ID as outside the trusted scope without reaching the owner", async () => {
-    const { control, ctx, ports } = app();
-    await expect(
-      control.renameSession(ctx, { sessionId: "sess_missing-1", title: "x", requestId: "r" }),
-    ).rejects.toMatchObject({ code: "forbidden" });
-    expect(ports.calls.map((call) => call.method)).toEqual(["resolveSession"]);
-  });
-
-  // 规格 0.10：模型只有裸 ID 时仍自造 session 引用，被拒后只看到结果、不知道下一步。
-  // 传 session 被拒时追加固定引导；传 sessionId 被拒时不加，避免暗示该 ID 存在于别处。
-  it("tells a caller that guessed a full reference to use sessionId instead", async () => {
-    const { control, ctx } = app();
-    const foreign = { ...appRoot, sessionId: "sess_guessed", workspacePath: "/elsewhere" };
-    await expect(
-      control.readSession(ctx, { session: foreign, view: "summary" }),
-    ).rejects.toMatchObject({
-      code: "forbidden",
-      message: expect.stringContaining("sessionId"),
-    });
-  });
-
-  it("does not add the sessionId hint when the caller already used sessionId", async () => {
-    const { control, ctx } = app();
-    await expect(
-      control.readSession(ctx, { sessionId: "sess_missing-hint", view: "summary" }),
-    ).rejects.toMatchObject({ code: "forbidden" });
-    await expect(
-      control.readSession(ctx, { sessionId: "sess_missing-hint", view: "summary" }),
-    ).rejects.not.toMatchObject({ message: expect.stringContaining("Pass only the session id") });
-  });
-
-  it("rejects a resolver that returns a different session", async () => {
-    const { control, ctx, ports } = app();
-    ports.app.sessions.resolveSession = async () => ({ ...appRoot, sessionId: "sess_other" });
-    await expect(
-      control.readSession(ctx, { sessionId: "sess_target", view: "summary" }),
-    ).rejects.toMatchObject({ code: "invalid_output" });
-  });
-
-  it("keeps full references working unchanged and never calls the resolver for them", async () => {
-    const { control, ctx, ports } = app();
-    await control.openSession(ctx, { session: { ...appRoot, sessionId: "sess_target" } });
-    expect(ports.calls.map((call) => call.method)).toEqual(["authorize", "openSession"]);
   });
 
   it("accepts sessionId on each wait operation and still rejects self-wait", async () => {
@@ -142,8 +69,6 @@ describe("sessionId target", () => {
 // 一整轮调用因此全部失败；多传 session 必须被明确拒绝，不能静默忽略。
 describe("model-facing target schema", () => {
   const targets = [
-    ["app read", appReadSessionInputSchema],
-    ["app rename", appRenameSessionInputSchema],
     ["cli read", cliReadSessionInputSchema],
     ["cli send", cliSendToSessionInputSchema],
   ] as const;
@@ -172,14 +97,14 @@ describe("model-facing target schema", () => {
     ["path traversal", "sess_../escape", false],
   ] as const)("accepts %s: %s", (_name, sessionId, ok) => {
     const tool = (
-      appReadSessionInputSchema as unknown as { tool: typeof appReadSessionInputSchema }
+      cliReadSessionInputSchema as unknown as { tool: typeof cliReadSessionInputSchema }
     ).tool;
     expect(tool.safeParse({ sessionId, view: "summary" }).success).toBe(ok);
   });
 
   it("rejects a caller that also sends a full reference", () => {
     const tool = (
-      appReadSessionInputSchema as unknown as { tool: typeof appReadSessionInputSchema }
+      cliReadSessionInputSchema as unknown as { tool: typeof cliReadSessionInputSchema }
     ).tool;
     expect(tool.safeParse({ sessionId: "sess_s-1", view: "summary" }).success).toBe(true);
     // 旧行为下模型会补一个 dummy 引用；strictObject 必须直接拒绝，而不是忽略该字段。
@@ -200,7 +125,7 @@ describe("model-facing target schema", () => {
 
   it("exposes wait operations without a full reference", () => {
     const tool = (
-      appWaitSessionsInputSchema as unknown as { tool: typeof appWaitSessionsInputSchema }
+      cliWaitSessionsInputSchema as unknown as { tool: typeof cliWaitSessionsInputSchema }
     ).tool;
     expect(
       tool.safeParse({ operations: [{ sessionId: "sess_s-1", commandId: "c-1" }], mode: "all" })

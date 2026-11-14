@@ -82,7 +82,10 @@ function createDraftBot(params: { provider: BotProvider }): BotConfig {
   };
 }
 
-export function BotsDialog({
+// 编译期选择入口：禁用时不进入业务 hooks；原实现保持完整调用顺序。
+export const BotsDialog = BOTS_DISABLED ? () => null : BotsDialogEnabled;
+
+function BotsDialogEnabled({
   open,
   onOpenChange,
   entryProvider,
@@ -91,7 +94,6 @@ export function BotsDialog({
   onOpenChange: (open: boolean) => void;
   entryProvider?: BotProvider | null;
 }) {
-  if (BOTS_DISABLED) return null;
   const { intl } = useZCodeIntl();
   const platform = usePlatform();
   const confirmDialog = useConfirmDialog();

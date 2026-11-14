@@ -202,7 +202,7 @@ sockets are minted as random `broker-<hex>.sock` files; do not hard-code
   安装同时覆盖两者（`rpm` + `xz-utils`），镜像建议预装以避免每次打包现场补装。
 - `build:windows:x64` / `build:windows:arm64` 需要带 `windows` tag 的 runner，并预装 Node.js、Python 3.10+、Visual Studio Build Tools 2022（含 `VC.Tools.x86.x64`）；当前由 x64 Windows runner 交叉生成 arm64 Electron/NSIS 安装包。arm64 job 会按目标架构重新编译 CUA 原生 addon，因此**始终**要求 VS 2022 的 `VC.Tools.ARM64` 组件（不再只在 `ugrep` 补产分支下要求）。共享 deps 缺少对应 `ugrep` 归档且允许补产时，runner 还必须提供 CMake、`curl` 和 `tar`；已有归档的普通打包路径不因这条冷启动分支额外要求这些 native-search producer 命令。
 - Windows 打包前会执行 `scripts/ci-ensure-node-gyp-python.ps1` 与 `scripts/ci-import-vcvars64.ps1`，确保 `node-gyp` / `electron-rebuild` 的编译环境完整
-三个平台的正式打包 job 都不得调用 runtime 行为 E2E。native-search 的 Bash toolcall E2E 和 SEA 单文件 runtime-tools E2E 继续保留为独立测试命令；其中 SEA 只验证 CLI 单文件交付，不是 desktop Electron 打包的前置条件。
+  三个平台的正式打包 job 都不得调用 runtime 行为 E2E。native-search 的 Bash toolcall E2E 和 SEA 单文件 runtime-tools E2E 继续保留为独立测试命令；其中 SEA 只验证 CLI 单文件交付，不是 desktop Electron 打包的前置条件。
 
 三个平台的打包 job 都会在 `prepare:desktop-runtime` 前执行 `ci:ensure-native-search-deps`，并作为授权的共享 deps 写入入口显式设置 `ZCODE_NATIVE_SEARCH_ALLOW_PUBLISH=1`。该步骤直接检查共享根的 `deps/native-search-tools`：Microsoft `rg` 缺失时立即失败；自产 `bfs` / `ugrep` 缺失时，在当前平台 runner 构建并发布。相同 `platform-arch` 的 job 通过 `resource_group` 跨 pipeline 串行。所有 producer 归档都必须配置 SHA-256，并在发布、HTTP prepare 和解包前通过校验；摘要缺失或不匹配时立即失败。发布后仍由正式 HTTP prepare 路径重新下载、解包和验证，不能直接消费 job 临时目录。脚本本身仍保持默认拒绝写入，因此本地或其他 CI 入口不会因为归档缺失而自动发布。
 

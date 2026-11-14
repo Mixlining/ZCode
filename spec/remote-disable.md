@@ -232,6 +232,8 @@ lockfile、`third-party/inventory.json` 与 `THIRD-PARTY-NOTICES.md` 记录保�
 
 ## 上游同步复核清单
 
+v3.18.1 本地扩展的会话读取经用户裁决复用现有本地 connection scope（desktop-continuous），只用于 Host 内部本机会话访问；不新建远程/手机/relay attachment，不接入 web-remote-replayable。新 App 控制发现也在读旧远程目录前按 REMOTE_WORKSPACE_DISABLED 短路。详见 `spec/upstream-3.18.1-merge.md`。
+
 每次把上游并入本分支后，除 `AGENTS.md` 的通用要求外，按此清单核对本 spec：
 
 1. 三个常量值未被回退；`IBotsService` 的注册仍留在

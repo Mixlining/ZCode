@@ -75,14 +75,14 @@ codegraph is unavailable for this checkout; direct callers and attachment sink
 were traced with source search to depth two. The feature graph now includes this
 shared preview edit contract; there are no unresolved product decisions.
 
-| Case  | Setup/action                                                             | Expected                                                      | Decision |
-| ----- | ------------------------------------------------------------------------ | ------------------------------------------------------------- | -------- |
-| IPE01 | Fit image, click blank/image/control                                     | Blank closes; image/control stays; cursor is normal           | accepted |
-| IPE02 | Wheel, button, pinch, pan, resize                                        | Anchored bounded zoom/pan; grab only on overflow              | accepted |
-| IPE03 | Pen/text/shapes, select/move, delete selected mark, undo/redo | Original preserved; edits and history render consistently | accepted |
-| IPE04 | Save with text and attachment already in Composer                        | One natural-size PNG appended; draft preserved; zero sends    | accepted |
-| IPE05 | Close/switch scope during export, full/disabled Composer, export failure | No late or duplicate append; failure retains editable history | accepted |
-| IPE06 | 390/1100px, light/dark, Chinese/English | No eraser; tools collapsed by default; Add to chat appears below the active drawing only after an edit; controls accessible without overlap or horizontal page overflow | accepted |
+| Case  | Setup/action                                                             | Expected                                                                                                                                                                | Decision |
+| ----- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| IPE01 | Fit image, click blank/image/control                                     | Blank closes; image/control stays; cursor is normal                                                                                                                     | accepted |
+| IPE02 | Wheel, button, pinch, pan, resize                                        | Anchored bounded zoom/pan; grab only on overflow                                                                                                                        | accepted |
+| IPE03 | Pen/text/shapes, select/move, delete selected mark, undo/redo            | Original preserved; edits and history render consistently                                                                                                               | accepted |
+| IPE04 | Save with text and attachment already in Composer                        | One natural-size PNG appended; draft preserved; zero sends                                                                                                              | accepted |
+| IPE05 | Close/switch scope during export, full/disabled Composer, export failure | No late or duplicate append; failure retains editable history                                                                                                           | accepted |
+| IPE06 | 390/1100px, light/dark, Chinese/English                                  | No eraser; tools collapsed by default; Add to chat appears below the active drawing only after an edit; controls accessible without overlap or horizontal page overflow | accepted |
 
 Dimensions: image vs video, fit vs overflow, mouse vs touch, edit vs export,
 available vs invalid Composer, width/theme/locale. Sending/queue/fork/replay

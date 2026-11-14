@@ -837,17 +837,17 @@ export function createRemoteWorkspaceSessionManager(options: {
   }
 
   interface RemoteSessionClosedNotice {
-      remoteSessionId: string;
-      exitCode?: number | null;
-      signal?: string | null;
-      error?: string;
-      recoverable?: boolean;
-      recoveryAttempt?: number;
-      recoveryLimit?: number;
-      recoveryBudgetExhausted?: boolean;
-      reasonCode?: string;
-      retryable?: boolean;
-    }
+    remoteSessionId: string;
+    exitCode?: number | null;
+    signal?: string | null;
+    error?: string;
+    recoverable?: boolean;
+    recoveryAttempt?: number;
+    recoveryLimit?: number;
+    recoveryBudgetExhausted?: boolean;
+    reasonCode?: string;
+    retryable?: boolean;
+  }
 
   /** 把 session 断连通知给窗口；终止断连同时结束手机 bridge 上的同一 session。 */
   function publishRemoteSessionClosed(

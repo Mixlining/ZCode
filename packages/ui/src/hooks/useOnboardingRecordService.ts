@@ -1,15 +1,12 @@
-import { useServices } from "./useServices.js";
+import type { OnboardingRecordHook } from "@/onboarding-record/contract.js";
+import { useOptionalServices } from "./useServices.js";
 
-/**
- * Onboarding 完成记录服务（本地持久化，后续上传服务器）。
- * 旧测试 double / 不支持的 host 未注册该服务时返回 null，调用方需判空降级。
- * 无 ServiceProvider 的纯渲染测试（该服务与被测行为无关）也返回 null 而不是抛错——
- * useContext 在 try 内调用且每次渲染都会执行，hook 调用顺序保持稳定。
- */
-export function useOnboardingRecordService() {
+/** 未提供上下文或 Host 未注册本地完成记录服务时返回 null。 */
+export function useOnboardingRecordService(): ReturnType<OnboardingRecordHook> {
+  // Hook 必须位于异常边界之外；可选服务代理读取仍允许安全降级。
+  const services = useOptionalServices();
   try {
-    const services = useServices();
-    return services.onboardingRecordService ?? null;
+    return services?.onboardingRecordService ?? null;
   } catch {
     return null;
   }

@@ -1719,7 +1719,7 @@ export const hostPluginSandboxRegisterRequestResponseSchema = z
           !value.permissions?.length
         : Boolean(value.sessionId) &&
           (value.contentKind === "gen-ui"
-        ? !value.pluginId && !value.serverName && !value.permissions?.length
+            ? !value.pluginId && !value.serverName && !value.permissions?.length
             : Boolean(value.pluginId && value.serverName)),
     "Invalid sandbox provenance",
   );

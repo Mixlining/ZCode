@@ -338,7 +338,7 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
                   {SUPPORTED_LOCALES.map((locale) => (
                     <DropdownMenuRadioItem key={locale} value={locale} lang={locale}>
                       {LOCALE_NATIVE_NAMES[locale]}
-                  </DropdownMenuRadioItem>
+                    </DropdownMenuRadioItem>
                   ))}
                 </DropdownMenuRadioGroup>
               </DropdownMenuSubContent>

@@ -71,7 +71,10 @@ function safeDownloadBaseName(item: ImagePreviewDialogItem) {
     (item.filename || item.alt)
       .trim()
       .replace(/\.[a-z0-9]+$/iu, "")
-      .replace(/[<>:"/\\|?*\u0000-\u001f]/gu, "-")
+      .replace(/[<>:"/\\|?*]/gu, "-")
+      .split("")
+      .map((character) => (character.charCodeAt(0) < 32 ? "-" : character))
+      .join("")
       .slice(0, 80) || "image"
   );
 }

@@ -87,7 +87,6 @@ export function CodingPlanEmbeddedWebviewDialog({
   const authGeneration = useRef(0);
   const platform = usePlatform();
   const theme = useZCodeStoreWithDefault((state) => state.theme, "zai-dark");
-  const userId = useZCodeStoreWithDefault((state) => state.user?.id ?? null, null);
   const webviewRef = useRef<ElectronWebviewTag | null>(null);
   const onOpenResultRef = useRef(onOpenResult);
   onOpenResultRef.current = onOpenResult;
@@ -237,7 +236,7 @@ export function CodingPlanEmbeddedWebviewDialog({
         });
       }
     },
-    [oauthService, embeddedTheme, funnelContext, platform, provider, userId, webviewLocale],
+    [oauthService, embeddedTheme, funnelContext, platform, provider, webviewLocale],
   );
 
   // App locale 运行时变化时，对已 dom-ready 的 webview 注入 lang 更新脚本，
@@ -427,7 +426,7 @@ export function CodingPlanEmbeddedWebviewDialog({
         element.removeEventListener("ipc-message", handleIpcMessage);
       };
     },
-    [syncNavigationState],
+    [syncNavigationState, provider],
   );
 
   useEffect(() => {

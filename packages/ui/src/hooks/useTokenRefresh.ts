@@ -5,6 +5,7 @@
  * 监听全局的 401 事件，调用 oauthService.refreshToken 刷新 token。
  */
 import { useCallback } from "react";
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import { logger } from "../logger.js";
 import { useServices } from "./useServices.js";
 
@@ -13,6 +14,7 @@ export function useTokenRefresh() {
 
   /** 尝试刷新 token，失败则返回 false */
   const tryRefresh = useCallback(async (): Promise<boolean> => {
+    if (CODING_PLAN_DISABLED) return false;
     try {
       await oauthService.refreshToken();
       logger.info("[useTokenRefresh] token 刷新成功");
@@ -25,6 +27,7 @@ export function useTokenRefresh() {
 
   /** 清除所有 provider 凭据 */
   const clearCredentials = useCallback(async () => {
+    if (CODING_PLAN_DISABLED) return;
     await oauthService.logoutAll();
   }, [oauthService]);
 

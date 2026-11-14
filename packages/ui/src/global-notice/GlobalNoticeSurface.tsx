@@ -9,13 +9,16 @@ import { HighspeedShareNoticeCard } from "@/highspeed/HighspeedShareNoticeCard.j
 const subscribeNoop = () => () => undefined;
 const getNullSnapshot = () => null;
 
-export function GlobalNoticeSurface({
+// 编译期选择入口：禁用时不进入业务 hooks；原实现保持完整调用顺序。
+export const GlobalNoticeSurface = CODING_PLAN_DISABLED ? () => null : GlobalNoticeSurfaceEnabled;
+
+function GlobalNoticeSurfaceEnabled({
   store = browserGlobalNoticeStore,
 }: {
   store?: GlobalNoticeStore | null;
 } = {}) {
   // 当前通知仅服务 Highspeed，禁用时不订阅、不恢复、不启动到期时钟。
-  if (CODING_PLAN_DISABLED) return null;
+
   const [, refreshAtExpiry] = useState(0);
   const notice = useSyncExternalStore(
     store?.subscribe ?? subscribeNoop,

@@ -1015,7 +1015,6 @@ function V4ComposerModelControlsImpl({
     },
     [
       configOptionsError,
-      displayProvider,
       draftMode,
       effectiveConfig?.model,
       effectiveConfig?.provider,
@@ -1023,8 +1022,6 @@ function V4ComposerModelControlsImpl({
       onSelectModel,
       modelLocked,
       modelSelectionView,
-      workspaceIdentity,
-      workspacePath,
     ],
   );
 

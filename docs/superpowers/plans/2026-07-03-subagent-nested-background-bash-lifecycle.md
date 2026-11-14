@@ -892,6 +892,7 @@ Expected:
 ## Phase 5: BG06 E2E Manual Review and Promotion
 
 **Files:**
+
 - Modify: `packages/desktop/test/e2e/conversation-session/background/conversation-session-background.test.ts`
 - Modify: `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-background.json`
 - Modify: `packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-background.json`

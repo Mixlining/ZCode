@@ -182,7 +182,8 @@ export function createSessionControls(deps: SessionControlsDeps): SessionControl
               },
               {
                 connectionId: `extension-host:${call.gen}:${call.pluginId}`,
-                clientMode: "web-remote-replayable",
+                // 扩展是已授权的本地内部调用方，不借审批命令接入手机回放链路。
+                clientMode: "desktop-continuous",
               },
             ),
           );
@@ -226,7 +227,7 @@ export function createSessionControls(deps: SessionControlsDeps): SessionControl
                     },
                     {
                       connectionId: `extension-host:${call.gen}:${call.pluginId}`,
-                      clientMode: "web-remote-replayable",
+                      clientMode: "desktop-continuous",
                     },
                   ),
                 ),

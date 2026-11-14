@@ -260,30 +260,30 @@ export function admitTaskIdentity(
   if (!existing) return;
   if (existing.host_id != null) {
     // 已判定的 NULL 是用户组织态；只补齐同一远端 owner 尚未完成判定的历史交接。
-  if (
+    if (
       existing.host_id !== hostId ||
       hostId === "local" ||
       existing.project_id != null ||
       (existing.handoff_pending & OWNERSHIP_DECIDED) !== 0
-  )
-    return;
-  const projectId = discoveredProject(db, {
-    workspace_key: key,
-    task_id: task.taskId,
-    root_path: task.workspacePath,
-    host_id: hostId,
+    )
+      return;
+    const projectId = discoveredProject(db, {
+      workspace_key: key,
+      task_id: task.taskId,
+      root_path: task.workspacePath,
+      host_id: hostId,
       forked_from_task_id: existing.forked_from_task_id,
-  });
+    });
     if (projectId)
       db.prepare(`UPDATE tasks SET project_id=?,handoff_pending=handoff_pending | ?
       WHERE workspace_key=? AND task_id=? AND host_id=? AND project_id IS NULL AND (handoff_pending & ?)=0`).run(
-    projectId,
-    OWNERSHIP_DECIDED,
-    key,
-    task.taskId,
-    hostId,
+        projectId,
         OWNERSHIP_DECIDED,
-  );
+        key,
+        task.taskId,
+        hostId,
+        OWNERSHIP_DECIDED,
+      );
     return;
   }
 

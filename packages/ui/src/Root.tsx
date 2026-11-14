@@ -186,9 +186,9 @@ export function Root(props: RootProps) {
                           <VendorContentBoundary desktop={props.isDesktop === true}>
                             <RequestSecurityHost />
                             <RemoteConnectionProgressProvider>
-                                <DataSyncDialogProvider>
-                              <RootInner {...props} />
-                                </DataSyncDialogProvider>
+                              <DataSyncDialogProvider>
+                                <RootInner {...props} />
+                              </DataSyncDialogProvider>
                             </RemoteConnectionProgressProvider>
                           </VendorContentBoundary>
                         </CodingPlanUpgradeDialogProvider>
@@ -411,16 +411,20 @@ function RootInner({
     services.zcodeAgentService,
   ]);
 
+  // 运行时偏好只随这三个标量和设置就绪状态同步，避免整个 settings 快照驱动 RPC。
+  const runtimeSettingsReady = appSettings !== null && appSettings !== undefined;
+  const askUserQuestionAutoResolutionEnabled = appSettings?.askUserQuestionAutoResolutionEnabled;
+  const modelIoFullRetentionEnabled = appSettings?.modelIoFullRetentionEnabled;
+  const pluginAutoRecommendationEnabled = appSettings?.pluginAutoRecommendationEnabled;
   useEffect(() => {
-    if (!appSettings) {
+    if (!runtimeSettingsReady) {
       return;
     }
     void services.zcodeAgentService
       .syncAppRuntimePreferences({
-        askUserQuestionAutoResolutionEnabled:
-          appSettings.askUserQuestionAutoResolutionEnabled !== false,
-        modelIoFullRetentionEnabled: appSettings.modelIoFullRetentionEnabled === true,
-        pluginAutoRecommendationEnabled: appSettings.pluginAutoRecommendationEnabled === true,
+        askUserQuestionAutoResolutionEnabled: askUserQuestionAutoResolutionEnabled !== false,
+        modelIoFullRetentionEnabled: modelIoFullRetentionEnabled === true,
+        pluginAutoRecommendationEnabled: pluginAutoRecommendationEnabled === true,
       })
       .catch((error) => {
         logger.warn("[settings] 初始化运行时偏好失败", error);
@@ -430,19 +434,19 @@ function RootInner({
     if (!BOTS_DISABLED) {
       void services.botsService
         .syncAppRuntimePreferences({
-          askUserQuestionAutoResolutionEnabled:
-            appSettings.askUserQuestionAutoResolutionEnabled !== false,
-          modelIoFullRetentionEnabled: appSettings.modelIoFullRetentionEnabled === true,
-        pluginAutoRecommendationEnabled: appSettings.pluginAutoRecommendationEnabled === true,
+          askUserQuestionAutoResolutionEnabled: askUserQuestionAutoResolutionEnabled !== false,
+          modelIoFullRetentionEnabled: modelIoFullRetentionEnabled === true,
+          pluginAutoRecommendationEnabled: pluginAutoRecommendationEnabled === true,
         })
         .catch((error) => {
           logger.warn("[settings] 初始化 Bot 运行时偏好失败", error);
         });
     }
   }, [
-    appSettings?.askUserQuestionAutoResolutionEnabled,
-    appSettings?.modelIoFullRetentionEnabled,
-    appSettings?.pluginAutoRecommendationEnabled,
+    runtimeSettingsReady,
+    askUserQuestionAutoResolutionEnabled,
+    modelIoFullRetentionEnabled,
+    pluginAutoRecommendationEnabled,
     services.botsService,
     services.zcodeAgentService,
   ]);

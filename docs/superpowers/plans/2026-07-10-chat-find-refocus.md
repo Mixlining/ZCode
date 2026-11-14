@@ -111,6 +111,7 @@ Run the Task 1 Vitest command. Expected: all tests pass.
 ### Task 3: Pending Electron regression case
 
 **Files:**
+
 - Create: `packages/desktop/test/e2e/conversation-session/presentation/manual-review/pending/conversation-session-chat-find-refocus.test.ts`
 
 **Interfaces:**
@@ -199,6 +200,7 @@ Run the Task 5 Vitest command. Expected: all tests pass.
 ### Task 6: CF01 confirmation and CF02 pending manual-review evidence
 
 **Files:**
+
 - Modify: `packages/desktop/test/e2e/conversation-session/presentation/manual-review/pending/conversation-session-chat-find-refocus.test.ts`
 - Modify: `docs/testing/conversation-session-e2e-coverage-matrix.md`
 

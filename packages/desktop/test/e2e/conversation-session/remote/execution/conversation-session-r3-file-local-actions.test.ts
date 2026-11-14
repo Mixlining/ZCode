@@ -11,12 +11,7 @@ import {
   TID_WORKSPACE_FILE_TREE_ROW,
   testId,
 } from "@zcode/shared/test-ids";
-import {
-  clearAppData,
-  clickTestIdByDom,
-  hoverTestIdByWebDriver,
-  waitForTestIdByDom,
-} from "#e2e/helpers/desktop-app";
+import { clearAppData, waitForTestIdByDom } from "#e2e/helpers/desktop-app";
 import {
   connectSSHWorkspace,
   readHostProcesses,

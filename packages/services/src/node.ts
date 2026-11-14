@@ -67,16 +67,14 @@ import {
   createServerCredentialCipher,
   type CredentialCipher,
 } from "@zcode/shared/credential-security";
-import {
-  createHasExistingLocalTask,
-  hasAnyAgentSessionRow,
-  resolveAgentSessionDbPath,
-} from "./onboarding/localUsageEvidence.js";
+import { createHasExistingLocalTask } from "./onboarding/localUsageEvidence.js";
 import {
   BOTS_DISABLED,
   CODING_PLAN_DISABLED,
   DATA_SYNC_DISABLED,
+  REMOTE_WORKSPACE_DISABLED,
   ZCODE_TELEMETRY_ENABLED,
+  ZCODE_VENDOR_ACTIONS_DISABLED,
   buildLocalMediaPreviewUrl,
   OAUTH_LINKED_BIGMODEL_KEY,
   OAUTH_SESSION_REVISION_KEY,
@@ -1553,7 +1551,7 @@ export function createLocalServices(options: {
     },
   });
   const loadOAuthAccountMaterial = (family: ProviderFamilyDomain) =>
-    oauthCredentialRepo.loadFamilyMaterial(family);
+    CODING_PLAN_DISABLED ? Promise.resolve(null) : oauthCredentialRepo.loadFamilyMaterial(family);
   const loadOAuthFamilyTokenSet = async (providerId: string) => {
     if (providerId !== ZAI_PROVIDER_ID && providerId !== BIGMODEL_PROVIDER_ID) return null;
     const account = await loadOAuthAccountMaterial(providerId);
@@ -2510,10 +2508,10 @@ export function createLocalServices(options: {
       ? undefined
       : createOfficialMcpAuthHeadersResolver({
           accountRequestAuthService,
-      getRegistryRevision: () =>
-        providerRuntime.registryService.getSnapshot()?.registry.revision ?? null,
-      loadOAuthIdentityMaterial: () => oauthCredentialRepo.loadIdentityMaterial(),
-      loadOAuthAccountMaterial,
+          getRegistryRevision: () =>
+            providerRuntime.registryService.getSnapshot()?.registry.revision ?? null,
+          loadOAuthIdentityMaterial: () => oauthCredentialRepo.loadIdentityMaterial(),
+          loadOAuthAccountMaterial,
           modelSelectionService: providerRuntime.modelSelection,
         }),
     // host 是身份权威边界：provenance/origin 必须在这里再校验一次，不能只依赖 agent
@@ -2768,10 +2766,13 @@ export function createLocalServices(options: {
     discovery: createAppControlDiscoveryDirectory({
       sourceServerId: options?.projectStorageHostId ?? "local",
       projects: projectService,
-      ...(!options?.projectStorageHostId || options.projectStorageHostId === "local"
+      ...(!REMOTE_WORKSPACE_DISABLED &&
+      (!options?.projectStorageHostId || options.projectStorageHostId === "local")
         ? { remoteProjects: remoteProjectService }
         : {}),
-      resolveSource: options?.resolveAppControlDiscoverySource,
+      resolveSource: REMOTE_WORKSPACE_DISABLED
+        ? undefined
+        : options?.resolveAppControlDiscoverySource,
     }),
     resolveWorkspaceIdentity:
       options?.projectStorageHostId && options.projectStorageHostId !== "local"
@@ -2832,7 +2833,8 @@ export function createLocalServices(options: {
                   askUserQuestionAutoResolutionEnabled:
                     settings.askUserQuestionAutoResolutionEnabled !== false,
                   modelIoFullRetentionEnabled: settings.modelIoFullRetentionEnabled === true,
-            pluginAutoRecommendationEnabled: settings.pluginAutoRecommendationEnabled === true,
+                  pluginAutoRecommendationEnabled:
+                    settings.pluginAutoRecommendationEnabled === true,
                 };
               },
               warn: (message) => botLog.warn(message),
@@ -2842,32 +2844,36 @@ export function createLocalServices(options: {
       })();
   const botsRepo = botRuntime?.botsRepo;
   const botRemoteWorkspaceService = botRuntime?.botRemoteWorkspaceService;
-  const oauthService = createOAuthService(credentialService, {
-    captureCredentialGuard: () => credentialService.captureRecoveryGuard(),
-    apiClient,
-    onProviderLogout: handleOAuthProviderLogout,
-  });
-  associatedProfileRefreshRef.current = async (expected) => {
-    await oauthService.refreshAccountProfile(expected);
-  };
-  const zcodeJwtLogoutLogger = createServiceLogger("zcode-jwt-logout");
-  zcodeJwtLogoutHandlerRef.current = (input, headers) => {
-    // 条件退出本身已串行去重；不能丢弃等待旧候选期间到来的新凭据 401。
-    void oauthService
-      .logoutIfCurrentCredentialRequest(input, headers)
-      .then((invalidated) => {
-        // 401 分类后可能已完成新登录；只有队列内真正清理的旧会话才广播过期。
-        if (invalidated) {
-          void broadcastService.send({
-            channel: ZCODE_JWT_INVALID_BROADCAST_CHANNEL,
-            payload: {},
-          });
-        }
-      })
-      .catch((error) => {
-        zcodeJwtLogoutLogger.warn("ZCode JWT logout failed", { error });
+  const oauthService = CODING_PLAN_DISABLED
+    ? null
+    : createOAuthService(credentialService, {
+        captureCredentialGuard: () => credentialService.captureRecoveryGuard(),
+        apiClient,
+        onProviderLogout: handleOAuthProviderLogout,
       });
-  };
+  if (oauthService) {
+    associatedProfileRefreshRef.current = async (expected) => {
+      await oauthService.refreshAccountProfile(expected);
+    };
+    const zcodeJwtLogoutLogger = createServiceLogger("zcode-jwt-logout");
+    zcodeJwtLogoutHandlerRef.current = (input, headers) => {
+      // 条件退出本身已串行去重；不能丢弃等待旧候选期间到来的新凭据 401。
+      void oauthService
+        .logoutIfCurrentCredentialRequest(input, headers)
+        .then((invalidated) => {
+          // 401 分类后可能已完成新登录；只有队列内真正清理的旧会话才广播过期。
+          if (invalidated) {
+            void broadcastService.send({
+              channel: ZCODE_JWT_INVALID_BROADCAST_CHANNEL,
+              payload: {},
+            });
+          }
+        })
+        .catch((error) => {
+          zcodeJwtLogoutLogger.warn("ZCode JWT logout failed", { error });
+        });
+    };
+  }
   // Desktop Host 曾从 Settings View 再扫描一次 Account Provider，既绕开
   // Registry 的 entitlement/executable 事实，也在多个套餐同时可见时无法唯一选择。
   // 闲时服务与 Host 派发必须共享同一个 Registry-backed 凭据解析闭包。
@@ -2875,7 +2881,8 @@ export function createLocalServices(options: {
     ? null
     : {
         loadOAuthAccountMaterial,
-        getRegistryRevision: () => providerRuntime.registryService.getSnapshot()?.registry.revision ?? null,
+        getRegistryRevision: () =>
+          providerRuntime.registryService.getSnapshot()?.registry.revision ?? null,
         accountRequestAuthService,
         resolveAccountProvider: async () => {
           await providerRuntime.start();
@@ -2943,11 +2950,15 @@ export function createLocalServices(options: {
   // 注册链上的懒工厂（如 OffPeak）会各自创建 tasks-index sqlite repo；先收集到本数组，
   // services 集合建好后在 return 前统一登记进 sharedSqliteRepos 侧表
   const sqliteReposToClose: Array<{ close(): void }> = [];
-  const marketingAssets = createMarketingAssetRegistry({
-    allowLoopback: ZCODE_ENV === "test" || process.env.NODE_ENV === "development",
-  });
-  const services = new ServiceCollection()
-    .register(
+  const marketingAssets = ZCODE_VENDOR_ACTIONS_DISABLED
+    ? undefined
+    : createMarketingAssetRegistry({
+        allowLoopback: ZCODE_ENV === "test" || process.env.NODE_ENV === "development",
+      });
+  const services = new ServiceCollection();
+  // 营销与官方 ASR 在装配源头关闭，不能仅靠 UI 或请求末端守卫保留后台资源。
+  if (!ZCODE_VENDOR_ACTIONS_DISABLED && marketingAssets) {
+    services.register(
       IMarketingTouchService,
       createMarketingTouchService({
         apiClient,
@@ -2957,8 +2968,10 @@ export function createLocalServices(options: {
         appVersion: ZCODE_VERSION,
         onSnapshot: (snapshot) => marketingAssets.accept(snapshot),
       }),
-    )
-    .register(
+    );
+  }
+  if (!CODING_PLAN_DISABLED) {
+    services.register(
       IVoiceInputService,
       createVoiceInputService({
         apiClient,
@@ -2966,16 +2979,19 @@ export function createLocalServices(options: {
         resolveOrigin: resolveCurrentZCodeEndpointOrigin,
         createSocket: (url) => hostApiNetworkTransport.createWebSocket(url),
       }),
-    )
-    .register(IFileService, fileService)
-    .register(IMediaPreviewService, mediaPreviewService)
-    .register(
+    );
+  }
+  services.register(IFileService, fileService).register(IMediaPreviewService, mediaPreviewService);
+  if (!ZCODE_VENDOR_ACTIONS_DISABLED && marketingAssets) {
+    services.register(
       ICloudContentService,
       createCloudContentService({
         publishedAssets: marketingAssets,
         cacheRoot: join(getContentAppConfigDir(), "cache", "content-bundles", randomUUID()),
       }),
-    )
+    );
+  }
+  services
     .register(IGitService, gitService)
     .register(IManagedWorktreeService, managedWorktreeService)
     .register(IGitCheckpointService, gitCheckpointService)
@@ -3013,7 +3029,6 @@ export function createLocalServices(options: {
     .register(IConversationShareService, conversationShareService)
 
     .register(IFileWatcherService, createFileWatcherService())
-    .register(IOAuthService, oauthService)
     .register(ISourceServerWorkspaceService, sourceServerWorkspaceService)
     .register(
       IUsageStatsService,
@@ -3073,8 +3088,9 @@ export function createLocalServices(options: {
     )
     .register(IMemoryService, createMemoryService())
     .register(IOutputStyleService, createOutputStyleService())
-    .register(ISettingsSyncService, createSettingsSyncService({ settingService }))
-    .register(
+    .register(ISettingsSyncService, createSettingsSyncService({ settingService }));
+  if (!ZCODE_VENDOR_ACTIONS_DISABLED && oauthService) {
+    services.register(
       IFeedbackService,
       createFeedbackService({
         ...options?.feedback,
@@ -3082,8 +3098,10 @@ export function createLocalServices(options: {
         credentialService,
         oauthService,
       }),
-    )
-    .register(IPromptAttachmentTransferService, createLocalPromptAttachmentTransferService());
+    );
+  }
+  services.register(IPromptAttachmentTransferService, createLocalPromptAttachmentTransferService());
+  if (oauthService) services.register(IOAuthService, oauthService);
   // Data Sync 硬禁用：不注册用户配置同步通道。本机单机形态没有远端设备，注册后
   // renderer 侧每次调用都要等满 ChannelServer 超时；同进程消费方经 getOptional 降级。
   if (!DATA_SYNC_DISABLED) {

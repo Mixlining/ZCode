@@ -135,9 +135,10 @@ function describeNetworkSources(network: ExtensionHostNetworkSettings): string {
 
 interface WindowHostEntry {
   ready: boolean;
+  required: boolean;
 }
 
-type ExitIntent = "planned" | "dispose" | "unresponsive";
+type ExitIntent = "planned" | "dispose" | "unresponsive" | "idle";
 
 export function createExtensionHostSupervisor(
   deps: ExtensionHostSupervisorDeps,
@@ -148,7 +149,7 @@ export function createExtensionHostSupervisor(
   let child: ElectronUtilityProcess | null = null;
   let childReady = false;
   let gen = 0;
-  let status: ExtensionHostStatus = { state: "starting", gen: 0 };
+  let status: ExtensionHostStatus = { state: "idle", gen: 0 };
   let crashTimes: number[] = [];
   let restartTimer: ReturnType<typeof setTimeout> | null = null;
   let probeTimer: ReturnType<typeof setInterval> | null = null;
@@ -165,6 +166,8 @@ export function createExtensionHostSupervisor(
   /** 本轮事件循环追加、还没推给 Window Host 的条目。 */
   let pendingLogs: ExtensionLogEntry[] = [];
   let logFlushScheduled = false;
+
+  const hasDemand = () => [...windowHosts.values()].some((entry) => entry.ready && entry.required);
 
   const prefix = (target = gen) => `[extension-host] gen=${target}`;
 
@@ -185,6 +188,7 @@ export function createExtensionHostSupervisor(
     logFlushScheduled = false;
     const entries = pendingLogs;
     pendingLogs = [];
+    if (entries.length === 0) return;
     for (const [host, entry] of windowHosts) {
       if (entry.ready) postToWindowHost(host, { type: "extension-host/logs", entries });
     }
@@ -247,10 +251,10 @@ export function createExtensionHostSupervisor(
   const pair = () => {
     if (!child || !childReady || disposing) return;
     const target =
-      paired && windowHosts.get(paired)?.ready
+      paired && windowHosts.get(paired)?.ready && windowHosts.get(paired)?.required
         ? paired
-        : ([...windowHosts].find(([, entry]) => entry.ready)?.[0] ?? null);
-    if (!target) return;
+        : ([...windowHosts].find(([, entry]) => entry.ready && entry.required)?.[0] ?? null);
+    if (!target || paired === target) return;
     const { port1, port2 } = new MessageChannelMain();
     postToWindowHost(target, { type: "extension-host/pair", gen }, [port1]);
     postToChild({ type: "extension-host/attach-window", gen }, [port2]);
@@ -315,17 +319,24 @@ export function createExtensionHostSupervisor(
   };
 
   const spawn = () => {
-    if (disposing) return;
+    if (disposing || !hasDemand()) return;
     restartTimer = null;
     gen += 1;
     const myGen = gen;
     childReady = false;
     setStatus({ state: "starting", gen: myGen });
-    void readNetworkSettings().then((network) => {
-      // 读设置期间又重启（gen 变了）或开始退出：这一代作废，不再 fork。
-      if (disposing || gen !== myGen) return;
-      fork(myGen, network);
-    });
+    void readNetworkSettings()
+      .then((network) => {
+        // 读设置期间又重启（gen 变了）或开始退出：这一代作废，不再 fork。
+        if (disposing || gen !== myGen || !hasDemand()) return;
+        fork(myGen, network);
+      })
+      .catch((error: unknown) => {
+        if (disposing || gen !== myGen || !hasDemand()) return;
+        const reason = error instanceof Error ? error.name : "unknown";
+        log("error", `extension host failed to start (${reason})`, { gen: myGen });
+        setStatus({ state: "stopped", gen: myGen, reason: "start failed" });
+      });
   };
 
   const fork = (myGen: number, network: ExtensionHostNetworkSettings) => {
@@ -345,7 +356,7 @@ export function createExtensionHostSupervisor(
     relayStream(next.stdout, "info");
     relayStream(next.stderr, "warn");
     next.on("message", (raw: unknown) => {
-      if (child !== next) return;
+      if (child !== next || gen !== myGen || !hasDemand()) return;
       const parsed = extensionHostToMainMessageSchema.safeParse(raw);
       if (!parsed.success) return;
       const message = parsed.data;
@@ -378,18 +389,30 @@ export function createExtensionHostSupervisor(
   };
 
   const onExit = (exited: ElectronUtilityProcess, exitedGen: number, code: number) => {
+    if (child !== exited) return;
     if (forceKillTimer) clearTimeout(forceKillTimer);
     forceKillTimer = null;
-    if (child !== exited) return;
     stopProbe();
     child = null;
     childReady = false;
+    paired = null;
     const intent = exitIntent;
     exitIntent = null;
     log("info", `extension host exited code=${code} intent=${intent ?? "crash"}`, {
       gen: exitedGen,
     });
     if (disposing || intent === "dispose") return;
+    if (!hasDemand()) {
+      setStatus({ state: "idle", gen });
+      logEntries.length = 0;
+      pendingLogs = [];
+      return;
+    }
+    if (intent === "idle") {
+      // 退出期间新需求到达时，必须等旧子进程真正结束，不能并行 fork 两代。
+      spawn();
+      return;
+    }
     if (intent === "planned") {
       // 计划重启与重新加载不计入崩溃预算。
       spawn();
@@ -432,27 +455,60 @@ export function createExtensionHostSupervisor(
   };
 
   const restart = (intent: "planned") => {
-    if (disposing) return;
+    if (disposing || !hasDemand()) return;
     if (restartTimer) clearTimeout(restartTimer);
     restartTimer = null;
     if (child) stopChild(intent);
     else spawn();
   };
 
+  const reconcileDemand = () => {
+    if (disposing) return;
+    if (hasDemand()) {
+      if (child) {
+        if (exitIntent !== "idle") pair();
+      } else if (status.state === "idle") {
+        spawn();
+      }
+      return;
+    }
+    if (restartTimer) clearTimeout(restartTimer);
+    restartTimer = null;
+    if (status.state === "idle") return;
+    // window-ready 不是运行需求。归零立即失效异步启动，清理探测与重启，不加闲时轮询。
+    gen += 1;
+    childReady = false;
+    paired = null;
+    crashTimes = [];
+    setStatus({ state: "idle", gen });
+    logEntries.length = 0;
+    pendingLogs = [];
+    stopProbe();
+    if (child) stopChild("idle");
+  };
+
   return {
     trackWindowHost(host) {
       if (windowHosts.has(host)) return;
-      const entry: WindowHostEntry = { ready: false };
+      const entry: WindowHostEntry = { ready: false, required: false };
       windowHosts.set(host, entry);
       host.on("message", (raw: unknown) => {
+        if (disposing || windowHosts.get(host) !== entry) return;
         const parsed = extensionWindowToMainMessageSchema.safeParse(raw);
         if (!parsed.success) return;
         if (parsed.data.type === "extension-host/window-ready") {
           entry.ready = true;
           postToWindowHost(host, { type: "extension-host/status", status });
-          // 扩展进程只在有 Window Host 能给它插件清单时才需要：首个 Window Host 就绪时拉起。
-          if (gen === 0) spawn();
-          else if (!paired || paired === host) pair();
+          reconcileDemand();
+          return;
+        }
+        if (parsed.data.type === "extension-host/demand") {
+          if (!entry.ready) return;
+          const unchanged = entry.required === parsed.data.required;
+          entry.required = parsed.data.required;
+          reconcileDemand();
+          // 显式懒激活也会重报同一需求；已耗尽预算时回状态结束等待，不能让调用悬挂。
+          if (unchanged) postToWindowHost(host, { type: "extension-host/status", status });
           return;
         }
         if (parsed.data.type === "extension-host/reload") {
@@ -480,9 +536,8 @@ export function createExtensionHostSupervisor(
       });
       host.once("exit", () => {
         windowHosts.delete(host);
-        if (paired !== host) return;
-        paired = null;
-        pair();
+        if (paired === host) paired = null;
+        reconcileDemand();
       });
     },
     dispose() {

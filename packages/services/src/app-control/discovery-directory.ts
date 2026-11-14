@@ -1,4 +1,5 @@
 import { SessionControlError } from "@zcode/session-control/contracts";
+import { REMOTE_WORKSPACE_DISABLED } from "@zcode/shared";
 import type { IProjectService } from "#src/project/contract.js";
 import type {
   IRemoteProjectService,
@@ -35,7 +36,8 @@ export function createAppControlDiscoveryDirectory(deps: {
         readTree: () => deps.projects.readTree(),
         assertCurrent: () => assertCaller(binding),
       };
-      if (!deps.remoteProjects)
+      // 本地会话发现不读取旧远程目录，也不能借新工具启动 Source 连接或远端 Agent。
+      if (REMOTE_WORKSPACE_DISABLED || !deps.remoteProjects)
         return {
           sources: [local],
           async prepareValidation() {

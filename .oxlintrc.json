@@ -16,23 +16,6 @@
       }
     },
     {
-      // 首次扫描的 20 条存量调用位置诊断仍告警；逐文件修复后删除例外，不扩大到目录。
-      // 依赖诊断与其他规则不降级，详见 docs/testing/react-hooks-lint.md。
-      "files": [
-        "**/packages/desktop/test/e2e/helpers/web-remote-visibility-browser.ts",
-        "**/packages/ui/src/ToolCallBlocks/renderers/resume-workflow-run.tsx",
-        "**/packages/ui/src/hooks/useOnboardingRecordService.ts",
-        "**/packages/ui/src/hooks/useZCodeAgentService.ts",
-        "**/packages/ui/src/hooks/useZCodeSessionService.ts",
-        "**/packages/ui/src/hooks/useZCodeTaskService.ts",
-        "**/packages/ui/src/project-sidebar/grouped/task-row.tsx"
-      ],
-      "plugins": ["unicorn", "typescript", "oxc", "react"],
-      "rules": {
-        "react/rules-of-hooks": "warn"
-      }
-    },
-    {
       // 会话控制核心只依赖契约和注入端口，禁止把运行环境重新耦合进用例。
       "files": ["packages/session-control/src/**/*.ts"],
       "rules": {
@@ -255,7 +238,6 @@
     ".claude/skills",
     ".agents/skills",
     "packages/formal-proof",
-    "apps/zcode-cli",
     "packages/zcode-cua",
     "docs/electron"
   ]

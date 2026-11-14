@@ -950,7 +950,7 @@ pnpm --filter @zcode/session-control typecheck
 
 - workspace 范围：`pnpm-workspace.yaml:1`；CLI 内部 workspace：`apps/zcode-cli/pnpm-workspace.yaml:1`。
 - 中立包先例：`packages/model-option-map/package.json:1`；CLI 消费声明：`apps/zcode-cli/packages/adapters/package.json:110`。
-- 核心独立入口：`packages/session-control/package.json`、`packages/session-control/vitest.config.ts`；根工程/CUA 接线：`vitest.config.ts`、`scripts/engineering-test-files.json`。
+- 核心类型入口：`packages/session-control/package.json`；CLI 契约与 facade 证据在 `apps/zcode-cli/packages/bootstrap/tests/cli-session-control/facade/`，由同目录上层的独立 `vitest.config.ts` 接入。App 业务单测按 dev 退役规则清理；根工程/CUA 接线：`vitest.config.ts`、`scripts/engineering-test-files.json`。
 - 根 typecheck 显式清单：`package.json:60`；CLI 聚合 runner：`apps/zcode-cli/package.json:30`、`apps/zcode-cli/turbo.json:49`。
 - Agent 构建顺序：`scripts/build-desktop-agent-cli.mjs:31`，workspace 安装边界处理：`scripts/build-desktop-agent-cli.mjs:160`。
 

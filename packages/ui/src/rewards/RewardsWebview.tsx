@@ -41,7 +41,9 @@ export function RewardsWebview({ onClose }: { onClose: () => void }) {
     ? "zai-dark"
     : "zai-light";
   const env = import.meta.env;
-  const policy = { dev: env.DEV, e2e: env.VITE_ZCODE_E2E_STORE_BRIDGE === "1" };
+  const policyDev = env.DEV;
+  const policyE2e = env.VITE_ZCODE_E2E_STORE_BRIDGE === "1";
+  const policy = { dev: policyDev, e2e: policyE2e };
   const [url] = useState(() =>
     buildRewardsUrl(
       resolveRewardsOrigin({
@@ -74,7 +76,7 @@ export function RewardsWebview({ onClose }: { onClose: () => void }) {
     const identity = latest.current.userId;
     try {
       const href = element.getURL();
-      if (!isTrustedRewardsUrl(href, policy)) return;
+      if (!isTrustedRewardsUrl(href, { dev: policyDev, e2e: policyE2e })) return;
       if (injectedIdentity.current !== identity) {
         // 切账号不能等异步凭据读取完才清旧账号，先撤销当前页面登录态。
         await element.executeJavaScript(
@@ -150,7 +152,7 @@ export function RewardsWebview({ onClose }: { onClose: () => void }) {
         logger.warn("[rewards] context injection failed");
       }
     }
-  }, [oauthService, policy.dev, policy.e2e]);
+  }, [oauthService, policyDev, policyE2e]);
   const injectRef = useRef(inject);
   injectRef.current = inject;
   useEffect(() => {

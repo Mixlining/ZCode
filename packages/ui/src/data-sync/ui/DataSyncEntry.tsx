@@ -46,7 +46,7 @@ export function useDataSyncEntry(options: { onPushFinished?(): void | Promise<vo
   const onPushFinishedRef = useRef(options.onPushFinished);
   const seenResultVersionRef = useRef(resultVersion);
   useEffect(() => {
-  onPushFinishedRef.current = options.onPushFinished;
+    onPushFinishedRef.current = options.onPushFinished;
   }, [options.onPushFinished]);
   // 修复原因：刷新回调原来绑在打开弹窗的入口实例上。最小化后该页卸载再挂载，或从数据同步页、
   // 状态条恢复弹窗时，推送结束只调用已失效的旧回调，设置页列表停在推送前。改为订阅窗口级结果版本：

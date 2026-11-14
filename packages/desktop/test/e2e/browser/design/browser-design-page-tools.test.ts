@@ -4,7 +4,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
-  TID_BROWSER_ADDRESS_INPUT,
   TID_BROWSER_DESIGN_SLIDE_COUNTER,
   TID_BROWSER_DESIGN_TOOLBAR,
   TID_BROWSER_ELEMENT_PICKER_BUTTON,

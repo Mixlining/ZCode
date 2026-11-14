@@ -1071,7 +1071,7 @@ const SingleUserInputRowView = memo(function SingleUserInputRowView({
         enabled: editWorkspaceRewindAvailability.enabled,
         reason: editWorkspaceRewindAvailability.reason,
       },
-        });
+    });
   }, [editSessionKey, editWorkspaceRewindAvailability, editingInComposer]);
   const handleFocusComposerEdit = useCallback(() => {
     if (editSessionKey) useComposerEditStore.getState().requestFocus(editSessionKey);
@@ -1489,15 +1489,15 @@ export const ConversationAssistantTextActions = memo(function ConversationAssist
             onForkToWorktree={handleForkToWorktree}
           />
         ) : (
-        <MessageAction
-          aria-label={forkLabel}
-          label={forkLabel}
-          tooltip={resolveTooltip(forkLabel)}
-          data-testid={testId(TID_V4_FORK, String(rowId))}
-          onClick={handleFork}
-        >
-          <TrendingUpDownIcon className="size-3.5" />
-        </MessageAction>
+          <MessageAction
+            aria-label={forkLabel}
+            label={forkLabel}
+            tooltip={resolveTooltip(forkLabel)}
+            data-testid={testId(TID_V4_FORK, String(rowId))}
+            onClick={handleFork}
+          >
+            <TrendingUpDownIcon className="size-3.5" />
+          </MessageAction>
         )
       ) : null}
       {turnId && hookInvocations ? (

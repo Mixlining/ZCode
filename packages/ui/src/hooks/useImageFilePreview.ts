@@ -17,8 +17,10 @@ type PreviewState = { key: string; loading: boolean; error: boolean; src?: strin
 /** 从当前 workspace 的 Host 读取原目标，绝不按展示文件名猜路径或调用本机文件 API。 */
 export function useImageFilePreview(href: string, context?: ImageFilePreviewContext) {
   const services = useOptionalServices();
+  const workspacePath = context?.workspacePath;
+  const workspaceHomePath = context?.workspaceHomePath;
   const path = useMemo(() => {
-    if (!context) return undefined;
+    if (workspacePath === undefined) return undefined;
     // 无目录段的显式 href 也是工作区相对目标；只补目标的 ./，绝不改用显示 label。
     const targetHref = !/[\\/:#]/.test(href) ? `./${href}` : href;
     // 原始 mention 没经过 rehype：/data/a.png 就是绝对路径，不能套用
@@ -26,11 +28,11 @@ export function useImageFilePreview(href: string, context?: ImageFilePreviewCont
     const parsed = parseMarkdownFileLinkTarget(href);
     const target = isAbsoluteFilePath(parsed.path)
       ? parsed
-      : resolveMarkdownFileLink(context.workspacePath, targetHref, {
-          homePath: context.workspaceHomePath,
+      : resolveMarkdownFileLink(workspacePath, targetHref, {
+          homePath: workspaceHomePath,
         });
     return target && isImagePreviewPath(target.path) ? target.path : undefined;
-  }, [href, context?.workspacePath, context?.workspaceHomePath]);
+  }, [href, workspacePath, workspaceHomePath]);
   const workspaceKey = context?.workspaceIdentity?.trim() || context?.workspacePath || "";
   const key = JSON.stringify([workspaceKey, context?.workspaceRemoteSessionId ?? "", path]);
   const sequence = useRef(0);

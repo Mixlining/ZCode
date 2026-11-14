@@ -1,4 +1,4 @@
-import { Emitter, type Event } from "@zcode/rpc";
+import { Emitter, type Event, type IDisposable } from "@zcode/rpc";
 import { ESTIMATED_TOKEN_CHAR_DIVISOR, calculateOutputTps } from "@zcode/shared";
 import {
   GENERATION_STREAMING_PUSH_INTERVAL_MS,
@@ -143,7 +143,7 @@ export function createGenerationPump(deps: {
     (workspace) => deps.agent.onDynamicModelRequestMetrics?.(workspace),
     handleMetrics,
   );
-  let active = false;
+  let reportSubscription: IDisposable | undefined;
   const sync = () => {
     const workspaces = deps.workbench.workspaces();
     telemetry.sync(workspaces);
@@ -152,26 +152,25 @@ export function createGenerationPump(deps: {
   const emitter = new Emitter<GenerationMetrics>({
     // 没有扩展订阅 models.onDidGenerate 时不做聚合。
     onWillAddFirstListener: () => {
-      active = true;
+      // Renderer 报告订阅也按需建立，空闲时不保留数据泵监听。
+      reportSubscription = deps.workbench.onDidChangeReport(sync);
       sync();
       deps.logger.info(undefined, `generation pump started workspaces=${telemetry.size()}`);
     },
     onDidRemoveLastListener: () => {
-      active = false;
+      reportSubscription?.dispose();
+      reportSubscription = undefined;
       telemetry.disposeAll();
       metrics.disposeAll();
       streams.clear();
       deps.logger.info(undefined, "generation pump stopped");
     },
   });
-  const reportSubscription = deps.workbench.onDidChangeReport(() => {
-    if (active) sync();
-  });
 
   return {
     onDidGenerate: emitter.event,
     dispose() {
-      reportSubscription.dispose();
+      reportSubscription?.dispose();
       telemetry.disposeAll();
       metrics.disposeAll();
       streams.clear();

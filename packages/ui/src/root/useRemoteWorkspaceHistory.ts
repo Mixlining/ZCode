@@ -1150,18 +1150,17 @@ export function useRemoteWorkspaceHistory({
   const remoteStartupReconnectRefreshCompatibilityRef = useRef<
     Set<string> | RemoteWorkspaceReconnectRendererState
   >(new Set());
+  // 仅首次升级旧 ref 的形状；容器身份随后稳定，订阅不随 render 重建。
+  if (remoteStartupReconnectRefreshCompatibilityRef.current instanceof Set) {
+    remoteStartupReconnectRefreshCompatibilityRef.current = {
+      attemptedWorkspaceKeys: remoteStartupReconnectRefreshCompatibilityRef.current,
+      currentRendererDisconnectedSourceServerIds: new Set<string>(),
+      pendingTerminallyDisconnectedSourceServerIds: new Set<string>(),
+      observedOnlineSourceServerIds: new Set<string>(),
+    };
+  }
   const remoteWorkspaceReconnectRendererState =
-    remoteStartupReconnectRefreshCompatibilityRef.current instanceof Set
-      ? {
-          attemptedWorkspaceKeys: remoteStartupReconnectRefreshCompatibilityRef.current,
-          currentRendererDisconnectedSourceServerIds: new Set<string>(),
-          pendingTerminallyDisconnectedSourceServerIds: new Set<string>(),
-          observedOnlineSourceServerIds: new Set<string>(),
-        }
-      : remoteStartupReconnectRefreshCompatibilityRef.current;
-  // 复用历史 ref hook slot，避免新增 useRef 破坏 Fast Refresh 的 Hook 顺序；扩展出的状态
-  // 只属于当前 Renderer 生命周期，不会把 failed history 持久化成自动恢复资格。
-  remoteStartupReconnectRefreshCompatibilityRef.current = remoteWorkspaceReconnectRendererState;
+    remoteStartupReconnectRefreshCompatibilityRef.current;
   const {
     logsByWorkspaceKey: reconnectingRemoteWorkspaceLogsByWorkspaceKey,
     resetLogsForWorkspaceKey,
@@ -1741,6 +1740,7 @@ export function useRemoteWorkspaceHistory({
     services.sourceServerManagementService,
     syncPersistedWorkspaceSession,
     tabStoreApi,
+    remoteWorkspaceReconnectRendererState,
   ]);
 
   const restorePersistedSession = useCallback(
@@ -2224,7 +2224,14 @@ export function useRemoteWorkspaceHistory({
         );
       }
     },
-    [commitRemoteWorkspaceSessionMutation, intl, tabStoreApi],
+    [
+      commitRemoteWorkspaceSessionMutation,
+      intl,
+      tabStoreApi,
+      remoteWorkspaceReconnectRendererState.currentRendererDisconnectedSourceServerIds,
+      remoteWorkspaceReconnectRendererState.observedOnlineSourceServerIds,
+      remoteWorkspaceReconnectRendererState.pendingTerminallyDisconnectedSourceServerIds,
+    ],
   );
 
   const handleRemoteWorkspaceSessionReconnected = useCallback(

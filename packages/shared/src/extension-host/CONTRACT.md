@@ -2,6 +2,8 @@
 
 设计见 `docs/plugins/extension-host.md`。本模块是扩展进程、Window Host、Renderer 三方共用的唯一定义，只含 schema、类型与纯函数。
 
+dev L0 生命周期补充：Window Host 的 `extension-host/demand { required: boolean }` 是有效激活需求的投影，Main 不接收或保存插件业务清单；`window-ready` 只表示可牵线。监管器 `idle` 表示没有需求，不代表崩溃，不持有进程/探测/重启工作。需求与 Host 实例绑定，旧 Host 消息不得影响新实例；代际仍由 Main 单调分配。详见 `spec/upstream-3.18.1-merge.md`。
+
 - 清单校验分两步：先只读 `engines.zcode`（不兼容判 `incompatible`，不再看其余字段），再严格校验整个 `extension`（未知字段判 `invalid`，带字段路径）。
 - 入口条目在清单顶层 `slots`（`manifestSlots.ts`），条目用 `target` 指向打开对象，`target` 只能有 `view`、`command`、`surface`、`tool` 中的一个键。未知插槽 id 忽略并记诊断；条目内的未知字段、超出上限、target 不被插槽接受、引用的视图或命令不可用，都只让该条目不可用（带字段路径）。
 - `EXTENSION_SLOTS` 是插槽 id 的唯一定义，每个插槽声明它接受的 target 种类与每插件上限；插槽自己的条目字段写在 `itemFields`（`file.viewer` 的 `fileExtensions`），清单校验把它并进严格对象，别的插槽写了它按未知字段处理。P2c 起有五个插槽：`composer.status`、`sidePane.launcher`、`nav.primary`、`file.viewer`、`composer.mention`。插槽可以声明 `commandResult`：command target 返回值的 schema（`composer.mention` 用 `zcodePluginMentionItemsSchema`，与 CLI 共用）。静态表的 `file.viewer` 条目带小写去重后的 `fileExtensions`。

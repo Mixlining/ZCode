@@ -136,15 +136,15 @@ export function ConversationDraftEmptyState({
       const nextFontSize = `${nextFontSizePx}px`;
       if (container.style.getPropertyValue("--v4-draft-greeting-font-size") === nextFontSize) {
         return;
-        }
+      }
       // Bugfix：侧栏收窄时，RO → RAF → React state 会先画出旧字号的两行标题，
       // 把输入框推下再弹回。字号只属于 DOM 投影，必须在本次绘制前直接适配。
       container.style.setProperty("--v4-draft-greeting-font-size", nextFontSize);
-        logger.debug("[v4-draft-greeting] 标题自身可用宽度变化，更新字号", {
-          availableWidthPx: Math.round(availableWidthPx),
-          naturalTextWidthPx: Math.round(naturalTextWidthPx),
-          nextFontSizePx,
-        });
+      logger.debug("[v4-draft-greeting] 标题自身可用宽度变化，更新字号", {
+        availableWidthPx: Math.round(availableWidthPx),
+        naturalTextWidthPx: Math.round(naturalTextWidthPx),
+        nextFontSizePx,
+      });
     };
 
     measure();
@@ -199,8 +199,8 @@ export function ConversationDraftEmptyState({
           className="pointer-events-none invisible absolute inset-x-4 whitespace-nowrap text-3xl/[1.2]"
         >
           <span ref={greetingMeasurementRef} className="inline-block">
-          {greeting}
-        </span>
+            {greeting}
+          </span>
         </span>
         <span>{greeting}</span>
       </p>

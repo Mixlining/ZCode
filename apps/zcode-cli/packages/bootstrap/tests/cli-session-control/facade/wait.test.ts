@@ -1,18 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
-import { createCliSessionControl } from "#session-control/application/cli/index";
-import { createAppSessionControl } from "#session-control/application/app/index";
+import { createCliSessionControl } from "@zcode/session-control/cli";
+
 import {
   createTestPorts,
   deferred,
   createOperationFeed,
   flushMicrotasks,
-} from "#session-control/testing/index";
+} from "@zcode/session-control/testing";
 import {
   type CliSessionRef,
   type OperationFeed,
   type OperationRef,
   type OperationSnapshot,
-} from "#session-control/contract";
+} from "@zcode/session-control/contracts";
 
 const root: CliSessionRef = { kind: "cli", workspacePath: "/workspace", sessionId: "sess_root" };
 const a: OperationRef<CliSessionRef> = {
@@ -342,35 +342,5 @@ describe("observation validation and cleanup", () => {
     await expect(
       control.waitSessions(ctx, { operations: [a], mode: "all", timeoutMs: 0 }),
     ).rejects.toThrow("release failed");
-  });
-  it("App waits use exactly the same observation rules", async () => {
-    const appRoot = {
-      kind: "app" as const,
-      workspacePath: "/workspace",
-      sourceServerId: "source",
-      sessionId: "sess_root",
-    };
-    const ports = createTestPorts("app", appRoot);
-    const operation = {
-      session: { ...appRoot, sessionId: "sess_target" },
-      sessionId: "sess_target",
-      commandId: "command",
-    };
-    const feed = createOperationFeed({
-      operation,
-      epoch: "app-epoch",
-      revision: 9,
-      status: "queued",
-    });
-    ports.app.observations.open = async () => feed;
-    const control = createAppSessionControl(ports.app);
-    const result = control.waitSessions(ports.context, { operations: [operation], mode: "any" });
-    await flushMicrotasks();
-    feed.push({
-      type: "snapshot",
-      snapshot: { operation, epoch: "app-epoch", revision: 10, status: "completed" },
-    });
-    await expect(result).resolves.toMatchObject({ status: "completed" });
-    expect(feed.closeCount).toBe(1);
   });
 });

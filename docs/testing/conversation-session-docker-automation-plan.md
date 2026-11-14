@@ -27,33 +27,34 @@ CDD01 已迁入 formal 路径，但单 spec Docker `replay-isolated` 运行
 
 历史 `conversation-session-admission`、`conversation-session-needs-docker-fix` 和 `conversation-session-tool-cross-product` preset 已删除。需要定位某个 case 时统一使用 `E2E_SPEC` 指定 direct-root spec；只有取得绿色证据后才能用 `e2e:docker:admit` 登记到 verified 集合。
 
-| Spec | 迁移状态 |
-| ---- | -------- |
-| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-amend.test.ts` | verified |
-| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-artifacts.test.ts` | verified |
-| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-compile.test.ts` | verified |
-| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-confirm.test.ts` | verified |
-| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-cross-session.test.ts` | verified |
-| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-english-dark.test.ts` | verified |
-| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-lookup.test.ts` | verified |
-| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-notify.test.ts` | verified |
-| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-overflow.test.ts` | verified |
-| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-questions.test.ts` | verified |
-| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-restart.test.ts` | verified |
-| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-resume.test.ts` | verified |
+| Spec                                                                                                                      | 迁移状态 |
+| ------------------------------------------------------------------------------------------------------------------------- | -------- |
+| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-amend.test.ts`            | verified |
+| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-artifacts.test.ts`        | verified |
+| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-compile.test.ts`          | verified |
+| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-confirm.test.ts`          | verified |
+| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-cross-session.test.ts`    | verified |
+| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-english-dark.test.ts`     | verified |
+| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-lookup.test.ts`           | verified |
+| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-notify.test.ts`           | verified |
+| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-overflow.test.ts`         | verified |
+| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-questions.test.ts`        | verified |
+| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-restart.test.ts`          | verified |
+| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-resume.test.ts`           | verified |
 | `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-run-pane-details.test.ts` | verified |
-| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-run-permissions.test.ts` | verified |
-| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-run.test.ts` | verified |
-| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-save-from-chat.test.ts` | verified |
-| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-save-window.test.ts` | verified |
-| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-snippet.test.ts` | verified |
-| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-stop.test.ts` | verified |
-| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-transcript.test.ts` | verified |
-| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-user-choice.test.ts` | verified |
-| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on.test.ts` | verified |
-| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-disabled.test.ts` | verified |
-| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-on-demand.test.ts` | verified |
-| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-holes.test.ts` | verified |
+| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-run-permissions.test.ts`  | verified |
+| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-run.test.ts`              | verified |
+| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-save-from-chat.test.ts`   | verified |
+| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-save-window.test.ts`      | verified |
+| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-snippet.test.ts`          | verified |
+| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-stop.test.ts`             | verified |
+| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-transcript.test.ts`       | verified |
+| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on-user-choice.test.ts`      | verified |
+| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-always-on.test.ts`                  | verified |
+| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-disabled.test.ts`                   | verified |
+| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-gray-on-demand.test.ts`                  | verified |
+| `./test/e2e/conversation-session/workflows/conversation-session-dynamic-workflow-holes.test.ts`                           | verified |
+
 <!-- conversation-session-verified-table-end -->
 
 运行入口：

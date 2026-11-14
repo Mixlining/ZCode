@@ -368,14 +368,14 @@ export function GeneralSectionContent({
                 </SelectItem>
                 {/* 语言选项显示各语言本名（LOCALE_NATIVE_NAMES），不随界面语言翻译。 */}
                 {SUPPORTED_LOCALES.map((locale) => (
-                <SelectItem
+                  <SelectItem
                     key={locale}
                     value={locale}
                     lang={locale}
                     data-testid={testId(TID_SETTINGS_LOCALE_SELECT_ITEM, locale)}
-                >
+                  >
                     {LOCALE_NATIVE_NAMES[locale]}
-                </SelectItem>
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>

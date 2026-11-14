@@ -128,7 +128,7 @@ Provider-visible payload：
 | `apps/zcode-cli/packages/core/src/runtime/methods/runtime-command-active-loop.ts`                                            | active loop 对允许 command 类型的统一 intake                                    |
 | `apps/zcode-cli/packages/contracts/tests/respond-to-coordinator.test.ts`                                                     | schema 边界测试                                                                 |
 | `apps/zcode-cli/packages/core/tests/runtime-tool-allowlist.test.ts`                                                          | Explore/custom child 最终 built-in allowlist 投影测试                           |
-| `packages/desktop/test/e2e/conversation-session/subagents/conversation-session-subagent-respond-to-coordinator.test.ts`                       | 独立 formal BG25 replay spec，使用正常 context window                         |
+| `packages/desktop/test/e2e/conversation-session/subagents/conversation-session-subagent-respond-to-coordinator.test.ts`      | 独立 formal BG25 replay spec，使用正常 context window                           |
 | `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-subagent-respond-to-coordinator.json` | BG25 case-local provider replay fixture                                         |
 | `packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-subagent-respond-to-coordinator.json`    | BG25 replay manifest                                                            |
 

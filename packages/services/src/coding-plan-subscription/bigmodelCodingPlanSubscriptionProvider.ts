@@ -853,9 +853,9 @@ export class BigModelCodingPlanSubscriptionProvider {
     if (this.clientConfigRequest) return this.clientConfigRequest;
 
     const request = readCodingPlanApiJson<ZCodeClientConfigEnvelope>(this.apiClient, url, {
-        method: "GET",
+      method: "GET",
       redirect: "error",
-        timeoutMs: REQUEST_TIMEOUT_MS,
+      timeoutMs: REQUEST_TIMEOUT_MS,
       ...(authorization ? { headers: { Authorization: authorization } } : {}),
     });
     this.clientConfigRequest = request;
@@ -863,8 +863,8 @@ export class BigModelCodingPlanSubscriptionProvider {
       const payload = await request;
       // 旧请求晚到时只完成原调用，不能覆盖新身份的缓存或解除其在飞状态。
       if (this.clientConfigRequest === request) {
-      this.clientConfigSnapshot = payload;
-      this.clientConfigSnapshotExpiresAt = Date.now() + CLIENT_CONFIG_CACHE_TTL_MS;
+        this.clientConfigSnapshot = payload;
+        this.clientConfigSnapshotExpiresAt = Date.now() + CLIENT_CONFIG_CACHE_TTL_MS;
       }
       return payload;
     } finally {

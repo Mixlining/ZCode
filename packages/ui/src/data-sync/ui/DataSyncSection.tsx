@@ -96,10 +96,13 @@ function isSameDay(left: number, right: number): boolean {
   );
 }
 
-export function DataSyncSection(props: DataSyncSectionProps) {
+// 编译期选择入口：禁用时不进入业务 hooks；原实现保持完整调用顺序。
+export const DataSyncSection = DATA_SYNC_DISABLED ? () => null : DataSyncSectionEnabled;
+
+function DataSyncSectionEnabled(props: DataSyncSectionProps) {
   const resultVersion = useDataSyncResultVersion();
   // Data Sync 硬禁用：不挂载页面、不订阅设备同步状态、不发起连接向导。
-  if (DATA_SYNC_DISABLED) return null;
+
   const { intl, locale } = useZCodeIntl();
   const now = props.now ?? Date.now;
   const devices = useMemo(() => buildDataSyncDevices(props.snapshot), [props.snapshot]);

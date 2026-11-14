@@ -1,5 +1,6 @@
 import { Emitter } from "@zcode/rpc";
 import type { ApiClient } from "@zcode/shared";
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import type { WebSocket } from "undici";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import type {
@@ -122,6 +123,8 @@ export function createVoiceInputService(options: {
   }
 
   async function requestTicket(): Promise<{ ticket: string; wsPath: string }> {
+    // 官方语音不属于自配端点例外：读身份与申请 ticket 前短路，防止其他调用方绕过装配守卫。
+    if (CODING_PLAN_DISABLED) throw new Error("voice_input_disabled");
     const origin = await options.resolveOrigin();
     const token = (await options.getToken())?.trim();
     if (!token) throw Object.assign(new Error("missing_token"), { status: 401 });
@@ -283,6 +286,7 @@ export function createVoiceInputService(options: {
   return {
     onEvent: emitter.event,
     async start({ attemptId, language }) {
+      if (CODING_PLAN_DISABLED) throw new Error("voice_input_disabled");
       if (current) {
         log.info(undefined, "voice input replaced", summary(current));
         const previous = current;

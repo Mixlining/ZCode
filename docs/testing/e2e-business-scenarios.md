@@ -43,43 +43,43 @@ SSH 独立轮使用 runner 的 `E2E_PROVIDER_REPLAY_FIXTURE_MODE=strict-case-loc
 16 个无需模型的文件声明 `providerRequestPolicy: "none"`，独立回放抓包均为零模型请求。
 插件响应合同及合成数据边界见[插件覆盖矩阵](plugin-management-lifecycle-e2e-coverage-matrix.md)。
 
-| 正式入口（相对 `packages/desktop/test/e2e/`） | 测试数 | 独立回放产物 |
-| --- | ---: | --- |
-| `bots/delivery/bot-large-attachment.test.ts` | 12 | `promotion-1110-explicit-01` |
-| `browser/files/browser-download-navigation-address.test.ts` | 1 | `promotion-1110-explicit-02` |
-| `browser/files/browser-local-html-preview.test.ts` | 1 | `promotion-1110-explicit-03` |
-| `plugins/extensions/plugin-extension-entries.test.ts` | 2 | `promotion-1110-explicit-04` |
-| `plugins/extensions/plugin-extension-host-runtime.test.ts` | 1 | `promotion-1110-explicit-05` |
-| `plugins/extensions/plugin-extension-jarvis-host.test.ts` | 2 | `promotion-1110-explicit-06` |
-| `plugins/extensions/plugin-extension-logs.test.ts` | 1 | `promotion-1110-explicit-07` |
-| `plugins/extensions/plugin-extension-mention.test.ts` | 2 | `promotion-1110-explicit-08` |
-| `plugins/extensions/plugin-extension-network.test.ts` | 1 | `promotion-1110-explicit-09` |
-| `plugins/extensions/plugin-extension-plugin-project.test.ts` | 1 | `promotion-1110-explicit-10` |
-| `plugins/extensions/plugin-extension-session-approvals.test.ts` | 1 | `promotion-1110-explicit-11-final` |
-| `plugins/extensions/plugin-extension-sessions-read.test.ts` | 2 | `promotion-1110-explicit-12` |
-| `plugins/extensions/plugin-extension-sessions-write.test.ts` | 2 | `promotion-1110-explicit-13` |
-| `plugins/extensions/plugin-extension-settings.test.ts` | 1 | `promotion-1110-explicit-14` |
-| `plugins/extensions/plugin-extension-start-draft.test.ts` | 1 | `promotion-1110-explicit-15` |
-| `plugins/extensions/plugin-extension-views.test.ts` | 1 | `promotion-1110-explicit-16` |
-| `plugins/extensions/plugin-store-extension-compat.test.ts` | 1 | `promotion-1110-explicit-17` |
-| `settings/agent/settings-agent-behavior.test.ts` | 3 | `promotion-1110-explicit-18` |
-| `settings/general/settings-navigation-search.test.ts` | 4 | `promotion-1110-explicit-19` |
-| `ui-shell/composer/draft-greeting-layout.test.ts` | 1 | `promotion-1110-explicit-20` |
-| `ui-shell/navigation/sidebar-rich-content-performance.test.ts` | 2 | `promotion-1110-explicit-21` |
-| `ui-shell/navigation/sidebar-toggle-performance.test.ts` | 2 | `promotion-1110-explicit-22` |
-| `workspace/projects/project-native-directory-picker.test.ts` | 1 | `promotion-1110-explicit-23` |
-| `ui-shell/navigation/command-center-history-search.test.ts` | 3 | `promotion-1110-explicit-24` |
-| `conversation-session/remote/connection/conversation-session-remote-draft-prewarm.test.ts` | 1 | `local-docker-20261110102824-d5e7e3` |
+| 正式入口（相对 `packages/desktop/test/e2e/`）                                              | 测试数 | 独立回放产物                         |
+| ------------------------------------------------------------------------------------------ | -----: | ------------------------------------ |
+| `bots/delivery/bot-large-attachment.test.ts`                                               |     12 | `promotion-1110-explicit-01`         |
+| `browser/files/browser-download-navigation-address.test.ts`                                |      1 | `promotion-1110-explicit-02`         |
+| `browser/files/browser-local-html-preview.test.ts`                                         |      1 | `promotion-1110-explicit-03`         |
+| `plugins/extensions/plugin-extension-entries.test.ts`                                      |      2 | `promotion-1110-explicit-04`         |
+| `plugins/extensions/plugin-extension-host-runtime.test.ts`                                 |      1 | `promotion-1110-explicit-05`         |
+| `plugins/extensions/plugin-extension-jarvis-host.test.ts`                                  |      2 | `promotion-1110-explicit-06`         |
+| `plugins/extensions/plugin-extension-logs.test.ts`                                         |      1 | `promotion-1110-explicit-07`         |
+| `plugins/extensions/plugin-extension-mention.test.ts`                                      |      2 | `promotion-1110-explicit-08`         |
+| `plugins/extensions/plugin-extension-network.test.ts`                                      |      1 | `promotion-1110-explicit-09`         |
+| `plugins/extensions/plugin-extension-plugin-project.test.ts`                               |      1 | `promotion-1110-explicit-10`         |
+| `plugins/extensions/plugin-extension-session-approvals.test.ts`                            |      1 | `promotion-1110-explicit-11-final`   |
+| `plugins/extensions/plugin-extension-sessions-read.test.ts`                                |      2 | `promotion-1110-explicit-12`         |
+| `plugins/extensions/plugin-extension-sessions-write.test.ts`                               |      2 | `promotion-1110-explicit-13`         |
+| `plugins/extensions/plugin-extension-settings.test.ts`                                     |      1 | `promotion-1110-explicit-14`         |
+| `plugins/extensions/plugin-extension-start-draft.test.ts`                                  |      1 | `promotion-1110-explicit-15`         |
+| `plugins/extensions/plugin-extension-views.test.ts`                                        |      1 | `promotion-1110-explicit-16`         |
+| `plugins/extensions/plugin-store-extension-compat.test.ts`                                 |      1 | `promotion-1110-explicit-17`         |
+| `settings/agent/settings-agent-behavior.test.ts`                                           |      3 | `promotion-1110-explicit-18`         |
+| `settings/general/settings-navigation-search.test.ts`                                      |      4 | `promotion-1110-explicit-19`         |
+| `ui-shell/composer/draft-greeting-layout.test.ts`                                          |      1 | `promotion-1110-explicit-20`         |
+| `ui-shell/navigation/sidebar-rich-content-performance.test.ts`                             |      2 | `promotion-1110-explicit-21`         |
+| `ui-shell/navigation/sidebar-toggle-performance.test.ts`                                   |      2 | `promotion-1110-explicit-22`         |
+| `workspace/projects/project-native-directory-picker.test.ts`                               |      1 | `promotion-1110-explicit-23`         |
+| `ui-shell/navigation/command-center-history-search.test.ts`                                |      3 | `promotion-1110-explicit-24`         |
+| `conversation-session/remote/connection/conversation-session-remote-draft-prewarm.test.ts` |      1 | `local-docker-20261110102824-d5e7e3` |
 
 其余 5 个文件保留 pending，失败与未验证分开记录：
 
-| 候选文件 | 本轮结果与未覆盖项 |
-| --- | --- |
-| `plugin-extension-sessions.test.ts` | 失败：设置返回后的侧栏启动页不可见；撤销后的启动页授权行及审计字段未完成。证据：`desktop-e2e-20261110-091822-523`。 |
-| `office-preview-security.test.ts` | OPS01/03 通过；OPS02 等待 XLSX Canvas 超时，后续外链与工作表跳转未执行。证据同上。 |
+| 候选文件                                                     | 本轮结果与未覆盖项                                                                                                     |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `plugin-extension-sessions.test.ts`                          | 失败：设置返回后的侧栏启动页不可见；撤销后的启动页授权行及审计字段未完成。证据：`desktop-e2e-20261110-091822-523`。    |
+| `office-preview-security.test.ts`                            | OPS01/03 通过；OPS02 等待 XLSX Canvas 超时，后续外链与工作表跳转未执行。证据同上。                                     |
 | `conversation-session-streaming-history-performance.test.ts` | 失败：compact 请求缺少 fixture，回放服务返回 500，未进入流式性能及后续导航断言。证据：`promotion-1110-pending-extra`。 |
-| `windows-tray-export-logs.test.ts` | 未执行：当前为 macOS，需 Windows 实机；不能将平台 skip 计为通过。 |
-| `conversation-session-snapshot-retention.test.ts` | 未执行：独立 `node:test + CDP` 生产 renderer 用例；正式 runner 准入尚未完成，不能直接移动进 WDIO。 |
+| `windows-tray-export-logs.test.ts`                           | 未执行：当前为 macOS，需 Windows 实机；不能将平台 skip 计为通过。                                                      |
+| `conversation-session-snapshot-retention.test.ts`            | 未执行：独立 `node:test + CDP` 生产 renderer 用例；正式 runner 准入尚未完成，不能直接移动进 WDIO。                     |
 
 本轮验证 macOS Electron、SSH Linux arm64 服务端及各用例已有的浏览器/真实 shared-host 路径，
 不等同于手机实机或 Windows/Linux 桌面验证。未新增 Docker preset 或三平台 CI 准入。

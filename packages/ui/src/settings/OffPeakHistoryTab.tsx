@@ -37,7 +37,10 @@ export function resolveOffPeakHistoryStatus(
   return "running";
 }
 
-export function OffPeakHistoryTab({
+// 编译期选择入口：禁用时不进入业务 hooks；原实现保持完整调用顺序。
+export const OffPeakHistoryTab = CODING_PLAN_DISABLED ? () => null : OffPeakHistoryTabEnabled;
+
+function OffPeakHistoryTabEnabled({
   task,
   onOpenSession,
   onDelete,
@@ -46,7 +49,6 @@ export function OffPeakHistoryTab({
   onOpenSession?: (task: ZCodeOffPeakTask) => void;
   onDelete?: (task: ZCodeOffPeakTask) => void;
 }) {
-  if (CODING_PLAN_DISABLED) return null;
   const { intl } = useZCodeIntl();
   // 执行记录 = 首段派发起跑过（startedAt 存在）；纯排队/暂停中的任务无历史。
   if (!task?.startedAt || task.historyDeletedAt !== undefined) {

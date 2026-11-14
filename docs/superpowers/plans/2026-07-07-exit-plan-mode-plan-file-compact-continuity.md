@@ -1083,6 +1083,7 @@ Expected: PASS. When the audit reports count drift, update the matrix statistics
 ### Task 6.2: 写 pending manual-review E2E
 
 **Files:**
+
 - Create: `packages/desktop/test/e2e/conversation-session/planning/conversation-session-plan-file-compact-continuity.test.ts`
 
 **Interfaces:**
@@ -1257,6 +1258,7 @@ Expected: PASS.
 ### Task 6.3: 用可视化窗口运行 pending E2E 并人工确认
 
 **Files:**
+
 - Uses: `packages/desktop/test/e2e/conversation-session/planning/conversation-session-plan-file-compact-continuity.test.ts`
 
 **Interfaces:**
@@ -1319,6 +1321,7 @@ pnpm --filter @zcode/desktop e2e:promote -- --spec ./test/e2e/conversation-sessi
 ```
 
 Expected:
+
 - spec moves to `packages/desktop/test/e2e/conversation-session/planning/conversation-session-plan-file-compact-continuity.test.ts`;
 - promotion creates fixture shells under `packages/desktop/test/e2e/fixtures/upstream/conversation-session/` and `packages/desktop/test/e2e/fixtures/cases/conversation-session/`;
 - coverage matrix `PFC` path is updated to:

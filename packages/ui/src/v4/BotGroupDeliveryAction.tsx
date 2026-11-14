@@ -11,7 +11,12 @@ import { useBotGroupTask } from "@/hooks/useBotGroupTask.js";
 import { useBotGroupMemberNames } from "@/hooks/useBotGroupMemberNames.js";
 import { BotGroupMemberNamesContext } from "@/v4/BotGroupMemberNamesContext.js";
 
-export function BotGroupDeliveryProvider({
+// 编译期选择入口：禁用时不进入业务 hooks；原实现保持完整调用顺序。
+export const BotGroupDeliveryProvider = BOTS_DISABLED
+  ? ({ children }: Parameters<typeof BotGroupDeliveryProviderEnabled>[0]) => children
+  : BotGroupDeliveryProviderEnabled;
+
+function BotGroupDeliveryProviderEnabled({
   taskId,
   workspacePath,
   workspaceIdentity,
@@ -23,7 +28,7 @@ export function BotGroupDeliveryProvider({
   children: ReactNode;
 }) {
   // 禁用时不进入 Provider hooks，避免无效 RPC、广播与成员轮询。
-  if (BOTS_DISABLED) return children;
+
   // 同一任务只订阅一次群状态，历史回复不各自请求全量 Bot 状态。
   const { context, provider, busyId, retry, reconcile, retryPreparation } = useBotGroupTask(
     taskId,
@@ -52,7 +57,10 @@ export function BotGroupDeliveryProvider({
   );
 }
 
-export function BotGroupDeliveryAction({
+// 编译期选择入口：禁用时不进入业务 hooks；原实现保持完整调用顺序。
+export const BotGroupDeliveryAction = BOTS_DISABLED ? () => null : BotGroupDeliveryActionEnabled;
+
+function BotGroupDeliveryActionEnabled({
   turnId,
   sourceCommandIds,
   syncing,
@@ -69,7 +77,6 @@ export function BotGroupDeliveryAction({
   onRetry: (id: string) => void;
   onReconcile: (id: string, received: boolean) => void;
 }) {
-  if (BOTS_DISABLED) return null;
   const { intl } = useZCodeIntl();
   // Bug 原因：任务级恢复面板与队列浮层重叠，还重复展示正文；只在已关联轮次的操作栏展示。
   const unresolved = results.filter(
@@ -154,14 +161,18 @@ export function BotGroupDeliveryAction({
   );
 }
 
-export function ConnectedBotGroupDeliveryAction({
+// 编译期选择入口：禁用时不进入业务 hooks；原实现保持完整调用顺序。
+export const ConnectedBotGroupDeliveryAction = BOTS_DISABLED
+  ? () => null
+  : ConnectedBotGroupDeliveryActionEnabled;
+
+function ConnectedBotGroupDeliveryActionEnabled({
   turnId,
   sourceCommandIds,
 }: {
   turnId: string;
   sourceCommandIds: readonly string[];
 }) {
-  if (BOTS_DISABLED) return null;
   const value = useContext(DeliveryContext);
   const context = value?.context;
   if (!value || !context?.group) return null;

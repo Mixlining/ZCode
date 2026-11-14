@@ -12,15 +12,22 @@ import { ConversationUserInputBubble } from "@/v4/ConversationUserInputBubble.js
 const EMPTY_ROWS: readonly ConversationRow[] = [];
 const EMPTY_PREPARATIONS: readonly Preparation[] = [];
 
-export function useBotTopicPreparations(): readonly Preparation[] {
-  if (BOTS_DISABLED) return EMPTY_PREPARATIONS;
+// 编译期选择入口：禁用时不进入业务 hooks；原实现保持完整调用顺序。
+export const useBotTopicPreparations: typeof useBotTopicPreparationsEnabled = BOTS_DISABLED
+  ? () => EMPTY_PREPARATIONS
+  : useBotTopicPreparationsEnabled;
+
+function useBotTopicPreparationsEnabled(): readonly Preparation[] {
   const value = useContext(DeliveryContext);
   if (!value?.context?.group?.threadId || value.context.activeTaskId !== value.taskId)
     return EMPTY_PREPARATIONS;
   return value.context.group.preparation ?? EMPTY_PREPARATIONS;
 }
 
-export function BotTopicPreparationList({
+// 编译期选择入口：禁用时不进入业务 hooks；原实现保持完整调用顺序。
+export const BotTopicPreparationList = BOTS_DISABLED ? () => null : BotTopicPreparationListEnabled;
+
+function BotTopicPreparationListEnabled({
   items,
   acceptedRows = EMPTY_ROWS,
   provider,
@@ -29,7 +36,6 @@ export function BotTopicPreparationList({
   acceptedRows?: readonly ConversationRow[];
   provider?: FeishuBotProvider;
 }) {
-  if (BOTS_DISABLED) return null;
   const { intl } = useZCodeIntl();
   const pending = useMemo(
     () => pendingTopicPreparations(items, acceptedRows),

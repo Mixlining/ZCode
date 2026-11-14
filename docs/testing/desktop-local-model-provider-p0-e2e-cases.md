@@ -44,7 +44,7 @@
 | 字段             | 内容                                                                                                                  |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------- |
 | Catalog          | `I07`                                                                                                                 |
-| Spec             | `packages/desktop/test/e2e/conversation-session/runtime/conversation-session-upstream-workspace-smoke.test.ts`                |
+| Spec             | `packages/desktop/test/e2e/conversation-session/runtime/conversation-session-upstream-workspace-smoke.test.ts`        |
 | Fixture manifest | `packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-upstream-workspace-smoke.json`    |
 | Provider fixture | `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-upstream-workspace-smoke.json` |
 | 当前状态         | 已转正，正式路径 replay case                                                                                          |
@@ -115,7 +115,7 @@ P0-01 已满足当前目标中的“详细描述、实际验证、转正后重�
 | 字段             | 内容                                                                                                                 |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------- |
 | Catalog          | `I08`                                                                                                                |
-| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-model-provider-add-send.test.ts`                |
+| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-model-provider-add-send.test.ts`         |
 | Fixture manifest | `packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-model-provider-add-send.json`    |
 | Provider fixture | `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-model-provider-add-send.json` |
 | 当前状态         | 已转正，正式路径 replay case                                                                                         |
@@ -231,7 +231,7 @@ P0-02 已满足当前目标中的“详细描述、实际验证、promotion 转�
 | 字段             | 内容                                                                                                                       |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | Catalog          | `I09`                                                                                                                      |
-| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-model-provider-list-filtering.test.ts`                |
+| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-model-provider-list-filtering.test.ts`         |
 | Fixture manifest | `packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-model-provider-list-filtering.json`    |
 | Provider fixture | `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-model-provider-list-filtering.json` |
 | 当前状态         | pending；2026-08-25 已按 Provider 重构语义扩充，等待真实 replay、人工 review 与 promotion                                  |
@@ -315,7 +315,7 @@ P0-02 已满足当前目标中的“详细描述、实际验证、promotion 转�
 | 字段             | 内容                                                                                                                       |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | Catalog          | `I10`                                                                                                                      |
-| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-draft-model-switch-first-send.test.ts`                |
+| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-draft-model-switch-first-send.test.ts`         |
 | Fixture manifest | `packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-draft-model-switch-first-send.json`    |
 | Provider fixture | `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-draft-model-switch-first-send.json` |
 | 当前状态         | 已转正，正式路径 replay case                                                                                               |
@@ -391,7 +391,7 @@ P0-04 已满足当前目标中的“详细描述、实际验证、promotion 转�
 | 字段             | 内容                                                                                                                    |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | Catalog          | `I11`                                                                                                                   |
-| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-new-session-inherits-model.test.ts`                |
+| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-new-session-inherits-model.test.ts`         |
 | Fixture manifest | `packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-new-session-inherits-model.json`    |
 | Provider fixture | `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-new-session-inherits-model.json` |
 | 当前状态         | 已转正，正式路径 replay case                                                                                            |
@@ -461,7 +461,7 @@ P0-05 已满足当前目标中的“详细描述、实际验证、promotion 转�
 | 字段             | 内容                                                                                                                          |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | Catalog          | `I12`                                                                                                                         |
-| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-model-provider-session-isolation.test.ts`                |
+| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-model-provider-session-isolation.test.ts`         |
 | Fixture manifest | `packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-model-provider-session-isolation.json`    |
 | Provider fixture | `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-model-provider-session-isolation.json` |
 | 当前状态         | 已转正，正式路径 replay case                                                                                                  |
@@ -532,7 +532,7 @@ P0-06 已满足当前目标中的“详细描述、实际验证、promotion 转�
 | 字段             | 内容                                                                                                                      |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | Catalog          | `I13`                                                                                                                     |
-| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-same-model-provider-identity.test.ts`                |
+| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-same-model-provider-identity.test.ts`         |
 | Fixture manifest | `packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-same-model-provider-identity.json`    |
 | Provider fixture | `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-same-model-provider-identity.json` |
 | 当前状态         | 已 promotion 到正式路径，并完成 strict/default replay                                                                     |
@@ -597,7 +597,7 @@ P0-07 已满足当前目标中的“详细描述、实际验证、promotion 转�
 | 字段             | 内容                                                                                                            |
 | ---------------- | --------------------------------------------------------------------------------------------------------------- |
 | Catalog          | `N02`、`I03`                                                                                                    |
-| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-model-switch-queue.test.ts`                |
+| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-model-switch-queue.test.ts`         |
 | Fixture manifest | `packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-model-switch-queue.json`    |
 | Provider fixture | `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-model-switch-queue.json` |
 | 当前状态         | 已是正式路径，并按本轮 top10 完成 fixture check 与 strict/default replay                                        |
@@ -655,7 +655,7 @@ P0-08 已满足当前目标中的“详细描述、实际验证、promotion 转�
 | 字段             | 内容                                                                                                            |
 | ---------------- | --------------------------------------------------------------------------------------------------------------- |
 | Catalog          | `M07h`、`N02`、`I03`                                                                                            |
-| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-model-switch-queue.test.ts`                |
+| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-model-switch-queue.test.ts`         |
 | Fixture manifest | `packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-model-switch-queue.json`    |
 | Provider fixture | `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-model-switch-queue.json` |
 | 当前状态         | 已是正式路径，并按本轮 top10 完成 fixture check 与 strict/default replay                                        |
@@ -712,13 +712,13 @@ P0-09 已满足当前目标中的“详细描述、实际验证、promotion 转�
 
 ### Case 定义
 
-| 字段             | 内容                                                                                                                       |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Catalog          | `N03`、`N04`                                                                                                               |
+| 字段             | 内容                                                                                                                              |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Catalog          | `N03`、`N04`                                                                                                                      |
 | Spec             | `packages/desktop/test/e2e/conversation-session/models/manual-review/pending/conversation-session-model-switch-edit-fork.test.ts` |
-| Fixture manifest | `packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-model-switch-edit-fork.json`           |
-| Provider fixture | `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-model-switch-edit-fork.json`        |
-| 当前状态         | 已 promotion 到正式路径，并完成 strict/default replay                                                                      |
+| Fixture manifest | `packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-model-switch-edit-fork.json`                  |
+| Provider fixture | `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-model-switch-edit-fork.json`               |
+| 当前状态         | 已 promotion 到正式路径，并完成 strict/default replay                                                                             |
 
 ### 测试场景
 
@@ -788,7 +788,7 @@ P0-10 已满足当前目标中的“详细描述、实际验证、promotion 转�
 | 字段             | 内容                                                                                                                       |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | Catalog          | `I14`                                                                                                                      |
-| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-glm52-reasoning-request-shape.test.ts`                |
+| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-glm52-reasoning-request-shape.test.ts`         |
 | Fixture manifest | `packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-glm52-reasoning-request-shape.json`    |
 | Provider fixture | `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-glm52-reasoning-request-shape.json` |
 | 当前状态         | 已转正，正式路径 replay case                                                                                               |
@@ -882,7 +882,7 @@ P0-11 已满足当前目标中的“详细描述、实际验证、转正后重�
 | 字段             | 内容                                                                                                                             |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | Catalog          | `I15`                                                                                                                            |
-| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-deepseek-v4-reasoning-request-shape.test.ts`                |
+| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-deepseek-v4-reasoning-request-shape.test.ts`         |
 | Fixture manifest | `packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-deepseek-v4-reasoning-request-shape.json`    |
 | Provider fixture | `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-deepseek-v4-reasoning-request-shape.json` |
 | 当前状态         | 已转正，正式路径 replay case                                                                                                     |
@@ -971,7 +971,7 @@ P0-12 已满足当前目标中的“详细描述、实际验证、转正后重�
 | 字段             | 内容                                                                                                                           |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | Catalog          | `I16`                                                                                                                          |
-| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-claude-anthropic-reasoning-budget.test.ts`                |
+| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-claude-anthropic-reasoning-budget.test.ts`         |
 | Fixture manifest | `packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-claude-anthropic-reasoning-budget.json`    |
 | Provider fixture | `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-claude-anthropic-reasoning-budget.json` |
 | 当前状态         | 已转正，正式路径 replay case                                                                                                   |
@@ -1036,7 +1036,7 @@ P0-13 已满足当前目标中的“详细描述、实际验证、转正后重�
 | 字段             | 内容                                                                                                                                |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | Catalog          | `I17`                                                                                                                               |
-| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-gpt-openai-compatible-reasoning-effort.test.ts`                |
+| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-gpt-openai-compatible-reasoning-effort.test.ts`         |
 | Fixture manifest | `packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-gpt-openai-compatible-reasoning-effort.json`    |
 | Provider fixture | `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-gpt-openai-compatible-reasoning-effort.json` |
 | 当前状态         | 已转正，正式路径 replay case                                                                                                        |
@@ -1088,7 +1088,7 @@ P0-14 已满足当前目标中的“详细描述、实际验证、转正后重�
 | 字段             | 内容                                                                                                                             |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | Catalog          | `I18`                                                                                                                            |
-| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-opus47-anthropic-adaptive-reasoning.test.ts`                |
+| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-opus47-anthropic-adaptive-reasoning.test.ts`         |
 | Fixture manifest | `packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-opus47-anthropic-adaptive-reasoning.json`    |
 | Provider fixture | `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-opus47-anthropic-adaptive-reasoning.json` |
 | 当前状态         | 已转正，正式路径 replay case                                                                                                     |
@@ -1141,7 +1141,7 @@ P0-15 已满足当前目标中的“详细描述、实际验证、转正后重�
 | 字段             | 内容                                                                                                                            |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | Catalog          | `I22`                                                                                                                           |
-| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-same-model-draft-provider-identity.test.ts`                |
+| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-same-model-draft-provider-identity.test.ts`         |
 | Fixture manifest | `packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-same-model-draft-provider-identity.json`    |
 | Provider fixture | `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-same-model-draft-provider-identity.json` |
 | 当前状态         | manual-review pending 候选 case                                                                                                 |
@@ -1204,7 +1204,7 @@ queue、fork、重启、remote、主题或 locale 叉乘；I64 只跑 desktop lo
 | 字段             | 内容                                                                                                                   |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | Catalog          | `I62`                                                                                                                  |
-| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-openrouter-model-id-colon.test.ts`                |
+| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-openrouter-model-id-colon.test.ts`         |
 | Fixture manifest | `packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-openrouter-model-id-colon.json`    |
 | Provider fixture | `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-openrouter-model-id-colon.json` |
 | 当前状态         | manual-review pending 候选 case                                                                                        |
@@ -1246,7 +1246,7 @@ queue、fork、重启、remote、主题或 locale 叉乘；I64 只跑 desktop lo
 | 字段             | 内容                                                                                                                   |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | Catalog          | `I64`                                                                                                                  |
-| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-provider-registry-prewarm.test.ts`                |
+| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-provider-registry-prewarm.test.ts`         |
 | Fixture manifest | `packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-provider-registry-prewarm.json`    |
 | Provider fixture | `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-provider-registry-prewarm.json` |
 | 当前状态         | manual-review pending 候选 case                                                                                        |
@@ -1291,7 +1291,7 @@ promotion。
 | 字段             | 内容                                                                                                                    |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | Catalog          | `N16`                                                                                                                   |
-| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-running-model-switch-usage.test.ts`                |
+| Spec             | `packages/desktop/test/e2e/conversation-session/models/conversation-session-running-model-switch-usage.test.ts`         |
 | Fixture manifest | `packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-running-model-switch-usage.json`    |
 | Provider fixture | `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-running-model-switch-usage.json` |
 | 当前状态         | manual-review pending 回归 case                                                                                         |
@@ -1348,12 +1348,12 @@ MR !2618 CR-01：MP-UI-06 使用真实模型保存成功反馈，分别注入长
 
 ### Case 定义
 
-| 字段             | 内容                                                            |
-| ---------------- | --------------------------------------------------------------- |
-| Catalog          | `MP-UI-01`、`MP-UI-02`                                          |
+| 字段             | 内容                                                                    |
+| ---------------- | ----------------------------------------------------------------------- |
+| Catalog          | `MP-UI-01`、`MP-UI-02`                                                  |
 | Spec             | `packages/desktop/test/e2e/settings/general/settings-ui-polish.test.ts` |
-| Provider fixture | 无；只 seed 本地设置和 provider 文件，不发送模型请求            |
-| 当前状态         | 已人工评审并转正                                                |
+| Provider fixture | 无；只 seed 本地设置和 provider 文件，不发送模型请求                    |
+| 当前状态         | 已人工评审并转正                                                        |
 
 ### 测试场景
 

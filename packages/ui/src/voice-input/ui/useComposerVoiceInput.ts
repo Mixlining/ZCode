@@ -18,6 +18,7 @@
  *   每次录音只有几条，不随音频块增长。
  */
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from "react";
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import { useOptionalPlatform } from "@/hooks/usePlatform.js";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -52,7 +53,32 @@ interface Attempt {
   resolveDone: () => void;
 }
 
-export function useComposerVoiceInput(options: {
+const noop = () => {};
+const DISABLED_VOICE_INPUT: ComposerVoiceInput = {
+  available: false,
+  state: "idle",
+  toggle: noop,
+  settle: () => undefined,
+  subscribeLevel: () => noop,
+  permissionGuide: {
+    phase: null,
+    os: "windows",
+    available: false,
+    busy: false,
+    show: noop,
+    close: noop,
+    openSettings: noop,
+    reauthorize: noop,
+    relaunch: noop,
+  },
+};
+
+// 编译期选择：禁用态不读取登录/服务、不注册事件、不创建录音资源；原 hook 的顺序保持完整。
+export const useComposerVoiceInput: typeof useEnabledComposerVoiceInput = CODING_PLAN_DISABLED
+  ? () => DISABLED_VOICE_INPUT
+  : useEnabledComposerVoiceInput;
+
+function useEnabledComposerVoiceInput(options: {
   inputApiRef: MutableRefObject<LexicalChatInputHandle | null>;
   /** 会话切换时取消 */
   sessionId: string | null | undefined;

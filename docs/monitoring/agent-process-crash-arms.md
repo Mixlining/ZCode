@@ -140,10 +140,9 @@ util.inspect 打印的对象属性行（例如 HTTP 响应头 `server: 'ESA',`�
   `ESA`、`END`、`ENV` 这类大写词不是错误码。长期运行的 Agent，stderr 尾部常是几小时前的
   无关日志；只剩噪音时 `error_message` 退回
   `Agent process exited unexpectedly (code=…, signal=…)`，指纹因此随退出码区分。
-- 实现：`packages/shared/src/agent-crash-diagnostic/agentCrashDiagnostic.ts`。回归样本（含 0xE0000008 + 429 响应头
-  转储）见 `packages/desktop/test/agent-crash-diagnostic.node.test.ts`，
-  `pnpm --filter @zcode/desktop test:agent-crash-diagnostic` 运行；MR 改到诊断规则、services 的 stderr 收集、
-  `desktopStabilityTelemetry.ts` 或测试本身时，CI job `test:agent-crash-diagnostic` 自动执行，失败即 job 失败。
+- 实现：`packages/shared/src/agent-crash-diagnostic/agentCrashDiagnostic.ts`。dev 不恢复 App 业务单测；
+  原始取样 `retired:packages/desktop/test/agent-crash-diagnostic.node.test.ts` 属退役证据，不是现行 CI 覆盖。
+  本地退出记录保留，远端 ARMS 与上报链路仍永久关闭；人工退出场景见 `docs/ui/agent-runtime-exit-notice.md`。
 
 ### `perf_agent_spawn_error`
 

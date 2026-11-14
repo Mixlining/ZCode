@@ -1,6 +1,24 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { classifyLintDiagnostics, parseLintCommand } from "../cli-lint-admission.mjs";
+import {
+  classifyLintDiagnostics,
+  parseLintCommand,
+  resolvePnpmInvocation,
+} from "../cli-lint-admission.mjs";
+
+test("pnpm JavaScript 与独立可执行入口分别启动，保留空格路径和参数", () => {
+  const args = ["exec", "oxlint", "src folder", "--format", "json"];
+  assert.deepEqual(resolvePnpmInvocation("C:/pnpm store/pnpm.cjs", args, "C:/Node/node.exe"), {
+    command: "C:/Node/node.exe",
+    args: ["C:/pnpm store/pnpm.cjs", ...args],
+  });
+  for (const executable of ["C:/pnpm store/pnpm.exe", "/opt/pnpm bin/pnpm"]) {
+    assert.deepEqual(resolvePnpmInvocation(executable, args, "node"), {
+      command: executable,
+      args,
+    });
+  }
+});
 
 test("只接纳原样上游的行数诊断，其他错误与修改过的文件仍阻断", () => {
   const diagnostics = [

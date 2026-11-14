@@ -450,6 +450,7 @@ export function useRootWorkspaceActions({
       openMobileProjectDraft,
       workbenchGroupClientMode,
       startDraftInWorkspace,
+      services.taskGroupService,
     ],
   );
 
@@ -466,6 +467,7 @@ export function useRootWorkspaceActions({
   });
 
   const handleLogout = useCallback(async () => {
+    if (CODING_PLAN_DISABLED) return;
     let runningAgentSessionCount: number | null = null;
     try {
       const sessionActivity = await platform.getDesktopSessionActivity?.();
@@ -535,7 +537,6 @@ export function useRootWorkspaceActions({
     onProviderFamilyDomainClearedAfterLogout,
     platform,
     services.oauthService,
-    services.modelSelectionService,
     services.settingService,
     setOAuthError,
     setUser,
@@ -809,3 +810,4 @@ export function useRootWorkspaceActions({
     handleOpenTaskFromSettings,
   };
 }
+import { CODING_PLAN_DISABLED } from "@zcode/shared";

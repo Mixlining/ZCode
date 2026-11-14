@@ -94,24 +94,24 @@ Composer trigger
 
 ## State Owners
 
-| State / fact                | Authority                                          | Mirrors / caches        | Evidence                               |
+| State / fact                | Authority                                          | Mirrors / caches        | Evidence                            |
 | --------------------------- | -------------------------------------------------- | ----------------------- | ----------------------------------- |
-| 当前窗口 workspace 集合     | window-scoped Tab Store                            | tab persistence restore | hook test 的 workspace tabs            |
-| remote workspace -> service | `remoteSessionId` + remote workspace session store | identity/path lookup    | 不同 endpoint mock service 调用次数    |
-| 会话候选事实                | 各 Host 的 sessions-index                          | shared registry store   | snapshot/delta 聚合结果                |
+| 当前窗口 workspace 集合     | window-scoped Tab Store                            | tab persistence restore | hook test 的 workspace tabs         |
+| remote workspace -> service | `remoteSessionId` + remote workspace session store | identity/path lookup    | 不同 endpoint mock service 调用次数 |
+| 会话候选事实                | 各 Host 的 sessions-index                          | shared registry store   | snapshot/delta 聚合结果             |
 | session context 内容        | 当前 Agent Host 的 SQLite session store            | 无跨 Host mirror        | `ReadSession` 文档与 store 实现     |
-| workspace 隔离 key          | `workspaceIdentity?.trim() \|\| workspacePath`     | scope/registry key      | 同路径不同 identity focused case       |
+| workspace 隔离 key          | `workspaceIdentity?.trim() \|\| workspacePath`     | scope/registry key      | 同路径不同 identity focused case    |
 
 ## Boundary Decisions
 
-| Boundary       | Decision                               | Includes                              | Excludes / prunes                  | Source                                   |
+| Boundary       | Decision                               | Includes                              | Excludes / prunes                  | Source                              |
 | -------------- | -------------------------------------- | ------------------------------------- | ---------------------------------- | ----------------------------------- |
-| workspace 集合 | 当前窗口已打开或恢复的 workspace tabs  | 本地 tabs、已连接 remote tabs         | 已关闭且未恢复的历史 workspace     | 用户请求 + 当前 Tab Store authority      |
+| workspace 集合 | 当前窗口已打开或恢复的 workspace tabs  | 本地 tabs、已连接 remote tabs         | 已关闭且未恢复的历史 workspace     | 用户请求 + 当前 Tab Store authority |
 | Host authority | 只聚合同一 Agent service/session store | local-local、同 remote endpoint       | local-remote、不同 remote endpoint | `ReadSession` + SQLite store 架构   |
-| 排序           | 当前 workspace 优先，其余最近更新      | 同标题、同路径不同 identity           | 全局相关度重排                     | 现有 `collectSessionMentionItems`        |
-| 展示预算       | `#` 每个 workspace 最多 20 条          | 空 query 最近 20；query 后匹配前 20   | 全局 20 条；先截断再搜索           | 2026-08-05 用户确认                      |
-| canonical      | 保持 `[#Title](#sess_id)`              | `#`（`@` 原行为也不变）               | workspace/endpoint 写入 mention    | 现有 runtime contract                    |
-| delivery       | 不改变                                 | desktop continuous、mobile replayable | stream/snapshot/queue 修改         | 远控事实文档                             |
+| 排序           | 当前 workspace 优先，其余最近更新      | 同标题、同路径不同 identity           | 全局相关度重排                     | 现有 `collectSessionMentionItems`   |
+| 展示预算       | `#` 每个 workspace 最多 20 条          | 空 query 最近 20；query 后匹配前 20   | 全局 20 条；先截断再搜索           | 2026-08-05 用户确认                 |
+| canonical      | 保持 `[#Title](#sess_id)`              | `#`（`@` 原行为也不变）               | workspace/endpoint 写入 mention    | 现有 runtime contract               |
+| delivery       | 不改变                                 | desktop continuous、mobile replayable | stream/snapshot/queue 修改         | 远控事实文档                        |
 
 ## Candidate Combinations 与剪枝
 

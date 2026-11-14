@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
+import { Fragment, createContext, useCallback, useContext, useState, type ReactNode } from "react";
+import { DATA_SYNC_DISABLED } from "@zcode/shared";
 import type { DataSyncDialogRequest } from "@/data-sync/contract.js";
 import {
   DataSyncDialogContainer,
@@ -14,7 +15,10 @@ const OpenContext = createContext<((request: DataSyncDialogRequest) => void) | n
 const ResultVersionContext = createContext(0);
 
 /** 窗口级挂载：页面切换不能卸载推送 owner；最小化只改变显示状态。 */
-export function DataSyncDialogProvider({ children }: { children: ReactNode }) {
+// 禁用态透传 children，不构造同步 owner 或访问未注册服务；业务 Provider 的 hooks 顺序保持完整。
+export const DataSyncDialogProvider = DATA_SYNC_DISABLED ? Fragment : ActiveDataSyncDialogProvider;
+
+function ActiveDataSyncDialogProvider({ children }: { children: ReactNode }) {
   const [resultVersion, setResultVersion] = useState(0);
   const [current, setCurrent] = useState<{
     request: DataSyncDialogRequest;

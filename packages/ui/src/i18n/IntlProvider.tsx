@@ -16,7 +16,11 @@ import {
   resolveLocaleFromLanguageTag,
 } from "@zcode/shared";
 import type { BroadcastMessage, IBroadcastService, ISettingService } from "@zcode/services";
-import { readNavigatorLanguage, readSafeLocalStorage, writeSafeLocalStorage } from "@/lib/browserEnvironment.js";
+import {
+  readNavigatorLanguage,
+  readSafeLocalStorage,
+  writeSafeLocalStorage,
+} from "@/lib/browserEnvironment.js";
 import { LOCALE_MESSAGES as MESSAGES } from "./localeMessages.js";
 
 /** 简易 intl 工具：根据 id 查找翻译，支持 {key} 占位符替换 */

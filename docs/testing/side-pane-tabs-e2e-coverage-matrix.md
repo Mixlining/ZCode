@@ -21,7 +21,7 @@ DGJ01–03 accepted，2026-11-03 已完成下列本地验收，候选仍保留 m
 
 | Case  | 验收入口                                                                        | 结果与边界                                                                                                                                                                                                                    |
 | ----- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| DGJ01 | `ui-shell/composer/draft-greeting-layout.test.ts`                  | macOS Electron 生产构建，1/1 通过；深浅主题 × 中英文共 4 组，真实开关右侧面板、拖动分隔条，再收起及重开。全部采样保持单行；英文字号 30→25px，输入框随正常行高变化 6px；中文 30→29px，变化约 1.2px，无多余一行造成的下移回弹。 |
+| DGJ01 | `ui-shell/composer/draft-greeting-layout.test.ts`                               | macOS Electron 生产构建，1/1 通过；深浅主题 × 中英文共 4 组，真实开关右侧面板、拖动分隔条，再收起及重开。全部采样保持单行；英文字号 30→25px，输入框随正常行高变化 6px；中文 30→29px，变化约 1.2px，无多余一行造成的下移回弹。 |
 | DGJ02 | `packages/ui/test/browser/manual-review/pending/draft-greeting-layout.test.mjs` | 真实组件浏览器验收 4/4 通过，覆盖直接收窄、连续改变宽度、快速反向、父组件重渲染与语言切换；无临时换行、无 ResizeObserver 循环错误。旧实现的桌面用例捕获过标题高度 36→72→30px，修复后不再出现 72px 中间态。                    |
 | DGJ03 | 同一浏览器入口的 compact 用例                                                   | 4/4 通过；390px、320px，深浅主题 × 中英文，保持 20px，文字完整且不越界。只覆盖共享组件紧凑分支，不代表手机实机或真实远控连接已验收。                                                                                          |
 
@@ -56,8 +56,8 @@ STF01–04 为 accepted，候选仍为 `ui-shell/navigation/sidebar-toggle-perfo
 
 > 2026-10-26：App 业务单测已按[测试规格](unit-test-quality.md)退役。本文中的相关单测路径和历史通过记录不再代表现行覆盖；CLI/CUA、工程测试、E2E 与浏览器验收证据仍按各自状态解释。未补验收的场景不得自动视为已覆盖。
 
-| Case ID     | Default 156px | Equal shrink | 60px floor    | Horizontal scroll | `+` placement | Active close | Inactive close | Tooltip reset | Middle-click close | Spec                                                      |
-| ----------- | ------------- | ------------ | ------------- | ----------------- | ------------- | ------------ | -------------- | ------------- | ------------------ | --------------------------------------------------------- |
+| Case ID     | Default 156px | Equal shrink | 60px floor    | Horizontal scroll | `+` placement | Active close | Inactive close | Tooltip reset | Middle-click close | Spec                                                             |
+| ----------- | ------------- | ------------ | ------------- | ----------------- | ------------- | ------------ | -------------- | ------------- | ------------------ | ---------------------------------------------------------------- |
 | SPT-E2E-001 | covered       | n/a          | n/a           | asserts absent    | follows tabs  | n/a          | n/a            | n/a           | n/a                | `ui-shell/panels/side-pane-tabs-responsive-interactions.test.ts` |
 | SPT-E2E-002 | boundary      | covered      | asserts above | asserts absent    | follows tabs  | n/a          | n/a            | n/a           | n/a                | `ui-shell/panels/side-pane-tabs-responsive-interactions.test.ts` |
 | SPT-E2E-003 | n/a           | covered      | covered       | covered           | fixed outside | n/a          | n/a            | n/a           | n/a                | `ui-shell/panels/side-pane-tabs-responsive-interactions.test.ts` |
@@ -128,15 +128,15 @@ STF01–04 为 accepted，候选仍为 `ui-shell/navigation/sidebar-toggle-perfo
 
 ## 完整视图（SPFV，2026-10-16）
 
-| Case ID      | 入口/退出     | surface      | 浮窗形态               | 拖动吸附 | owner 记忆 | 阻塞交互 | Spec                                                                    |
-| ------------ | ------------- | ------------ | ---------------------- | -------- | ---------- | -------- | ----------------------------------------------------------------------- |
-| SPFV-E2E-001 | 按钮 + 快捷键 | n/a          | n/a                    | n/a      | n/a        | n/a      | `ui-shell/panels/side-pane-full-view.test.ts`                                  |
-| SPFV-E2E-002 | n/a           | 对话 / 面板  | 收起（单行）           | n/a      | n/a        | n/a      | `ui-shell/panels/side-pane-full-view.test.ts`                                  |
-| SPFV-E2E-003 | n/a           | 对话 / 面板  | 收起 + 操作栏 / 最小化 | n/a      | n/a        | n/a      | `ui-shell/panels/side-pane-full-view.test.ts`                                  |
-| SPFV-E2E-004 | n/a           | 菜单切到对话 | 收起                   | 左上     | n/a        | n/a      | `ui-shell/panels/side-pane-full-view.test.ts`                                  |
-| SPFV-E2E-005 | n/a           | 面板         | 展开 / 收起            | n/a      | n/a        | n/a      | `ui-shell/panels/side-pane-full-view.test.ts`                                  |
-| SPFV-E2E-006 | ◫ 退出        | n/a          | n/a                    | n/a      | n/a        | n/a      | `ui-shell/panels/side-pane-full-view.test.ts`                                  |
-| SPFV-E2E-009 | n/a           | 面板         | 收起                   | n/a      | n/a        | n/a      | `ui-shell/panels/side-pane-full-view.test.ts`                                  |
+| Case ID      | 入口/退出     | surface      | 浮窗形态               | 拖动吸附 | owner 记忆 | 阻塞交互 | Spec                                                                              |
+| ------------ | ------------- | ------------ | ---------------------- | -------- | ---------- | -------- | --------------------------------------------------------------------------------- |
+| SPFV-E2E-001 | 按钮 + 快捷键 | n/a          | n/a                    | n/a      | n/a        | n/a      | `ui-shell/panels/side-pane-full-view.test.ts`                                     |
+| SPFV-E2E-002 | n/a           | 对话 / 面板  | 收起（单行）           | n/a      | n/a        | n/a      | `ui-shell/panels/side-pane-full-view.test.ts`                                     |
+| SPFV-E2E-003 | n/a           | 对话 / 面板  | 收起 + 操作栏 / 最小化 | n/a      | n/a        | n/a      | `ui-shell/panels/side-pane-full-view.test.ts`                                     |
+| SPFV-E2E-004 | n/a           | 菜单切到对话 | 收起                   | 左上     | n/a        | n/a      | `ui-shell/panels/side-pane-full-view.test.ts`                                     |
+| SPFV-E2E-005 | n/a           | 面板         | 展开 / 收起            | n/a      | n/a        | n/a      | `ui-shell/panels/side-pane-full-view.test.ts`                                     |
+| SPFV-E2E-006 | ◫ 退出        | n/a          | n/a                    | n/a      | n/a        | n/a      | `ui-shell/panels/side-pane-full-view.test.ts`                                     |
+| SPFV-E2E-009 | n/a           | 面板         | 收起                   | n/a      | n/a        | n/a      | `ui-shell/panels/side-pane-full-view.test.ts`                                     |
 | SPFV-E2E-007 | 按钮          | 面板         | 收起（发送）           | n/a      | covered    | n/a      | `conversation-session/branching/conversation-session-side-pane-full-view.test.ts` |
 | SPFV-E2E-008 | n/a           | 面板         | 最小化 → 自动恢复      | n/a      | n/a        | covered  | `conversation-session/branching/conversation-session-side-pane-full-view.test.ts` |
 

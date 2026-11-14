@@ -8,7 +8,7 @@ import {
   refreshSeededOpenAIProvidersThroughSettings,
   seedCustomOpenAIChatCompletionsProvider,
 } from "#e2e/helpers/custom-openai-provider";
-import { resolveSeededReplayBaseUrl } from "#e2e/helpers/custom-openai-provider-store";
+
 import {
   selectUpstreamProviderModelById,
   selectUpstreamThoughtLevelValue,

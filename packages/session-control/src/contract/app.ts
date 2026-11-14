@@ -6,7 +6,6 @@ import {
   appProjectRefSchema,
   appScopeSchema,
   appSessionRefSchema,
-  appWorkspaceRefSchema,
   identifierSchema,
   modelSchema,
   paginationShape,

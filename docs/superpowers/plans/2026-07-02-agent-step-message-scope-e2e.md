@@ -25,6 +25,7 @@
 ### Task 2: Write the failing E2E
 
 **Files:**
+
 - Create, then promote: `packages/desktop/test/e2e/conversation-session/presentation/conversation-session-agent-step-message-scope.test.ts`
 
 - [x] **Step 1:** Prepare conversation E2E, mock Electron `net.fetch`, and make telemetry requests resolve with an HTTP-success-shaped result.
@@ -49,6 +50,7 @@
 ### Task 4: Promote the reviewed reproduction
 
 **Files:**
+
 - Move: `packages/desktop/test/e2e/conversation-session/presentation/conversation-session-agent-step-message-scope.test.ts` → `packages/desktop/test/e2e/conversation-session/presentation/conversation-session-agent-step-message-scope.test.ts`
 - Modify: case manifest、provider fixture、coverage matrix
 

@@ -6,25 +6,25 @@
 
 强叉乘工具名以 `packages/shared/src/tool-identity.ts`、`apps/zcode-cli/packages/core/src/tool/handlers/index.ts` 和计划模式工具为边界。默认 active 工具要覆盖成功态；条件注册或当前未注册工具也要进入 UI 叉乘，但可以用快速失败态收束，不把工具业务成功率混进 conversation UI spec。没有暴露到本链路的工具不纳入本矩阵。
 
-| 工具                 | 默认状态                     | E2E 输入策略                                                                 | 结果形态                     | 清理要求                                                   |
-| -------------------- | ---------------------------- | ---------------------------------------------------------------------------- | ---------------------------- | ---------------------------------------------------------- |
-| `Read`               | active                       | 读取专用 fixture 文件                                                        | success                      | 删除专用目录                                               |
-| `Write`              | active                       | 新建专用文件                                                                 | success                      | 删除专用目录                                               |
-| `Edit`               | active                       | 用空 `old_string` 新建专用文件                                               | success                      | 删除专用目录                                               |
-| `Bash`               | active                       | `printf` 输出 marker                                                         | success                      | 无文件写入                                                 |
-| `Glob`               | active                       | 匹配专用目录下 fixture 文件                                                  | success                      | 删除专用目录                                               |
-| `Grep`               | search-branch conditional    | direct 分支搜索专用 fixture；embedded search 分支用 registry miss 快速失败   | success / failed tool result | 删除专用目录                                               |
-| `WebFetch`           | active                       | 使用合法但非公开 loopback URL 触发受控快速失败；业务成功闭环由 `WF/O10` 覆盖 | failed tool result           | 无外部写入                                                 |
-| `TodoRead`           | active                       | 读取当前 session todo                                                        | success                      | session-local；goal 后用 renderer store 断言历史 toolCalls |
-| `TodoWrite`          | active                       | 写入当前 session todo                                                        | success                      | session-local                                              |
-| `GoalRead`           | 当前未注册                   | 空输入；若未来注册则读当前 session goal                                      | failed tool result / success | session-local                                              |
-| `EnterPlanMode`      | active                       | 空输入进入 plan mode                                                         | success                      | 后续动作和下一 case 前重设 `yolo`                          |
-| `ExitPlanMode`       | active                       | 非 plan mode 下调用，验证快速失败 tool block                                 | failed tool result           | 无                                                         |
-| `AskUserQuestion`    | active                       | 单题双选项，测试自动选择第一项                                               | success                      | session-local                                              |
-| `SendMessage`        | conditional                  | 指向不存在的 `agent_*`，或未注册时快速失败                                   | failed tool result           | session-local                                              |
-| `Agent`              | conditional/default subagent | 非法 `subagent_type`，避免真的派生子 agent                                   | failed tool result           | 无                                                         |
-| `Skill`              | active                       | 加载不存在 skill，验证快速失败 tool block                                    | failed tool result           | 无                                                         |
-| `Workflow`           | 当前未注册                   | 空输入，若未来注册也因缺少 script/name/resumeFromRunId 快速失败              | failed tool result           | 无                                                         |
+| 工具              | 默认状态                     | E2E 输入策略                                                                 | 结果形态                     | 清理要求                                                   |
+| ----------------- | ---------------------------- | ---------------------------------------------------------------------------- | ---------------------------- | ---------------------------------------------------------- |
+| `Read`            | active                       | 读取专用 fixture 文件                                                        | success                      | 删除专用目录                                               |
+| `Write`           | active                       | 新建专用文件                                                                 | success                      | 删除专用目录                                               |
+| `Edit`            | active                       | 用空 `old_string` 新建专用文件                                               | success                      | 删除专用目录                                               |
+| `Bash`            | active                       | `printf` 输出 marker                                                         | success                      | 无文件写入                                                 |
+| `Glob`            | active                       | 匹配专用目录下 fixture 文件                                                  | success                      | 删除专用目录                                               |
+| `Grep`            | search-branch conditional    | direct 分支搜索专用 fixture；embedded search 分支用 registry miss 快速失败   | success / failed tool result | 删除专用目录                                               |
+| `WebFetch`        | active                       | 使用合法但非公开 loopback URL 触发受控快速失败；业务成功闭环由 `WF/O10` 覆盖 | failed tool result           | 无外部写入                                                 |
+| `TodoRead`        | active                       | 读取当前 session todo                                                        | success                      | session-local；goal 后用 renderer store 断言历史 toolCalls |
+| `TodoWrite`       | active                       | 写入当前 session todo                                                        | success                      | session-local                                              |
+| `GoalRead`        | 当前未注册                   | 空输入；若未来注册则读当前 session goal                                      | failed tool result / success | session-local                                              |
+| `EnterPlanMode`   | active                       | 空输入进入 plan mode                                                         | success                      | 后续动作和下一 case 前重设 `yolo`                          |
+| `ExitPlanMode`    | active                       | 非 plan mode 下调用，验证快速失败 tool block                                 | failed tool result           | 无                                                         |
+| `AskUserQuestion` | active                       | 单题双选项，测试自动选择第一项                                               | success                      | session-local                                              |
+| `SendMessage`     | conditional                  | 指向不存在的 `agent_*`，或未注册时快速失败                                   | failed tool result           | session-local                                              |
+| `Agent`           | conditional/default subagent | 非法 `subagent_type`，避免真的派生子 agent                                   | failed tool result           | 无                                                         |
+| `Skill`           | active                       | 加载不存在 skill，验证快速失败 tool block                                    | failed tool result           | 无                                                         |
+| `Workflow`        | 当前未注册                   | 空输入，若未来注册也因缺少 script/name/resumeFromRunId 快速失败              | failed tool result           | 无                                                         |
 
 快速失败态也纳入本矩阵，是因为本矩阵验证的是 conversation UI 对 tool block + 后续 compact/fork/goal 的稳定性，不验证外部网络、子 agent、skill registry 的业务成功率。工具自身成功语义应在对应 tool/service 测试中覆盖。
 

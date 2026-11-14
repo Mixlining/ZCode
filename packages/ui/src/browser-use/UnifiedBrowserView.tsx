@@ -850,6 +850,7 @@ export function UnifiedBrowserView({
     syncBrowserState,
     loadBrowserUrl,
     webview,
+    isResponsiveMode,
   ]);
 
   useEffect(() => {
@@ -1241,7 +1242,7 @@ export function UnifiedBrowserView({
       if (node) webviewTeardownProbeRef.current.hadWebview = true;
       setWebview(node);
     },
-    [logWebviewTeardown],
+    [logWebviewTeardown, recentVisitsScopeKey],
   );
 
   const handleRetryGuest = useCallback(() => {

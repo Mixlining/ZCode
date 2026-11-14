@@ -573,6 +573,7 @@ Expected: PASS.
 **Purpose:** 验证用户可见行为没有回归，特别是 background-only 不再造成 fake loading，同时 foreground 仍保持原 loading。
 
 **Files:**
+
 - Modify if needed: `packages/desktop/test/e2e/conversation-session/background/conversation-session-background.test.ts`
 - Modify if needed: `docs/conversation-session-case-catalog.md`
 - Modify if needed: `docs/testing/conversation-session-background-e2e-coverage-matrix.md`

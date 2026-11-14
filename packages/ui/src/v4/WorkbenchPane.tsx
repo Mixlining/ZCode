@@ -350,6 +350,7 @@ export function WorkbenchLeafPane({
     },
     [onBindSession, onPaneActiveSessionChange, paneId, scope],
   );
+  const notifyShellSessionCreated = shell.onSessionCreated;
   const handleSessionCreated = useCallback(
     (createdSessionId: string, origin?: "draft-promotion") => {
       if (isPrimary && !primaryBinding) {
@@ -357,12 +358,19 @@ export function WorkbenchLeafPane({
         // 必须先让 workbench 宿主把 draft pane 原地绑定并接管整个布局；否则随后
         // focus secondary 会改写 shell activeTaskId，primary 就因没有独立 binding 退回 draft。
         onBindSession(paneId, createdSessionId);
-        shell.onSessionCreated?.(createdSessionId, origin);
+        notifyShellSessionCreated?.(createdSessionId, origin);
         return;
       }
       handleBindSession(createdSessionId, origin);
     },
-    [handleBindSession, isPrimary, onBindSession, paneId, primaryBinding, shell.onSessionCreated],
+    [
+      handleBindSession,
+      isPrimary,
+      onBindSession,
+      paneId,
+      primaryBinding,
+      notifyShellSessionCreated,
+    ],
   );
   if (!isPrimary && !binding) {
     // sanitize/迁移保证非 primary 叶子必有绑定；此处是转移瞬间的防御渲染。

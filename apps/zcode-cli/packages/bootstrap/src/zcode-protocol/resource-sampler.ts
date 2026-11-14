@@ -103,9 +103,11 @@ export function startProtocolResourceSampler(
     sampler.start();
     let diagnostics: { stop(): void } | undefined;
     try {
-      diagnostics = startCliMemoryDiagnostics(() =>
-        server.collectMemoryDiagnostics({ includeEventStats: false }),
-      );
+      // 独立诊断开关在启动 profiler 前生效；resident session 的维护不依赖它。
+      if (MEMORY_DIAGNOSTICS_ENABLED)
+        diagnostics = startCliMemoryDiagnostics(() =>
+          server.collectMemoryDiagnostics({ includeEventStats: false }),
+        );
     } catch {
       // inspector 不可用时不能影响协议握手和既有资源采样。
     }

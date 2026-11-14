@@ -1,5 +1,7 @@
 # 扩展进程（Extension Host）
 
+> dev 生命周期约束：`spec/upstream-3.18.1-merge.md` 覆盖下文上游的“首个 Window Host ready 即启动”行为。清单/授权与激活需求归 Window Host；Main 仅在有有效需求时启动进程和探测，无需求为 idle，并取消重启、释放进程与闲置缓冲。onAvailable 可按用户启用后台工作，命令/视图仍延迟激活；首次请求等待牵线和声明同步，无轮询或超时。未授权、待确认、无效、禁用或静态声明不会启动扩展代码。
+
 > 状态：P1 与 P2 已实现。P1：阶段 2a（进程基础设施、贡献表、两个插槽、重新加载）、2b（六个能力、数据泵、Renderer 报告、扩展视图）、2c（示例插件 context-inspector，§11）。P2：P2a（静态声明移到 Window Host、清单顶层 `slots`、§16.11 的三处 API 修正）、P2b（视图门面拆分、`nav.primary`、`file.viewer`）、P2c（`composer.mention`）、P2d（插件设置与能力 `settings.*`）、P2e（日志控制台）。P3 已实现（§17）：P3a（授权骨架与 facade 读，§17.10 第 1 步）、P3b（读连接与商店安装后的激活确认，第 2 步）、P3c-1（八个写动作、来源标识、写审计）与 P3c-2（插件项目，第 3 步）、P3d（类型包 `@zcode-dev/plugin-api`，第 4 步）；P4 的宿主能力 H1–H12（§18.1）已实现，H13 不做；示例插件 Jarvis（§18.3，§18.4 Jarvis 第 1–8 步）已实现；GitLab 插件本体（§18.4 GitLab 第 4–9 步）与开发者文档未做；P5 只列要点，动工前补全对应章节。
 > 基线：staging `2015563fc3`。文中代码位置按该基线核对。
 
@@ -1264,8 +1266,8 @@ sessionsBackend.run（客户端绑定、来源注入、审计，与带 project �
 
 ### 17.5 读：插件自己的连接
 
-- `extensions-service` 每个代际懒建一个进程内连接作用域：`createZCodeAgentConnectionScope(agent, { connectionId: "extension-host:<gen>", clientMode: "web-remote-replayable" })`，并在进程内握手（`helloConversationV4` → `initializeConversationV4`）。先例：Bot 在进程内建作用域（`zcode-agent/zcodeTaskServiceAdapter.ts:252-262`）。
-- 复用 `web-remote-replayable`，不新增 clientMode：新取值要改 30 多处，且发给 CLI 的线格式是严格枚举，旧 CLI 会拒绝。日志靠 connectionId 前缀 `extension-host:` 区分插件与手机。
+- `extensions-service` 按当前消费者懒建进程内连接作用域：`createZCodeAgentConnectionScope(agent, { connectionId: "extension-host:<gen>:<unique>", clientMode: "desktop-continuous" })`，并在进程内握手（`helloConversationV4` → `initializeConversationV4`）。先例：Bot 在进程内建作用域（`zcode-agent/zcodeTaskServiceAdapter.ts:252-262`）。
+- dev 复用现有本地 `desktop-continuous` scope，不新增 clientMode，不接入手机回放或远程 attachment。调用身份、握手、命令 admission 与 dispose 继续由既有适配器维护；日志用 connectionId 前缀 `extension-host:` 标识本地扩展。
 - 会话列表来自 Window Host 控制器的投影（`packages/desktop/src/host/windowHostControllerService.ts` 的 `readTaskRows` / `subscribeTaskRows`），与桌面侧栏、手机同一份。
 - 会话正文：每个被订阅的会话在 Window Host 保留一份客户端镜像（`TopicWireFrameAssembler` + `applyConversationDeltas`），推给插件的是 apply 之后的整行。断档或 epoch 变化时强制快照重同步，对插件发 `reset`。
 - 镜像按 sessionId 在插件之间共享，按 (pluginId, sessionId) 计数，最后一个监听回收时退订。换代、Window Host 断开时 `scope.dispose()` 全部退订；扩展进程重连后自动重订阅，首个事件是 `reset`。
@@ -1281,7 +1283,7 @@ sessionReads（每个连接一份，换代或断开时整体释放）
   ├─ 解析会话：facade readSession({ sessionId, view: "summary" }) → 会话引用（与模型工具同一份授权，远端来源 forbidden）
   ├─ 上限：该插件的不同会话 ≤ 8、全局镜像 ≤ 32，否则 limit-exceeded
   └─ 镜像（按会话共享）
-       scope = createZCodeAgentConnectionScope(agent, { connectionId: "extension-host:<gen>", clientMode: "web-remote-replayable" })
+       scope = createZCodeAgentConnectionScope(agent, { connectionId: "extension-host:<gen>:<unique>", clientMode: "desktop-continuous" })
        scope.service.onDynamicConversationFrame(工作区) ──► TopicWireFrameAssembler ──► 帧
        subscribeConversationV4({ visibility: "background" })
        snapshot 帧        ─► 替换镜像 ─► reset + 会话状态
@@ -1292,7 +1294,7 @@ sessionReads（每个连接一份，换代或断开时整体释放）
        订阅或重同步失败   ─► 该镜像的订阅以 unavailable 结束
 ```
 
-- 连接作用域在该代际第一次读正文时创建，进程内握手（`clientId: "extension-host"`）。`detach` 时 `scope.dispose()`，镜像全部释放；扩展进程重连后插件重新订阅，第一个事件是 `reset`。连接的建立与释放、镜像的订阅与退订记 info（频率与订阅次数同级）；帧与增量只记 debug。
+- 连接作用域在该代际第一次读正文时创建，进程内握手（`clientId: "extension-host"`）。最后一个读取登记结束或 `detach` 时 `scope.dispose()`，镜像全部释放；扩展进程重连后插件重新订阅，第一个事件是 `reset`。连接的建立与释放、镜像的订阅与退订记 info（频率与订阅次数同级）；帧与增量只记 debug。
 - 会话解析每次登记都做一次（不同插件各自解析），所以授权与目标检查与 `sessions.readSession` 相同。`readRows` 同样先解析，再经同一个作用域调 `conversationRowsRangeV4`（会话不在内存时 CLI 冷恢复，与手机相同）。
 - 镜像预算按窗口里各行的 JSON 字节算：超过 8 MiB 时从最旧的行丢起，丢掉的行仍可用 `readRows` 读到。丢掉的旧行之后再被更新，镜像不再推它（旧行很少更新）。
 - 单个事件按 JSON 字节超过 1 MiB 时改推 `stale`，插件用 `readRows` 补读。
@@ -1416,7 +1418,7 @@ sessionReads（每个连接一份，换代或断开时整体释放）
 ```text
 CLI（唯一事实源）
   会话快照：pendingInteractions[]、config.mode
-     │ v4 订阅（扩展读连接 extension-host:<gen>，与手机同一套）        │ 桌面 / 手机的订阅
+     │ v4 订阅（扩展读连接 extension-host:<gen>，复用本地可信作用域）        │ 桌面 / 手机的订阅
      ▼                                                              ▼
 Window Host 会话镜像 ──► onDidChangeInteractions ──► 插件          宿主审批面板
   （只投影 permission / userInput 与 mode）

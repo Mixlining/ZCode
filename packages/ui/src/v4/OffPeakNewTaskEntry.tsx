@@ -42,8 +42,10 @@ interface OffPeakNewTaskEntryProps {
   onOpenAutomations?: () => void;
 }
 
-export function OffPeakNewTaskEntry({ onOpenAutomations }: OffPeakNewTaskEntryProps) {
-  if (CODING_PLAN_DISABLED) return null;
+// 编译期选择入口：禁用时不进入业务 hooks；原实现保持完整调用顺序。
+export const OffPeakNewTaskEntry = CODING_PLAN_DISABLED ? () => null : OffPeakNewTaskEntryEnabled;
+
+function OffPeakNewTaskEntryEnabled({ onOpenAutomations }: OffPeakNewTaskEntryProps) {
   const { intl, locale } = useZCodeIntl();
   const { clientScenesService } = useServices();
   const { offPeak: remoteOffPeakTemplates } = useAutomationTemplates(clientScenesService);

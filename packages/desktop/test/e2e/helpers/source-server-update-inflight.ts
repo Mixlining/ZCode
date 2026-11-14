@@ -69,12 +69,15 @@ export async function connectDuringNextSourceUpdate(input: {
           },
         );
       }
+      const capturePort = (candidate: MessagePort) => {
+        port = candidate;
+        candidate.addEventListener("message", receive);
+      };
       MessagePort.prototype.postMessage = function (message: unknown, options?: unknown) {
         if (!port && message instanceof Uint8Array) {
           const text = new TextDecoder().decode(message);
           if (text.includes(channel) && text.includes("updateSource")) {
-            port = this;
-            this.addEventListener("message", receive);
+            capturePort(this);
           }
         }
         Reflect.apply(original, this, options === undefined ? [message] : [message, options]);

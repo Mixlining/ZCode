@@ -468,7 +468,7 @@ export function useAppPanels(options: {
       restored.isSidePaneCollapsed;
     setIsSidePaneCollapsed(collapsed);
     commitSidePaneState(() => (moved ? moved.next : restored.sidePaneState));
-  }, [commitSidePaneState, sidePaneMemoryKey]);
+  }, [commitSidePaneState, sidePaneMemoryKey, setIsSidePaneCollapsed]);
 
   const markSidePaneDraftPromotion = useCallback((sessionId: string) => {
     pendingDraftPromotionRef.current = sessionId;
@@ -599,6 +599,7 @@ export function useAppPanels(options: {
     sidePaneOwnerId,
     pluginUiTarget.sessionId,
     pluginUiWorkspaceKey,
+    setIsSidePaneCollapsed,
   ]);
 
   const pendingFileManagerTarget = useOptionalTabStore((state) => state.pendingFileManagerTarget);

@@ -60,7 +60,11 @@ export function useComposerConnectionSwitch({
   const { update, refresh: refreshSettings } = useSettings({ services: base });
   const { intl } = useZCodeIntl();
   const workspaceKey = workspaceIdentity?.trim() || workspacePath;
-  const token = useMemo(() => ({}), [target, base, workspaceKey, scopeId]);
+  // token 表达本次切换的 owner 身份，不能删除这些失效条件。
+  const token = useMemo(
+    () => ({ target, base, workspaceKey, scopeId }),
+    [target, base, workspaceKey, scopeId],
+  );
   const owner = useRef({ token, mounted: true });
   owner.current = { token, mounted: true };
   const inFlight = useRef(false);

@@ -93,22 +93,22 @@
 
 Todo103 新增/迁接候选：PLM-LC-018/019 对应 `plugins/manual-review/pending/plugin-store-auto-refresh-{throttled,on-enter}.test.ts`；Pro `desktop-e2e-20260909-152018-653` 两例通过。PLM-LC-020 对应 `plugins/runtime/plugin-subagent-override-cold.test.ts`，Pro `desktop-e2e-20260909-152419-828` 冷启动 child/父 continuation 请求验证通过，case-local fixture check 通过。三项均未人工晋级；019 保持公网 smoke、不进入正式 CI。
 
-| Abbreviation | Pending spec                                                                        |
-| ------------ | ----------------------------------------------------------------------------------- |
-| `PD` / `PP`  | `plugins/marketplace/plugin-management-discovery-presentation.test.ts`                          |
-| `PM`         | `plugins/installation/plugin-management-personal-lifecycle.test.ts`                              |
-| `PV` / `PO`  | `plugins/installation/plugin-management-persistence-source.test.ts`                              |
-| `PB` / `PI`  | `plugins/installation/plugin-management-builtin-inline.test.ts`                                  |
-| `PC`         | `plugins/installation/plugin-cdn-zip-marketplace-install.test.ts`                                |
-| `PCS`        | `plugins/installation/manual-review/pending/plugin-cdn-zip-official-cdn-smoke.test.ts`           |
-| `PF`         | `plugins/installation/manual-review/pending/plugin-management-recoverable-failures.test.ts`      |
+| Abbreviation | Pending spec                                                                                |
+| ------------ | ------------------------------------------------------------------------------------------- |
+| `PD` / `PP`  | `plugins/marketplace/plugin-management-discovery-presentation.test.ts`                      |
+| `PM`         | `plugins/installation/plugin-management-personal-lifecycle.test.ts`                         |
+| `PV` / `PO`  | `plugins/installation/plugin-management-persistence-source.test.ts`                         |
+| `PB` / `PI`  | `plugins/installation/plugin-management-builtin-inline.test.ts`                             |
+| `PC`         | `plugins/installation/plugin-cdn-zip-marketplace-install.test.ts`                           |
+| `PCS`        | `plugins/installation/manual-review/pending/plugin-cdn-zip-official-cdn-smoke.test.ts`      |
+| `PF`         | `plugins/installation/manual-review/pending/plugin-management-recoverable-failures.test.ts` |
 | `PEA`        | `plugins/runtime/plugin-runtime-env-agent-projection.test.ts`                               |
-| `PGA`        | `plugins/installation/plugin-no-git-github-archive.test.ts`                                      |
-| `PRA`        | `plugins/manual-review/pending/plugin-refresh-atomic-cache.test.ts`                 |
-| `PBD`        | `plugins/manual-review/pending/plugin-management-builtin-detail-parity.test.ts`     |
-| `PBO`        | `plugins/manual-review/pending/plugin-management-bundled-install-ownership.test.ts` |
-| `PBS`        | `plugins/manual-review/pending/plugin-management-seed-runtime-separation.test.ts`   |
-| `PML`        | `plugins/marketplace/plugin-management-installed-menu-layout.test.ts`                           |
+| `PGA`        | `plugins/installation/plugin-no-git-github-archive.test.ts`                                 |
+| `PRA`        | `plugins/manual-review/pending/plugin-refresh-atomic-cache.test.ts`                         |
+| `PBD`        | `plugins/manual-review/pending/plugin-management-builtin-detail-parity.test.ts`             |
+| `PBO`        | `plugins/manual-review/pending/plugin-management-bundled-install-ownership.test.ts`         |
+| `PBS`        | `plugins/manual-review/pending/plugin-management-seed-runtime-separation.test.ts`           |
+| `PML`        | `plugins/marketplace/plugin-management-installed-menu-layout.test.ts`                       |
 
 ## Latest targeted verification
 
@@ -266,8 +266,8 @@ case-local replay 验证 Agent 工具执行 -> 官方目录 -> 确认卡片 -> �
 
 ### 生命周期埋点（2026-10-15）
 
-| Case        | 场景                   | 用例                                         | 验证                    | 状态               |
-| ----------- | ---------------------- | -------------------------------------------- | ----------------------- | ------------------ |
+| Case        | 场景                   | 用例                                                   | 验证                    | 状态               |
+| ----------- | ---------------------- | ------------------------------------------------------ | ----------------------- | ------------------ |
 | PLM-TEL-001 | 插件安装最终结果与隐私 | `plugins/telemetry/plugin-lifecycle-telemetry.test.ts` | macOS Electron 回放通过 | pending，未加入 CI |
 
 验证批次 `desktop-e2e-20261015031949530-p54859-5f1860f2585df3f1`：真实商店详情安装成功，最终 HTTP 出口仅一条 install 结果，含 event_id 和 duration_ms，无 operation_id 和路径。手机白名单、远端同步结果与 MCP 归属由定向单测验证；Windows/Linux 和真实远端安装未运行。

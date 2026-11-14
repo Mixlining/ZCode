@@ -155,7 +155,12 @@ export function ImagePreviewSurface({
   useEffect(() => {
     setTransform((current) => ({
       ...current,
-      offset: clampOffset(current.offset, current.scale, size, viewport),
+      offset: clampOffset(
+        current.offset,
+        current.scale,
+        { width: size.width, height: size.height },
+        { width: viewport.width, height: viewport.height },
+      ),
     }));
   }, [size.width, size.height, viewport.width, viewport.height]);
   const wheel = useEffectEvent((event: WheelEvent) => {

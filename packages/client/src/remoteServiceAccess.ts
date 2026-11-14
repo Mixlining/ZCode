@@ -1,4 +1,5 @@
 import { IGenUiService } from "@zcode/services";
+import { CODING_PLAN_DISABLED } from "@zcode/shared";
 import { ProxyChannel, type IChannelClient } from "@zcode/rpc";
 import {
   IFileService,
@@ -293,11 +294,12 @@ export class RemoteServiceAccess implements IServiceAccessor {
       : undefined;
     // 语音输入只连接本机 Host（docs/chat/composer-voice-input.md）：与数据同步同一开关，
     // 只在桌面 base 连接打开，Web / 手机远控 / 远程 workspace 连接不创建代理。
-    this.voiceInputService = options.deviceSyncStateService
-      ? ProxyChannel.toService<IVoiceInputService>(
-          channelClient.getChannel(IVoiceInputService.channelName),
-        )
-      : undefined;
+    this.voiceInputService =
+      !CODING_PLAN_DISABLED && options.deviceSyncStateService
+        ? ProxyChannel.toService<IVoiceInputService>(
+            channelClient.getChannel(IVoiceInputService.channelName),
+          )
+        : undefined;
     this.usageStatsService = ProxyChannel.toService<IUsageStatsService>(
       channelClient.getChannel(IUsageStatsService.channelName),
     );

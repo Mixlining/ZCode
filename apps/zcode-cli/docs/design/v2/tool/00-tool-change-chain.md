@@ -1,5 +1,9 @@
 # Tool Change Chain Spec
 
+## dev v3.18.1 同步边界
+
+本次接收上游 CLI 八个会话控制工具与 App 本地控制能力，模型工具 schema、描述、权限、owner admission 与结果字节遵循上游规格；不能借会话发现读取旧远程 Source 目录或启动远端连接。Coding Plan、闲时工具、Sites、官方 MCP 鉴权和诊断开关继续从源头硬禁用，普通本地工具与 cron 保留。共享 session-control 的 App 业务单测按根规则退役，CLI 契约、owner、sessionId、wait 与回归证据归入 bootstrap 的现有 `tests/cli-session-control` 独立入口；不把混合业务测试列入 engineering。验收与人工场景见根目录 `spec/upstream-3.18.1-merge.md`，本轮不运行应用、App/CLI 单测、E2E 或制品构建。
+
 工具 schema、顺序与描述是固定字节（tools 段字节进入缓存前缀）：`toToolJsonSchema` 按
 zod v4 toJSONSchema 的 key 顺序输出——`$schema` 在最前，`description`、`default` 在 `type` 前，
 数组的 `minItems`/`maxItems` 在 `type` 前，属性声明顺序不变；ToolSearch 输入 schema 走同一入口。

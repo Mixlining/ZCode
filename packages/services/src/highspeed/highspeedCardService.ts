@@ -411,10 +411,10 @@ export class HighspeedCardService implements IHighspeedCardService {
       if (scope !== null && scope !== this.authScope(await this.#resolveInferenceAuth()))
         return null;
       this.applyDrawResponse(response, scope, ownerKey);
-        return response;
+      return response;
     })().finally(() => {
-        if (this.inFlightDraw === draw) this.inFlightDraw = null;
-      });
+      if (this.inFlightDraw === draw) this.inFlightDraw = null;
+    });
     this.inFlightDraw = draw;
     return draw;
   }

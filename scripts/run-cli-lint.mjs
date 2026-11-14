@@ -6,7 +6,11 @@ import { dirname, resolve, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadPolicy } from "./architecture/policy.mjs";
 import { pristineUpstreamFiles } from "./architecture/upstream-admission.mjs";
-import { classifyLintDiagnostics, parseLintCommand } from "./cli-lint-admission.mjs";
+import {
+  classifyLintDiagnostics,
+  parseLintCommand,
+  resolvePnpmInvocation,
+} from "./cli-lint-admission.mjs";
 
 const exec = promisify(execFile);
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -39,9 +43,11 @@ async function main() {
       // 沿用各包解析出的 oxlint 版本、cwd 和原参数；包级配置仍由 oxlint 自己读取。
       const pnpm = process.env.npm_execpath;
       if (!pnpm) throw new Error("请通过 pnpm lint 运行 CLI lint");
+      // Windows 的 npm_execpath 可能是 pnpm.exe，交给 Node 会在扫描前抛未知扩展名。
+      const invocation = resolvePnpmInvocation(pnpm, ["exec", "oxlint", ...args]);
       let result;
       try {
-        result = await exec(process.execPath, [pnpm, "exec", "oxlint", ...args], {
+        result = await exec(invocation.command, invocation.args, {
           cwd,
           maxBuffer: 16 * 1024 * 1024,
         });

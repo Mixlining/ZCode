@@ -18,7 +18,7 @@
 | 状态与动作      | `packages/ui/src/browser-use/useBrowserDesignMode.ts`                                                                       | 设计工具是否显示、选中集合、面板、方案、页码的唯一 owner（每个浏览器 tab 一份）                                                                       |
 | 写文件与撤销    | `packages/ui/src/browser-use/useBrowserDesignSourceWriter.ts` + `IFileService.readDesignSourceFile / writeDesignSourceFile` | 读源码、算改动、带「文件仍是读到的那份」校验写回；撤销 / 重做栈                                                                                       |
 | 界面            | `BrowserDesignToolbar.tsx`、`BrowserDesignInspector.tsx`                                                                    | 设计工具行；画布右侧固定的属性面板                                                                                                                    |
-| 进输入框        | 网页元素引用（`dispatchWebElementContextAddToChat`，`inline: true`）+ `ElementMentionSyncPlugin`                            | 点选的元素以 token 进输入框正文，截图隐藏随消息发出（人类 tab 所有页面都走这一套；Agent tab 仍是原来的元素卡片）                                                               |
+| 进输入框        | 网页元素引用（`dispatchWebElementContextAddToChat`，`inline: true`）+ `ElementMentionSyncPlugin`                            | 点选的元素以 token 进输入框正文，截图隐藏随消息发出（人类 tab 所有页面都走这一套；Agent tab 仍是原来的元素卡片）                                      |
 
 ## 二、通信
 

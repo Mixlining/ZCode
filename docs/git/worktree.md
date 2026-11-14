@@ -196,11 +196,11 @@
 
 ### 3.7 worktree 任务的标识与按 cwd 工作的界面
 
-| 位置                                     | 显示                                                                                  |
-| ---------------------------------------- | ------------------------------------------------------------------------------------- |
-| 侧栏任务行（分组视图、项目视图、时间线） | 右侧元信息区加 `GitBranch` 图标（`size-3.5`，带 `aria-label`），不加文字              |
+| 位置                                     | 显示                                                                                                                                                   |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 侧栏任务行（分组视图、项目视图、时间线） | 右侧元信息区加 `GitBranch` 图标（`size-3.5`，带 `aria-label`），不加文字                                                                               |
 | 任务行悬浮卡片 / 时间线目录名            | 标题换成 `<仓库名> · <bucket>`，例如 `z-code · 3f2a`；卡片同时显示 worktree 路径、最近活动与分支，见 [会话行悬浮卡片](../ui/task-row-hover-details.md) |
-| 会话头部项目胶囊                         | 图标换成 `FolderGit2`，名称为 `<仓库名> · <bucket>`；弹出面板显示 worktree 路径与分支 |
+| 会话头部项目胶囊                         | 图标换成 `FolderGit2`，名称为 `<仓库名> · <bucket>`；弹出面板显示 worktree 路径与分支                                                                  |
 
 标识都从任务的 cwd（`root_path`）按受管布局推导，不在任务行或 UI store 中保存副本。
 
@@ -703,48 +703,48 @@ forkAssistant: {
 
 桌面 E2E：`packages/desktop/test/e2e/git/worktrees/manual-review/pending/git-managed-worktree.test.ts` 覆盖 WT-01、WT-05、WT-08、WT-09、WT-29、WT-30、WT-34、WT-35，状态为 manual-review 待人工评审，评审后按 `e2e-case-lifecycle` 转正。回放命令：`ZCODE_E2E_MANUAL_REVIEW=1 E2E_PROVIDER_HTTP_MODE=replay E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/git/managed-worktree.json pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/git/worktrees/manual-review/pending/git-managed-worktree.test.ts'`；fixture 是合成的固定回复，用例不依赖模型内容。2026-11-04 macOS 回放 4/4 通过。其余场景尚无桌面 E2E；WT-31 / WT-32 的竞态只有 CLI 侧 `session/releaseUnderDirectory` 的独立测试，Host 租约未做并发 E2E。CLI 侧另有独立测试（会话 cwd、历史标记、fork 到 cwd、冷恢复、sessions-index、权限与记忆派生）。WT-36 / WT-37 / WT-38 由 CLI 集成测试 `apps/zcode-cli/packages/bootstrap/tests/v4-worktree-cwd.test.ts` 覆盖（WT-36 只在大小写不敏感的文件系统上执行）；WT-39 由 CLI 的 `official-mcp-auth-port`、`mcp-connection-pool`、`mcp-tool-bridge` 测试覆盖会话 key 的传递，Host 注入 workspace 的一侧没有自动化测试；这四项都没有桌面 E2E。未实跑 Windows / Linux，未做深浅主题视觉验收。
 
-| ID    | 场景                                                                | 预期                                                                                                              |
-| ----- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| WT-01 | 勾选 worktree 后发送                                                | 发送前不创建任何 worktree；发送后先显示用户消息和进度卡片；任务 cwd 为新 worktree（detached），workspace 仍是项目 |
-| WT-02 | 非 Git 项目、远程项目、手机远控                                     | 不显示 worktree 复选框                                                                                            |
-| WT-03 | worktree 模式下选择其他分支                                         | 本地 checkout 的分支不变；新 worktree 从该分支检出                                                                |
-| WT-04 | worktree 任务的附加目录                                             | 不包含源仓库 root；包含项目的其他 roots                                                                           |
-| WT-05 | 从 assistant 消息"在新 worktree 中分叉"                             | 子任务在同一项目 workspace 中打开，cwd 为新 worktree；对话已复制；父任务不变                                      |
-| WT-06 | CLI 不支持 worktree cwd                                             | worktree 复选框和"在新 worktree 中分叉"禁用                                                                       |
-| WT-07 | 在 worktree 任务中用分支切换器新建分支                              | 分支创建在 worktree 中；本地 checkout 不变                                                                        |
-| WT-08 | 删除一个干净、空闲的 worktree                                       | 目录和 bucket 被删除；相关任务变为只读                                                                            |
-| WT-09 | 删除有任务使用、且有未提交改动的 worktree                           | 被拒绝；目录保留                                                                                                  |
-| WT-10 | 任务运行中或有终端时删除                                            | 被拒绝；运行不受影响                                                                                              |
-| WT-11 | 重启 ZCode 后打开 worktree 任务                                     | 冷恢复；第一轮仍显示"已创建 worktree"，可展开                                                                     |
-| WT-12 | 手机远控查看 worktree 任务                                          | 可以查看和对话，能看到"已创建 worktree"；不显示创建入口                                                           |
-| WT-13 | 并发创建两个 worktree                                               | 得到两个不同的 bucket，互不影响                                                                                   |
-| WT-14 | 起点无效或 `git worktree add` 失败                                  | 卡片显示失败与 git 输出；"放弃"后不留 worktree 和任务行，草稿恢复                                                 |
-| WT-15 | 用户手动删除 worktree 目录                                          | 管理弹窗显示"目录缺失"，"移除记录"后条目消失                                                                      |
-| WT-16 | Windows 上路径包含空格                                              | 创建、打开、删除都正常                                                                                            |
-| WT-17 | 源仓库已信任某条已提交的 Hook，在 worktree 任务中发送               | 这条 Hook 直接运行，不出现 pending                                                                                |
-| WT-18 | worktree 中的 Hook 声明与源仓库不同，或反向链接被破坏               | 只有变化的那一条 pending；反向链接被破坏时整体不继承                                                              |
-| WT-19 | 项目主目录是仓库的子目录                                            | 任务 cwd 为 worktree 中对应的子目录                                                                               |
-| WT-20 | 创建失败后点"不使用 worktree"                                       | 在项目主目录创建会话并发送首条消息；残留 worktree 被删除                                                          |
-| WT-21 | 创建中关闭窗口 / 退出应用                                           | 只有此时确认框出现"正在新 worktree 中启动的任务"一行；没有创建中的记录时行为不变                                  |
-| WT-22 | 无任务使用、但有改动的残留 worktree                                 | 管理弹窗允许强制删除，确认框写明会丢弃改动                                                                        |
-| WT-23 | worktree 任务中打开 Git 菜单、diff、文件树、终端、编辑器            | 都作用在 worktree 上，不作用在项目主目录                                                                          |
-| WT-24 | 新版本创建 worktree 任务后，退回旧版本，再升级                      | 旧版本能打开任务、不报错；"已创建 worktree"在旧版本中不显示；再升级后一切恢复（session-management 降级检查）      |
-| WT-25 | 源仓库已记住某项权限，在 worktree 任务中执行同一操作                | 不再询问；在 worktree 中记住的权限，源仓库也生效                                                                  |
-| WT-26 | 源仓库根目录的 `.worktreeinclude` 列出 `.env`，`.env` 被 git 忽略   | 新 worktree 中出现同样的 `.env`；日志显示 `Copied 1 file from .worktreeinclude`                                   |
-| WT-27 | 源仓库没有 `.worktreeinclude`                                       | 不拷贝任何被忽略的文件                                                                                            |
-| WT-28 | 匹配的条目中有符号链接，或某个文件无法读取                          | 符号链接被跳过；无法读取的文件使创建失败，错误中写明路径，可以重试                                                |
-| WT-29 | 父任务 cwd 有已暂存、未暂存改动和未跟踪文件时"在新 worktree 中分叉" | 新 worktree 中三类改动都在，暂存区划分不变；父目录的 git 状态不变                                                 |
-| WT-30 | 在 worktree 任务中"在当前 worktree 中分叉"                          | 菜单文字为"在当前 worktree 中分叉"；子任务 cwd 是同一个 worktree，任务行有 worktree 图标，头部显示同一 bucket     |
-| WT-31 | 删除 worktree 时其中任务正在运行，或 CLI 卸载会话失败               | 删除被拒绝，目录保留，任务继续运行                                                                                |
-| WT-32 | 删除检查进行中向该 worktree 的任务发送消息                          | 消息被拒绝（worktree.removing），或删除因任务忙被拒绝；不会出现任务在已删除目录中运行                             |
-| WT-33 | 项目另有一个 root 位于源仓库内                                      | worktree 任务的附加目录是 worktree 中对应的路径，不是源仓库中的路径                                               |
-| WT-34 | 勾选 / 取消 worktree 复选框（含主目录处于游离 HEAD）                | composer 头部高度和输入框位置不变；两个分支胶囊的文字一致                                                         |
-| WT-35 | worktree 创建成功切换到会话                                         | 创建视图保留到会话时间线出现第一轮，中间没有空白帧                                                                |
-| WT-36 | 项目路径的大小写与磁盘不同（macOS），CLI 重启后打开 worktree 任务   | 正常冷恢复，可以继续发送                                                                                          |
-| WT-37 | worktree 任务 runtime 卸载后，先打开计划目录、附件或改名            | 冷恢复使用项目 workspace；之后订阅和发送正常                                                                      |
-| WT-38 | worktree 已删除，CLI 重启后查看其任务                               | 可以查看历史（只读）                                                                                              |
-| WT-39 | worktree 任务中使用官方 MCP                                         | 授权头请求通过 Host 路由，工具可用                                                                                |
-| WT-40 | 桌面连接远程项目并在两个目录的任务间切换                             | 本地 worktree 能力保留；创建记录与结束事件仍读取 base Host，远端不收到 `managed-worktrees` 请求；手机/Web 不暴露创建能力 |
+| ID    | 场景                                                                | 预期                                                                                                                     |
+| ----- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| WT-01 | 勾选 worktree 后发送                                                | 发送前不创建任何 worktree；发送后先显示用户消息和进度卡片；任务 cwd 为新 worktree（detached），workspace 仍是项目        |
+| WT-02 | 非 Git 项目、远程项目、手机远控                                     | 不显示 worktree 复选框                                                                                                   |
+| WT-03 | worktree 模式下选择其他分支                                         | 本地 checkout 的分支不变；新 worktree 从该分支检出                                                                       |
+| WT-04 | worktree 任务的附加目录                                             | 不包含源仓库 root；包含项目的其他 roots                                                                                  |
+| WT-05 | 从 assistant 消息"在新 worktree 中分叉"                             | 子任务在同一项目 workspace 中打开，cwd 为新 worktree；对话已复制；父任务不变                                             |
+| WT-06 | CLI 不支持 worktree cwd                                             | worktree 复选框和"在新 worktree 中分叉"禁用                                                                              |
+| WT-07 | 在 worktree 任务中用分支切换器新建分支                              | 分支创建在 worktree 中；本地 checkout 不变                                                                               |
+| WT-08 | 删除一个干净、空闲的 worktree                                       | 目录和 bucket 被删除；相关任务变为只读                                                                                   |
+| WT-09 | 删除有任务使用、且有未提交改动的 worktree                           | 被拒绝；目录保留                                                                                                         |
+| WT-10 | 任务运行中或有终端时删除                                            | 被拒绝；运行不受影响                                                                                                     |
+| WT-11 | 重启 ZCode 后打开 worktree 任务                                     | 冷恢复；第一轮仍显示"已创建 worktree"，可展开                                                                            |
+| WT-12 | 手机远控查看 worktree 任务                                          | 可以查看和对话，能看到"已创建 worktree"；不显示创建入口                                                                  |
+| WT-13 | 并发创建两个 worktree                                               | 得到两个不同的 bucket，互不影响                                                                                          |
+| WT-14 | 起点无效或 `git worktree add` 失败                                  | 卡片显示失败与 git 输出；"放弃"后不留 worktree 和任务行，草稿恢复                                                        |
+| WT-15 | 用户手动删除 worktree 目录                                          | 管理弹窗显示"目录缺失"，"移除记录"后条目消失                                                                             |
+| WT-16 | Windows 上路径包含空格                                              | 创建、打开、删除都正常                                                                                                   |
+| WT-17 | 源仓库已信任某条已提交的 Hook，在 worktree 任务中发送               | 这条 Hook 直接运行，不出现 pending                                                                                       |
+| WT-18 | worktree 中的 Hook 声明与源仓库不同，或反向链接被破坏               | 只有变化的那一条 pending；反向链接被破坏时整体不继承                                                                     |
+| WT-19 | 项目主目录是仓库的子目录                                            | 任务 cwd 为 worktree 中对应的子目录                                                                                      |
+| WT-20 | 创建失败后点"不使用 worktree"                                       | 在项目主目录创建会话并发送首条消息；残留 worktree 被删除                                                                 |
+| WT-21 | 创建中关闭窗口 / 退出应用                                           | 只有此时确认框出现"正在新 worktree 中启动的任务"一行；没有创建中的记录时行为不变                                         |
+| WT-22 | 无任务使用、但有改动的残留 worktree                                 | 管理弹窗允许强制删除，确认框写明会丢弃改动                                                                               |
+| WT-23 | worktree 任务中打开 Git 菜单、diff、文件树、终端、编辑器            | 都作用在 worktree 上，不作用在项目主目录                                                                                 |
+| WT-24 | 新版本创建 worktree 任务后，退回旧版本，再升级                      | 旧版本能打开任务、不报错；"已创建 worktree"在旧版本中不显示；再升级后一切恢复（session-management 降级检查）             |
+| WT-25 | 源仓库已记住某项权限，在 worktree 任务中执行同一操作                | 不再询问；在 worktree 中记住的权限，源仓库也生效                                                                         |
+| WT-26 | 源仓库根目录的 `.worktreeinclude` 列出 `.env`，`.env` 被 git 忽略   | 新 worktree 中出现同样的 `.env`；日志显示 `Copied 1 file from .worktreeinclude`                                          |
+| WT-27 | 源仓库没有 `.worktreeinclude`                                       | 不拷贝任何被忽略的文件                                                                                                   |
+| WT-28 | 匹配的条目中有符号链接，或某个文件无法读取                          | 符号链接被跳过；无法读取的文件使创建失败，错误中写明路径，可以重试                                                       |
+| WT-29 | 父任务 cwd 有已暂存、未暂存改动和未跟踪文件时"在新 worktree 中分叉" | 新 worktree 中三类改动都在，暂存区划分不变；父目录的 git 状态不变                                                        |
+| WT-30 | 在 worktree 任务中"在当前 worktree 中分叉"                          | 菜单文字为"在当前 worktree 中分叉"；子任务 cwd 是同一个 worktree，任务行有 worktree 图标，头部显示同一 bucket            |
+| WT-31 | 删除 worktree 时其中任务正在运行，或 CLI 卸载会话失败               | 删除被拒绝，目录保留，任务继续运行                                                                                       |
+| WT-32 | 删除检查进行中向该 worktree 的任务发送消息                          | 消息被拒绝（worktree.removing），或删除因任务忙被拒绝；不会出现任务在已删除目录中运行                                    |
+| WT-33 | 项目另有一个 root 位于源仓库内                                      | worktree 任务的附加目录是 worktree 中对应的路径，不是源仓库中的路径                                                      |
+| WT-34 | 勾选 / 取消 worktree 复选框（含主目录处于游离 HEAD）                | composer 头部高度和输入框位置不变；两个分支胶囊的文字一致                                                                |
+| WT-35 | worktree 创建成功切换到会话                                         | 创建视图保留到会话时间线出现第一轮，中间没有空白帧                                                                       |
+| WT-36 | 项目路径的大小写与磁盘不同（macOS），CLI 重启后打开 worktree 任务   | 正常冷恢复，可以继续发送                                                                                                 |
+| WT-37 | worktree 任务 runtime 卸载后，先打开计划目录、附件或改名            | 冷恢复使用项目 workspace；之后订阅和发送正常                                                                             |
+| WT-38 | worktree 已删除，CLI 重启后查看其任务                               | 可以查看历史（只读）                                                                                                     |
+| WT-39 | worktree 任务中使用官方 MCP                                         | 授权头请求通过 Host 路由，工具可用                                                                                       |
+| WT-40 | 桌面连接远程项目并在两个目录的任务间切换                            | 本地 worktree 能力保留；创建记录与结束事件仍读取 base Host，远端不收到 `managed-worktrees` 请求；手机/Web 不暴露创建能力 |
 
 视觉验证：深色和浅色主题、中文和英文、桌面宽屏和窄屏。
 

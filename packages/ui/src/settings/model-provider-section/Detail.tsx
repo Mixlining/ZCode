@@ -830,13 +830,13 @@ export function ModelProviderSectionDetail({
           />
           {planModelsVisible ? (
             providerSettingsView && !dedicatedProvider ? (
-            <PresetProviderPlaceholderCard
-              displayName={selectedNavItem.providerName}
-              messageId="settings.modelProvider.accountProviderConfigMissing"
-            />
-          ) : !selectedNavItem.provider ||
-            selectedNavItem.provider.providerId !== selectedNavItem.presetId ? (
-            <ModelProviderLoadingCard loadingLabel={loadingLabel} />
+              <PresetProviderPlaceholderCard
+                displayName={selectedNavItem.providerName}
+                messageId="settings.modelProvider.accountProviderConfigMissing"
+              />
+            ) : !selectedNavItem.provider ||
+              selectedNavItem.provider.providerId !== selectedNavItem.presetId ? (
+              <ModelProviderLoadingCard loadingLabel={loadingLabel} />
             ) : null
           ) : null}
           {planSupplementalContent}

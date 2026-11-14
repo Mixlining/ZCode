@@ -41,17 +41,17 @@ export async function handleOAuthCallbackSuccess(params: {
   params.setUser(params.result.userInfo);
   params.setOAuthError(null);
   if (params.refreshLatestModelProviderFamilySelection) {
-  try {
+    try {
       const selection = await params.refreshLatestModelProviderFamilySelection(
         params.result.provider,
       );
       if (selection) await params.refreshAppSettings?.();
-  } catch (error) {
+    } catch (error) {
       // 账号已完成登录；自动初始化冲突或权益查询失败不能回滚主身份。
       logger.warn("[Root] OAuth 登录后保留既有连接，初始化未完成", {
         name: error instanceof Error ? error.name : "unknown",
-    });
-  }
+      });
+    }
   }
   // selectedKey 与账号状态收敛后统一刷新 Account Source 与 Registry。
   await params.refreshProviderState();
@@ -202,6 +202,7 @@ export function useRootOAuthEffects({
   useEffect(() => {
     let disposed = false;
     let promptPending = false;
+    if (CODING_PLAN_DISABLED) return;
     const disposable = services.broadcastService.onMessage((message) => {
       if (message.channel !== ZCODE_JWT_INVALID_BROADCAST_CHANNEL || disposed || promptPending) {
         return;
@@ -231,7 +232,14 @@ export function useRootOAuthEffects({
       disposed = true;
       disposable.dispose();
     };
-  }, [intl, onReauthenticationRequired, requestAlert, services.broadcastService, setUser]);
+  }, [
+    intl,
+    onReauthenticationRequired,
+    requestAlert,
+    services.broadcastService,
+    setUser,
+    services.oauthService,
+  ]);
 
   useEffect(() => {
     if (!oauthPollingActive) {

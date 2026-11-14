@@ -7,9 +7,9 @@ import { REMOTE_AGENT_OFFICIAL_PLUGIN_REQUIRED_RELATIVE_PATHS } from "../src/rem
 describe("remote official plugin required paths", () => {
   it("design 覆盖本地 seed 的全部必需路径（7 份 references、4 个脚本、hook）", () => {
     const remote = new Set<string>(REMOTE_AGENT_OFFICIAL_PLUGIN_REQUIRED_RELATIVE_PATHS);
-    const missing = OFFICIAL_DESIGN_REQUIRED_SEED_PATHS.map((path) => `design-plugin/${path}`).filter(
-      (path) => !remote.has(path),
-    );
+    const missing = OFFICIAL_DESIGN_REQUIRED_SEED_PATHS.map(
+      (path) => `design-plugin/${path}`,
+    ).filter((path) => !remote.has(path));
     expect(missing).toEqual([]);
     const seeds: readonly string[] = OFFICIAL_DESIGN_REQUIRED_SEED_PATHS;
     expect(seeds.filter((path) => path.startsWith("skills/design/references/"))).toHaveLength(7);

@@ -89,7 +89,7 @@ App 业务单测已退役，不新增或恢复 App 业务单测 test/spec 或 `c
 - Main 负责窗口、原生操作、进程调度和消息转发，不承载 task/session 业务状态。
 - 每个窗口使用一个 window-scoped Local Host；本地 workspace 共享该 Host。远程 workspace 已硬禁用，不再新建窗口内连接注册表，也不另建 Desktop Remote Host。
 - 手机远控与外部 relay 附件接管已硬禁用（`PHONE_REMOTE_DISABLED`）：不得新增调用 `attachRemoteWorkspaceSessionHost` 的入口，不得恢复 `web-remote-replayable` 的接入语义。
-- `desktop-continuous` 与 `web-remote-replayable` 的区分仅作为保留的协议语义存在；两者均不得接入新的调用方。修改 stream、snapshot 或 queue 时只需覆盖本地链路，但不得删除既有边界判断。
+- `desktop-continuous` 保留为本地链路；新增本地内部调用方（如 Extension Host）只可复用既有 connection scope 的身份、握手和释放边界。禁止为两种模式新增远程 workspace、手机或 relay 接入；`web-remote-replayable` 的既有协议判断保留，不向新增扩展调用方开放。修改 stream、snapshot 或 queue 时只覆盖本地链路，不删除既有边界判断。
 - 已接受的 busy/running 输入由 CLI/runtime `CommandInbox` 串行 admission；Renderer 只保留未提交草稿与 pending optimistic overlay，Host owner/lease 负责路由。
 - 保留 owner/lease、跨 Host 路由和 stale run 防护，不能仅根据单一路径删除边界判断。
 

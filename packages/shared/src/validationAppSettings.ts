@@ -4,7 +4,7 @@ import {
   appToolSearchModeSchema,
   DEFAULT_APP_TOOL_SEARCH_MODE,
 } from "./app-runtime-preferences.js";
-import { SUPPORTED_LOCALES, type AppSettings } from "./protocol.js";
+import { SUPPORTED_LOCALES } from "./protocol.js";
 import { resolvePersistedUiLocale, resolvePersistedUiLocalePreference } from "./locale.js";
 import { REMOTE_ASSET_INSTALL_MODES } from "./remoteAssetInstallMode.js";
 import { isKnownRemoteResourcePackageId } from "./remoteResourcePackages.js";
@@ -618,10 +618,11 @@ export const appSettingsSchema = z.preprocess(
           migrateCloseToTrayOnWindowsDefault(
             migrateLegacyLocalePreference(
               applyPersistedUiLocaleFields(
-              sanitizeZCodeEndpointOrigin(
-                migrateLegacyWorkspaceSession(
-                  migrateLegacyBuiltinAgentCliProviders(
-                    migrateRemoteBoundaryIntroAcknowledgement(migrateTaskAutoArchiveReset(value)),
+                sanitizeZCodeEndpointOrigin(
+                  migrateLegacyWorkspaceSession(
+                    migrateLegacyBuiltinAgentCliProviders(
+                      migrateRemoteBoundaryIntroAcknowledgement(migrateTaskAutoArchiveReset(value)),
+                    ),
                   ),
                 ),
               ),
@@ -629,7 +630,6 @@ export const appSettingsSchema = z.preprocess(
           ),
         ),
       ),
-    ),
     ),
   appSettingsObjectSchema,
 );

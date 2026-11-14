@@ -2,6 +2,14 @@
 
 ## 产品规则
 
+### v3.18.1 同步约束
+
+- 官方 Composer 语音依赖 OAuth/JWT 与 ASR，属于 Coding Plan/厂商禁用域，不属于目录或自配端点例外。服务装配、renderer 代理、hook 入口与 start/ticket 边界同时关闭，不采集麦克风、不发音频或鉴权请求；原实现/协议/i18n 保留。
+- 新 OAuth 账号可用性、关联资料刷新与失效回调不能读取旧账号或触发迁移。禁用时 Host 不装配 OAuth/反馈服务，不注册其刷新/失效回调；UI 登录 hook、官方 token 操作、账号家族迁移与 Highspeed owner 订阅在调用源头关闭，服务方法保留直接调用守卫。旧凭据原样保留，自配模型的凭据恢复不受影响。
+- 营销资源 registry、营销 service 与专用 Cloud Content service 在装配处跳过，不创建作用域 UUID、缓存或本地 HTTP server；原实现和远端请求守卫保留。手动插件的媒体预览与 Gen UI 使用独立既有服务，保持可用。
+- CLI 新增的 inspector allocation profiler、bundle hash 和样本记录受 MEMORY_DIAGNOSTICS_ENABLED 约束，关闭时不启动；保留 resident session 维护。Data Sync 的全局 Provider 不挂载业务 owner，新增本地会话控制不接入远程 Source 发现。
+- 本地扩展按有效激活需求管理进程与探测，不属于远控或厂商域；规则和人工验收见 `spec/upstream-3.18.1-merge.md`。
+
 ### v3.17.2 同步约束
 
 - 草稿 MCP 页面与设置页独立 `mcp-status` 探测复用本地插件能力，不能借新路由读取旧官方
