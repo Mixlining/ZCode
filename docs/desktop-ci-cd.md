@@ -200,7 +200,7 @@ sockets are minted as random `broker-<hex>.sock` files; do not hard-code
   镜像名称，但最终 ELF 的最高 GLIBC symbol version 不得超过 2.28。`x64` 在这里指 `x86_64` / `amd64`。rpm target 由 fpm 调用
   系统 `rpmbuild` 产出（fpm 预编译二进制不自带），rpm 默认 xz 压缩还依赖系统 `xz`；job 兜底
   安装同时覆盖两者（`rpm` + `xz-utils`），镜像建议预装以避免每次打包现场补装。
-- `build:windows:x64` / `build:windows:arm64` 需要带 `windows` tag 的 runner，并预装 Node.js、Python 3.10+、Visual Studio Build Tools 2022（含 `VC.Tools.x86.x64`）；当前由 x64 Windows runner 交叉生成 arm64 Electron/NSIS 安装包。arm64 job 会按目标架构重新编译 CUA 原生 addon，因此**始终**要求 VS 2022 的 `VC.Tools.ARM64` 组件（不再只在 `ugrep` 补产分支下要求）。共享 deps 缺少对应 `ugrep` 归档且允许补产时，runner 还必须提供 CMake、`curl` 和 `tar`；已有归档的普通打包路径不因这条冷启动分支额外要求这些 native-search producer 命令。
+- `build:windows:x64` / `build:windows:arm64` 需要带 `windows` tag 的 runner，并预装 Node.js、Python 3.10+、Visual Studio Build Tools 2022 或 2026（含 `VC.Tools.x86.x64`；CMake generator 由 `scripts/windows-visual-studio.mjs` 按 vswhere 自动选择，可用 `ZCODE_WINDOWS_CMAKE_GENERATOR` 覆盖）；当前由 x64 Windows runner 交叉生成 arm64 Electron/NSIS 安装包。arm64 job 会按目标架构重新编译 CUA 原生 addon，因此**始终**要求对应 VS 版本的 `VC.Tools.ARM64` 组件（不再只在 `ugrep` 补产分支下要求）。共享 deps 缺少对应 `ugrep` 归档且允许补产时，runner 还必须提供 CMake、`curl` 和 `tar`；已有归档的普通打包路径不因这条冷启动分支额外要求这些 native-search producer 命令。
 - Windows 打包前会执行 `scripts/ci-ensure-node-gyp-python.ps1` 与 `scripts/ci-import-vcvars64.ps1`，确保 `node-gyp` / `electron-rebuild` 的编译环境完整
   三个平台的正式打包 job 都不得调用 runtime 行为 E2E。native-search 的 Bash toolcall E2E 和 SEA 单文件 runtime-tools E2E 继续保留为独立测试命令；其中 SEA 只验证 CLI 单文件交付，不是 desktop Electron 打包的前置条件。
 

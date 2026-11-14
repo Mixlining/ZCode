@@ -4,6 +4,10 @@ import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promi
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import {
+  DEFAULT_WINDOWS_CMAKE_GENERATOR,
+  resolveWindowsCmakeGenerator,
+} from "./windows-visual-studio.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const source = join(root, "scripts/windows-runtime-host");
@@ -12,13 +16,14 @@ export function resolveRuntimeHostBuild(
   arch,
   hostPlatform = process.platform,
   compiler = process.env.ZCODE_WINDOWS_CXX,
+  generator = DEFAULT_WINDOWS_CMAKE_GENERATOR,
 ) {
   if (arch !== "x64" && arch !== "arm64")
     throw new Error(`Unsupported runtime host architecture: ${arch}`);
   return {
     configureArgs:
       hostPlatform === "win32"
-        ? ["-G", "Visual Studio 17 2022", "-A", arch === "arm64" ? "ARM64" : "x64"]
+        ? ["-G", generator, "-A", arch === "arm64" ? "ARM64" : "x64"]
         : [
             "-DCMAKE_SYSTEM_NAME=Windows",
             `-DCMAKE_CXX_COMPILER=${compiler || (arch === "arm64" ? "aarch64-w64-mingw32-clang++" : "x86_64-w64-mingw32-g++")}`,
@@ -75,7 +80,12 @@ export async function isRuntimeHostReady(outputDir, arch) {
 }
 
 export async function buildRuntimeHost({ arch, outputDir }) {
-  const plan = resolveRuntimeHostBuild(arch);
+  const plan = resolveRuntimeHostBuild(
+    arch,
+    process.platform,
+    process.env.ZCODE_WINDOWS_CXX,
+    resolveWindowsCmakeGenerator(),
+  );
   const work = await mkdtemp(join(tmpdir(), "zcode-runtime-host-"));
   try {
     await run(["-S", source, "-B", work, ...plan.configureArgs, "-DCMAKE_BUILD_TYPE=Release"]);

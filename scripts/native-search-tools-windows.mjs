@@ -10,6 +10,10 @@ import {
 } from "./native-search-tools-config.mjs";
 import { downloadAndExtractSources, run } from "./native-search-tools-process.mjs";
 import { verifyBuiltNativeSearchProducerOutputs } from "./native-search-tools-verify.mjs";
+import {
+  DEFAULT_WINDOWS_CMAKE_GENERATOR,
+  resolveWindowsCmakeGenerator,
+} from "./windows-visual-studio.mjs";
 
 const windowsCmakeProject = resolve(import.meta.dirname, "native-search-tools-windows");
 
@@ -23,6 +27,7 @@ export function resolveNativeWindowsBuildConfig({
   hostPlatform = process.platform,
   hostArch = process.arch,
   env = process.env,
+  generator = DEFAULT_WINDOWS_CMAKE_GENERATOR,
 } = {}) {
   const normalizedPlatform = normalizeNativeSearchPlatform(platform);
   const normalizedArch = normalizeNativeSearchArch(arch);
@@ -40,7 +45,7 @@ export function resolveNativeWindowsBuildConfig({
   return {
     arch: normalizedArch,
     cmake: env.CMAKE?.trim() || "cmake",
-    generator: "Visual Studio 17 2022",
+    generator,
     generatorArchitecture: normalizedArch === "arm64" ? "ARM64" : "x64",
     hostArch: normalizedHostArch,
     platform: normalizedPlatform,
@@ -64,6 +69,7 @@ export function buildNativeSearchToolsWindows({
     hostPlatform,
     hostArch,
     env: processEnv,
+    generator: resolveWindowsCmakeGenerator({ env: processEnv }),
   });
   const plan = resolveNativeSearchBuildPlan({
     platform: config.platform,

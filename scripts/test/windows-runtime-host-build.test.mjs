@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { resolveRuntimeHostBuild, verifyRuntimeHostPe } from "../build-windows-runtime-host.mjs";
+import {
+  resolveWindowsCmakeGenerator,
+  resolveWindowsCmakeGeneratorFromVsVersion,
+} from "../windows-visual-studio.mjs";
 
 test("Windows builds both supported architectures with the matching MSVC target", () => {
   assert.deepEqual(resolveRuntimeHostBuild("x64", "win32").configureArgs, [
@@ -15,7 +19,48 @@ test("Windows builds both supported architectures with the matching MSVC target"
     "-A",
     "ARM64",
   ]);
+  assert.deepEqual(
+    resolveRuntimeHostBuild("x64", "win32", undefined, "Visual Studio 18 2026").configureArgs,
+    ["-G", "Visual Studio 18 2026", "-A", "x64"],
+  );
   assert.throws(() => resolveRuntimeHostBuild("ia32", "win32"), /architecture/);
+});
+test("Windows generator follows the installed Visual Studio major", () => {
+  assert.equal(
+    resolveWindowsCmakeGeneratorFromVsVersion("18.11.12328.437"),
+    "Visual Studio 18 2026",
+  );
+  assert.equal(resolveWindowsCmakeGeneratorFromVsVersion("17.14.36518.9"), "Visual Studio 17 2022");
+  assert.equal(resolveWindowsCmakeGeneratorFromVsVersion(""), null);
+  assert.equal(
+    resolveWindowsCmakeGenerator({
+      platform: "win32",
+      env: { ProgramFiles: "C:\\definitely-missing" },
+      vswhere: "vswhere.exe",
+      execFileSync: () => "18.11.12328.437\r\n",
+    }),
+    "Visual Studio 18 2026",
+  );
+  assert.equal(
+    resolveWindowsCmakeGenerator({
+      platform: "win32",
+      env: { ProgramFiles: "C:\\definitely-missing" },
+      vswhere: "vswhere.exe",
+      execFileSync: () => "",
+    }),
+    "Visual Studio 17 2022",
+  );
+  assert.equal(
+    resolveWindowsCmakeGenerator({
+      platform: "win32",
+      env: { ZCODE_WINDOWS_CMAKE_GENERATOR: "Custom VS" },
+    }),
+    "Custom VS",
+  );
+  assert.equal(
+    resolveWindowsCmakeGenerator({ platform: "linux", env: {} }),
+    "Visual Studio 17 2022",
+  );
 });
 test("cross builds explicitly select a Windows compiler", () => {
   assert.ok(

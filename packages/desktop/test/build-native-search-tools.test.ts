@@ -797,6 +797,15 @@ describe("native search build", () => {
       generatorArchitecture: "ARM64",
       platform: "win32",
     });
+    const vs2026Config = resolveNativeWindowsBuildConfig({
+      platform: "win32",
+      arch: "x64",
+      hostPlatform: "win32",
+      hostArch: "x64",
+      env: {},
+      generator: "Visual Studio 18 2026",
+    });
+    expect(vs2026Config.generator).toBe("Visual Studio 18 2026");
     expect(x64Config).not.toHaveProperty("cargo");
     expect(arm64Config).not.toHaveProperty("cargo");
     expect(windowsNativeSearchCmake).toMatch(

@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { test } from "node:test";
 import { resolveRuntimeHostBuild, verifyRuntimeHostPe } from "../build-windows-runtime-host.mjs";
+import { resolveWindowsCmakeGenerator } from "../windows-visual-studio.mjs";
 
 const source = resolve(import.meta.dirname, "../windows-runtime-host");
 const logName = "ZCode-process-cleanup.log";
@@ -121,7 +122,12 @@ test(
     t.after(() => rm(work, { recursive: true, force: true, maxRetries: 3 }));
     const build = join(work, "build");
     const arch = process.arch;
-    const plan = resolveRuntimeHostBuild(arch);
+    const plan = resolveRuntimeHostBuild(
+      arch,
+      process.platform,
+      process.env.ZCODE_WINDOWS_CXX,
+      resolveWindowsCmakeGenerator(),
+    );
     for (const args of [
       ["-S", source, "-B", build, ...plan.configureArgs, "-DCMAKE_BUILD_TYPE=Release"],
       [

@@ -84,6 +84,7 @@ node packages/desktop/scripts/bundle.mjs --verify-only --os win --arch x64
 ## 已知边界
 
 - **只覆盖 Windows x64**：不产出 macOS/Linux 包，也不做 macOS 签名与公证（仓库的 `notarize: false` 是刻意设置，另需独立签名流程）。
+- **Windows runner 使用 Visual Studio 2026**：`windows-latest` 已迁移到 VS 2026（v18）。runtime host 与 native-search producer 的 CMake generator 由 `scripts/windows-visual-studio.mjs` 按 vswhere 自动选择；本地 VS 2022 仍可用，必要时用 `ZCODE_WINDOWS_CMAKE_GENERATOR` 覆盖。
 - **远程工作区依赖运行时的 CDN**：安装包不含远端运行时资产，部署到远端主机时按 `ZCODE_REMOTE_ASSET_CDN_BASE_URL` 拉取对应平台的运行时。若你要部署的版本在目标 CDN 上不存在，需要自备分发源（用 `ZCODE_REMOTE_ASSET_CDN_BASE_URL` 覆盖，或先跑 `bootstrap:with-remote` 生成 `mock-cdn` 自行分发）。
 - **不覆盖手机/浏览器远控链路**（`server` + `web`）：那是另一条分发通道（`pnpm build:zcode`），本工作流不涉及。
 - **远端资产、远端 Node 版本**：`prepare:remote-assets` 会下载各平台 Node 与 node-pty 预编译产物，本次已显式跳过；若将来要出内嵌远端资产的包，去掉 `ZCODE_SKIP_REMOTE_ASSETS` 并预留更长超时。
