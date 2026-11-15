@@ -2,6 +2,11 @@
 
 ## 产品规则
 
+### v3.18.2 同步约束
+
+- 国内无关联登录新增的 Start Plan 材料、共享 JWT、家族 current 投影均归入 Coding Plan 永久禁用域。装配处不构造账号解析器或缓存；新材料读取及请求解析的直接调用也在读取旧 OAuth 凭据之前返回。保留原实现，不新增禁用版服务；自配模型与本地凭据能力不受影响。
+- 本地系统凭据的数据根登记与 Linux 私有文件 fallback 不属于官方账号或 Data Sync；按 credential-security 合同保留。完整边界与人工验收见 `spec/upstream-3.18.2-merge.md`。
+
 ### v3.18.1 同步约束
 
 - 官方 Composer 语音依赖 OAuth/JWT 与 ASR，属于 Coding Plan/厂商禁用域，不属于目录或自配端点例外。服务装配、renderer 代理、hook 入口与 start/ticket 边界同时关闭，不采集麦克风、不发音频或鉴权请求；原实现/协议/i18n 保留。

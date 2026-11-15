@@ -1552,6 +1552,11 @@ export function createLocalServices(options: {
   });
   const loadOAuthAccountMaterial = (family: ProviderFamilyDomain) =>
     CODING_PLAN_DISABLED ? Promise.resolve(null) : oauthCredentialRepo.loadFamilyMaterial(family);
+  // Start 与付费套餐分开取材料：国内无关联账号只有 Start 材料（ZCode 主体与共享 JWT）。
+  const loadStartPlanMaterial = (family: ProviderFamilyDomain) =>
+    CODING_PLAN_DISABLED
+      ? Promise.resolve(null)
+      : oauthCredentialRepo.loadStartPlanMaterial(family);
   const loadOAuthFamilyTokenSet = async (providerId: string) => {
     if (providerId !== ZAI_PROVIDER_ID && providerId !== BIGMODEL_PROVIDER_ID) return null;
     const account = await loadOAuthAccountMaterial(providerId);
@@ -1565,28 +1570,37 @@ export function createLocalServices(options: {
         }
       : null;
   };
-  const projectTokenClient = createAccountProjectTokenClient(apiClient, credentialService);
-  invalidateProjectTokens = () => projectTokenClient.clear();
-  const accountProviderApiKeyRemoteClient = new AccountProviderApiClient(apiClient);
-  const accountProviderApiKeyResolver = new AccountProviderApiKeyResolver(
-    accountProviderApiKeyRemoteClient.fetchRemoteData.bind(accountProviderApiKeyRemoteClient),
-    projectTokenClient,
-  );
-  const accountProviderCredentialService = createAccountProviderCredentialService({
-    loadOAuthAccountMaterial,
-    resolveProviderMaterial: (
-      family,
-      accessToken,
-      accountIdentity,
-      rejectedProjectTokenFingerprint,
-    ) =>
-      accountProviderApiKeyResolver.resolveProviderMaterial(
-        family === "zai" ? ZAI_PROVIDER_ID : BIGMODEL_PROVIDER_ID,
-        accessToken,
-        accountIdentity,
-        rejectedProjectTokenFingerprint,
-      ),
-  });
+  // 官方账号禁用时不构造 Token/并发缓存；自配模型仍使用共享 credentialService。
+  const projectTokenClient = CODING_PLAN_DISABLED
+    ? null
+    : createAccountProjectTokenClient(apiClient, credentialService);
+  if (projectTokenClient) invalidateProjectTokens = () => projectTokenClient.clear();
+  const accountProviderApiKeyRemoteClient = CODING_PLAN_DISABLED
+    ? null
+    : new AccountProviderApiClient(apiClient);
+  const accountProviderApiKeyResolver = CODING_PLAN_DISABLED
+    ? null
+    : new AccountProviderApiKeyResolver(
+        accountProviderApiKeyRemoteClient!.fetchRemoteData.bind(accountProviderApiKeyRemoteClient),
+        projectTokenClient!,
+      );
+  const accountProviderCredentialService = CODING_PLAN_DISABLED
+    ? null
+    : createAccountProviderCredentialService({
+        loadOAuthAccountMaterial,
+        resolveProviderMaterial: (
+          family,
+          accessToken,
+          accountIdentity,
+          rejectedProjectTokenFingerprint,
+        ) =>
+          accountProviderApiKeyResolver!.resolveProviderMaterial(
+            family === "zai" ? ZAI_PROVIDER_ID : BIGMODEL_PROVIDER_ID,
+            accessToken,
+            accountIdentity,
+            rejectedProjectTokenFingerprint,
+          ),
+      });
   const resolveLegacyTeamOrganization = createLegacyTeamOrganizationResolver({
     apiClient,
     loadOAuthTokenSet: loadOAuthFamilyTokenSet,
@@ -1606,39 +1620,44 @@ export function createLocalServices(options: {
   };
   const loadAccountIdentity = async (family: ProviderFamilyDomain) =>
     (await loadOAuthAccountMaterial(family))?.accountIdentity ?? null;
-  const accountRequestAuthService = createAccountRequestAuthService(
-    createAccountProviderRequestAuthService({
-      resolveCurrentAccountAccess: (access) =>
-        resolveCurrentAccountAccess({
-          access,
-          readSettings: readAccountProviderSettings,
-          loadAccountIdentity,
+  const accountRequestAuthService = CODING_PLAN_DISABLED
+    ? undefined
+    : createAccountRequestAuthService(
+        createAccountProviderRequestAuthService({
+          resolveCurrentAccountAccess: (access) =>
+            resolveCurrentAccountAccess({
+              access,
+              readSettings: readAccountProviderSettings,
+              loadAccountIdentity,
+              loadStartPlanMaterial,
+            }),
+          loadOAuthTokenSet: loadOAuthFamilyTokenSet,
+          loadStartPlanZcodeJwt: async (family) =>
+            (await loadStartPlanMaterial(family))?.zcodeJwtToken ?? null,
+          async loadIndividualPlanMaterial(providerId, family, rejectedProjectTokenFingerprint) {
+            const accountIdentity = (await loadOAuthAccountMaterial(family))?.accountIdentity;
+            if (!accountIdentity) return null;
+            return accountProviderCredentialService!.loadCodingPlanMaterial({
+              providerId,
+              family,
+              accountIdentity,
+              rejectedProjectTokenFingerprint,
+            });
+          },
+          resolveTeamPlanMaterial: async (access, rejectedProjectTokenFingerprint) => {
+            const accountIdentity = await loadAccountIdentity(access.family);
+            if (!accountIdentity) return null;
+            return resolveAccountTeamPlanRuntimeMaterial({
+              apiClient,
+              loadOAuthAccountMaterial,
+              access,
+              accountIdentity,
+              tokenClient: projectTokenClient!,
+              rejectedProjectTokenFingerprint,
+            });
+          },
         }),
-      loadOAuthTokenSet: loadOAuthFamilyTokenSet,
-      async loadIndividualPlanMaterial(providerId, family, rejectedProjectTokenFingerprint) {
-        const accountIdentity = (await loadOAuthAccountMaterial(family))?.accountIdentity;
-        if (!accountIdentity) return null;
-        return accountProviderCredentialService.loadCodingPlanMaterial({
-          providerId,
-          family,
-          accountIdentity,
-          rejectedProjectTokenFingerprint,
-        });
-      },
-      resolveTeamPlanMaterial: async (access, rejectedProjectTokenFingerprint) => {
-        const accountIdentity = await loadAccountIdentity(access.family);
-        if (!accountIdentity) return null;
-        return resolveAccountTeamPlanRuntimeMaterial({
-          apiClient,
-          loadOAuthAccountMaterial,
-          access,
-          accountIdentity,
-          tokenClient: projectTokenClient,
-          rejectedProjectTokenFingerprint,
-        });
-      },
-    }),
-  );
+      );
   const providerConfigLog = createServiceLogger("provider-config");
   const clientConfigPlatform = resolveClientConfigPlatform();
   const providerConfigRuntime = createProviderConfigRuntime({
@@ -1685,27 +1704,31 @@ export function createLocalServices(options: {
     // Repository 仅在新 Personal 配置不存在时导入，并保留旧文件以便回滚。
     readLegacyProviders: () => readLegacyZCodeConfigProviders(),
   });
-  const accountProviderConfigSource = createAccountProviderConfigSource({
-    loadSessionRevision: async () =>
-      (await oauthCredentialRepo.loadSessionSnapshot())[OAUTH_SESSION_REVISION_KEY] ?? null,
-    configSource: providerConfigRuntime.configService,
-    readSettings: readAccountProviderSettings,
-    async loadCodingPlanApiKey(providerId, family, accountIdentity, forceRefresh) {
-      if (isStartPlanModelProviderId(providerId)) return null;
-      return accountProviderCredentialService.loadCodingPlanApiKey({
-        providerId,
-        family,
-        accountIdentity,
-        forceRefresh,
+  const accountProviderConfigSource = CODING_PLAN_DISABLED
+    ? undefined
+    : createAccountProviderConfigSource({
+        loadSessionRevision: async () =>
+          (await oauthCredentialRepo.loadSessionSnapshot())[OAUTH_SESSION_REVISION_KEY] ?? null,
+        configSource: providerConfigRuntime.configService,
+        readSettings: readAccountProviderSettings,
+        async loadCodingPlanApiKey(providerId, family, accountIdentity, forceRefresh) {
+          if (isStartPlanModelProviderId(providerId)) return null;
+          return accountProviderCredentialService!.loadCodingPlanApiKey({
+            providerId,
+            family,
+            accountIdentity,
+            forceRefresh,
+          });
+        },
+        loadAccountIdentity,
+        loadStartPlanMaterial,
+        resolveFamilyAvailability: createCodingPlanFamilyAvailabilityResolver({
+          apiClient,
+          credentialService,
+          loadOAuthAccountMaterial,
+          loadStartPlanMaterial,
+        }),
       });
-    },
-    loadAccountIdentity,
-    resolveFamilyAvailability: createCodingPlanFamilyAvailabilityResolver({
-      apiClient,
-      credentialService,
-      loadOAuthAccountMaterial,
-    }),
-  });
   const accountProviderRuntimeLog = createServiceLogger("account-provider-runtime");
   const modelSelectionConfiguredDefaultSource = new NodeModelSelectionConfigRepository({
     personalRepository: providerConfigRuntime.personalRepository,
@@ -1734,11 +1757,13 @@ export function createLocalServices(options: {
       }
     }),
   ];
-  const disposeAccountProviderInvalidation = bindAccountProviderInvalidation({
-    onDidUpdateSetting: (listener) => settingService.onDidUpdate(listener),
-    refresh: (reason) => accountProviderConfigSource.refresh(reason),
-  });
-  const accountProviderRefreshErrorDispose = accountProviderConfigSource.onDidRefreshError(
+  const disposeAccountProviderInvalidation = accountProviderConfigSource
+    ? bindAccountProviderInvalidation({
+        onDidUpdateSetting: (listener) => settingService.onDidUpdate(listener),
+        refresh: (reason) => accountProviderConfigSource.refresh(reason),
+      })
+    : undefined;
+  const accountProviderRefreshErrorDispose = accountProviderConfigSource?.onDidRefreshError(
     (event) => {
       accountProviderRuntimeLog.warn(undefined, "account provider source refresh failed", {
         error: event.error,
@@ -1764,32 +1789,36 @@ export function createLocalServices(options: {
       },
     }),
     disposeAccountSource: () => {
-      disposeAccountProviderInvalidation();
-      accountProviderRefreshErrorDispose();
-      accountProviderConfigSource.dispose();
+      disposeAccountProviderInvalidation?.();
+      accountProviderRefreshErrorDispose?.();
+      accountProviderConfigSource?.dispose();
     },
   });
-  handleOAuthProviderLogout = createOAuthProviderLogoutHandler({
-    accountProviderCredentialStore,
-    refreshAccountProviders: (reason: string) => accountProviderConfigSource.refresh(reason),
-  });
+  handleOAuthProviderLogout = accountProviderConfigSource
+    ? createOAuthProviderLogoutHandler({
+        accountProviderCredentialStore,
+        refreshAccountProviders: (reason: string) => accountProviderConfigSource.refresh(reason),
+      })
+    : null;
   const sourceServerWorkspaceService =
     options.sourceServerWorkspaceService ?? createSourceServerWorkspaceService();
   // 官方 Server MCP 的凭证解析源。MCP 调用的身份头与 MCP 额度查询（/api/v1/mcp/usage）
   // 必须共用这一份实现，否则两处对"当前选中的 Coding Plan 连接"的判定会分叉。
   // 额度侧注入的是凭证解析而非 resolveHeaders：归属校验需要 providerFamily，
   // 而身份头里没有 family；身份头仍由同一个 buildOfficialMcpAuthHeaders 构造。
-  const officialMcpCredentialSource = {
-    resolve: () =>
-      resolveOfficialMcpCredentials({
-        accountRequestAuthService,
-        getRegistryRevision: () =>
-          providerRuntime.registryService.getSnapshot()?.registry.revision ?? null,
-        loadOAuthIdentityMaterial: () => oauthCredentialRepo.loadIdentityMaterial(),
-        loadOAuthAccountMaterial,
-        modelSelectionService: providerRuntime.modelSelection,
-      }),
-  };
+  const officialMcpCredentialSource = accountRequestAuthService
+    ? {
+        resolve: () =>
+          resolveOfficialMcpCredentials({
+            accountRequestAuthService,
+            getRegistryRevision: () =>
+              providerRuntime.registryService.getSnapshot()?.registry.revision ?? null,
+            loadOAuthIdentityMaterial: () => oauthCredentialRepo.loadIdentityMaterial(),
+            loadOAuthAccountMaterial,
+            modelSelectionService: providerRuntime.modelSelection,
+          }),
+      }
+    : undefined;
   // mcpSync/hooks 里引用 zcodeAgentService 的闭包是惰性调用，声明顺序不影响初始化。
   const skillsService = createSkillsService({ isDesktopRuntime: true });
   const mcpSyncService = createMcpSyncService({
@@ -2427,9 +2456,13 @@ export function createLocalServices(options: {
     ...(agentAccountProviderConfigSource
       ? { accountProviderConfigSource: agentAccountProviderConfigSource }
       : {}),
-    accountRequestAuthService,
-    readRequestVerificationConfig: () =>
-      codingPlanSubscriptionService.getRequestVerificationConfig(),
+    ...(accountRequestAuthService
+      ? {
+          accountRequestAuthService,
+          readRequestVerificationConfig: () =>
+            codingPlanSubscriptionService.getRequestVerificationConfig(),
+        }
+      : { accountRequestAuthService: undefined, readRequestVerificationConfig: undefined }),
     ...(modelSelectionReadinessSource ? { modelSelectionReadinessSource } : {}),
     authorizeLocalMediaPreviewPath: options?.authorizeLocalMediaPreviewPath,
     ...offPeakToolWiring,
@@ -2507,7 +2540,7 @@ export function createLocalServices(options: {
     officialMcpAuthHeadersResolver: CODING_PLAN_DISABLED
       ? undefined
       : createOfficialMcpAuthHeadersResolver({
-          accountRequestAuthService,
+          accountRequestAuthService: accountRequestAuthService!,
           getRegistryRevision: () =>
             providerRuntime.registryService.getSnapshot()?.registry.revision ?? null,
           loadOAuthIdentityMaterial: () => oauthCredentialRepo.loadIdentityMaterial(),
@@ -2849,7 +2882,7 @@ export function createLocalServices(options: {
     : createOAuthService(credentialService, {
         captureCredentialGuard: () => credentialService.captureRecoveryGuard(),
         apiClient,
-        onProviderLogout: handleOAuthProviderLogout,
+        onProviderLogout: handleOAuthProviderLogout ?? undefined,
       });
   if (oauthService) {
     associatedProfileRefreshRef.current = async (expected) => {
@@ -2883,7 +2916,7 @@ export function createLocalServices(options: {
         loadOAuthAccountMaterial,
         getRegistryRevision: () =>
           providerRuntime.registryService.getSnapshot()?.registry.revision ?? null,
-        accountRequestAuthService,
+        accountRequestAuthService: accountRequestAuthService!,
         resolveAccountProvider: async () => {
           await providerRuntime.start();
           // start 缓存的是首次就绪；账号后到或切换后必须读 Registry 最近完成的快照。
@@ -2898,7 +2931,7 @@ export function createLocalServices(options: {
           const provider = providers[0]!;
           const config = provider.config;
           const staticAccess = zcodeProviderAccountAccessSchema.parse(config.access.toJSON());
-          const access = await accountRequestAuthService.resolveAccessCurrent(staticAccess);
+          const access = await accountRequestAuthService!.resolveAccessCurrent(staticAccess);
           if (!access) return null;
           return {
             providerId: provider.providerId,
@@ -3338,7 +3371,8 @@ export function createLocalServices(options: {
   // Helper 懒启动：不预热——Helper 由 SDK 首次 CUA 调用拉起（spawn env 注入
   // 稳定 socket），或用户显式授权流（restartHelper）拉起。启动即零 Helper 常驻。
 
-  accountRequestAuthServices.set(services, accountRequestAuthService);
+  if (accountRequestAuthService)
+    accountRequestAuthServices.set(services, accountRequestAuthService);
   if (buildOffPeakRequestAuthForTicket) {
     offPeakRequestAuthBuilders.set(services, buildOffPeakRequestAuthForTicket);
   }
@@ -3375,13 +3409,16 @@ export function createLocalServices(options: {
   services
     .register(IProviderSettingsService, providerRuntime.providerSettings)
     .register(IModelSelectionService, providerRuntime.modelSelection);
-  if (isDesktopAttachedRemote || options.providerProvisioningTargetEnabled === true) {
+  if (
+    !DATA_SYNC_DISABLED &&
+    (isDesktopAttachedRemote || options.providerProvisioningTargetEnabled === true)
+  ) {
     services.register(
       IProviderProvisioningTargetService,
       createProviderProvisioningTarget({
         providerRuntime,
         personalRepository: providerConfigRuntime.personalRepository,
-        accountProviderSource: accountProviderConfigSource,
+        accountProviderSource: accountProviderConfigSource!,
         credentialService,
         settingService,
         personalConfigFilePath: join(resolveAppConfigDir(), PERSONAL_PROVIDER_CONFIG_FILE_NAME),

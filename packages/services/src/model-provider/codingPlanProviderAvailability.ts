@@ -2,6 +2,7 @@
 import {
   ApiError,
   BIGMODEL_PROVIDER_ID,
+  CODING_PLAN_DISABLED,
   buildBigModelApiUrl,
   buildRuntimeZaiBusinessUrl,
   resolveBigModelApiOrigin,
@@ -10,7 +11,10 @@ import {
   type ProviderFamilyDomain,
   type ProviderFamilyConnectionSelectionSettings,
 } from "@zcode/shared";
-import type { OAuthAccountMaterial } from "#src/oauth/repo/oauthCredentialRepo.js";
+import type {
+  OAuthAccountMaterial,
+  OAuthStartPlanMaterial,
+} from "#src/oauth/repo/oauthCredentialRepo.js";
 import { type BigModelTeamPlanBizContext } from "#src/bigmodel/teamPlanApiKey.js";
 import {
   fetchPersonalCodingPlanEntitlement,
@@ -55,6 +59,8 @@ interface CodingPlanAvailabilityCredentialService {
 interface CodingPlanAvailabilityContext {
   apiClient?: ApiClient;
   accountMaterial?: OAuthAccountMaterial | null;
+  /** Start 只用共享 ZCode JWT；与付费套餐材料分开，无关联的国内账号也能解析。 */
+  startPlanMaterial?: OAuthStartPlanMaterial | null;
   credentialService?: CodingPlanAvailabilityCredentialService;
   providerFamilyConnectionSelections?: ProviderFamilyConnectionSelectionSettings;
 }
@@ -104,6 +110,8 @@ export async function validateCodingPlanProviderAvailability(
   provider: CodingPlanAvailabilityProvider,
   context: CodingPlanAvailabilityContext,
 ): Promise<CodingPlanAvailabilityResult> {
+  // 公共校验入口也须关闭；Start 新增共享 JWT 不能绕过装配守卫恢复额度请求。
+  if (CODING_PLAN_DISABLED) return { kind: "unavailable", reason: "coding_plan_not_connected" };
   if (!context.apiClient) {
     return { kind: "unknown" };
   }
@@ -131,6 +139,7 @@ export async function validateZaiAccountProviderAvailability(
   providers: readonly CodingPlanAvailabilityProvider[],
   context: CodingPlanAvailabilityContext,
 ): Promise<Partial<Record<string, CodingPlanAvailabilityResult>>> {
+  if (CODING_PLAN_DISABLED) return {};
   const startProvider = findAvailabilityProvider(providers, "zai", "start-plan");
   const individualProvider = findAvailabilityProvider(providers, "zai", "individual-coding-plan");
   const teamProvider = findAvailabilityProvider(providers, "zai", "team-coding-plan");
@@ -147,6 +156,7 @@ export async function validateBigModelAccountProviderAvailability(
   providers: readonly CodingPlanAvailabilityProvider[],
   context: CodingPlanAvailabilityContext,
 ): Promise<Partial<Record<string, CodingPlanAvailabilityResult>>> {
+  if (CODING_PLAN_DISABLED) return {};
   const startProvider = findAvailabilityProvider(providers, "bigmodel", "start-plan");
   const individualProvider = findAvailabilityProvider(
     providers,
@@ -450,8 +460,8 @@ async function resolveStartPlanAuthorization(
   provider: CodingPlanAvailabilityProvider,
   context: CodingPlanAvailabilityContext,
 ): Promise<StartPlanAuthorization> {
-  if (context.accountMaterial !== undefined) {
-    const jwt = context.accountMaterial?.zcodeJwtToken;
+  if (context.startPlanMaterial !== undefined) {
+    const jwt = context.startPlanMaterial?.zcodeJwtToken;
     return { value: jwt ? `Bearer ${jwt}` : "", missingReason: "coding_plan_not_authenticated" };
   }
   if (provider.family === "bigmodel") {

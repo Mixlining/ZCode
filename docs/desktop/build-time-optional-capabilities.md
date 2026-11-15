@@ -1,44 +1,26 @@
-# 桌面构建期可选能力
+# 桌面厂商能力的构建期硬禁用
 
-## 目标
+本分支永久关闭 ARMS、远程遥测、内存诊断和自动更新。环境变量、私有默认配置、
+运行时设置或远端配置均不能开启这些能力；当前合同以 `spec/vendor-disable.md`、
+`spec/dependency-upgrade-2026-11.md` 和源码编译期常量为准。
 
-三项能力由构建期配置决定是否启用，未配置时一律关闭：
+| 能力               | 当前所有者与边界                                                                                                             |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| ARMS RUM           | 启动模块及专用代码已移除，Main 不初始化 SDK 或更新用户身份                                                                   |
+| 事件上报与内存诊断 | shared/env.ts 的 `ZCODE_TELEMETRY_ENABLED = false`、`MEMORY_DIAGNOSTICS_ENABLED = false`；不创建采样、队列、定时器或网络调用 |
+| 第一方 OTel        | 声明、SDK、exporter 与构建期 OTLP 注入已移除；telemetry 包及 UI wrapper 仅保留 no-op 接口                                    |
+| 自动更新           | `ZCODE_AUTO_UPDATE_ENABLED = false` 与 Main 的 `AUTO_UPDATE_HARD_DISABLED = true`；不检查、不下载、不安装更新                |
 
-| 能力             | 配置项                                           | 关闭时的行为                                                      |
-| ---------------- | ------------------------------------------------ | ----------------------------------------------------------------- |
-| ARMS RUM 上报    | `ZCODE_ARMS_RUM_ENDPOINT`                        | 主进程与渲染进程的 ARMS SDK 以 `enable: false` 初始化，不产生上报 |
-| 事件上报（数仓） | `ZCODE_TELEMETRY_REPORT_ENDPOINT`                | 遥测事件在发送前直接返回                                          |
-| 自动更新         | `ZCODE_AUTO_UPDATE`（`1`、`true`、`yes` 为启用） | 与 Preview 形态相同，不检查、不下载更新                           |
-
-这样同一份源码可以产出“默认不上报、不自动更新”的构建，也可以产出启用这些能力的正式构建，
-不需要在源码里写死上报地址。
-
-## 配置来源与优先级
-
-1. 构建进程的环境变量。显式设置为空字符串表示关闭。
-2. `config/private/build-defaults.json`。只存在于内部仓库，开源导出不包含。
-3. 以上都没有时关闭。
-
-## 所有者与数据流
-
-```
-环境变量 / config/private/build-defaults.json
-        │ scripts/build-time-config.mjs（唯一解析入口）
-        ▼
-desktop tsup（main、host、preload）与 desktop vite（renderer）的 define
-        │ __ZCODE_ARMS_RUM_ENDPOINT__ / __ZCODE_TELEMETRY_REPORT_ENDPOINT__ / __ZCODE_AUTO_UPDATE_ENABLED__
-        ▼
-@zcode/shared env 常量 ── 运行时代码只读这些常量
+```text
+编译期硬编码常量 → 装配处不构造 / 不注册 → 调用入口直接返回
 ```
 
-- 未注入 define 的环境（测试、其他 bundle）得到关闭值；vitest 为测试注入固定的事件上报端点，以便验证上报链路。
-- 自动更新在 Desktop Main 启动时判定：`ZCODE_PRODUCT_FLAVOR === "production" && ZCODE_AUTO_UPDATE_ENABLED`。
-- Agent 的第一方 OTel 遥测已按 `spec/dependency-upgrade-2026-11.md` 移除，不再存在
-  `ZCODE_PACKAGED_AGENT_OTEL_*` 构建期注入或 Main → Host → Agent 的 OTLP 配置传递。
+除已明确移除的模块外，禁用功能的实现、协议与文案保留，以降低上游同步冲突。
+保留实现不代表存在可用入口，也不能新增后台资源。自动更新脚本中的 PowerShell
+签名兼容修复可正常同步，但不改变自动更新的禁用状态。
 
-## 验收
+本地崩溃日志、用户自行配置的模型端点、内置供应商目录和手动插件下载，继续遵守
+各自既有合同与 `spec/vendor-disable.md` 的明确例外。
 
-1. 内部仓库存在私有默认配置时，构建结果与改造前一致：ARMS、事件上报、自动更新均启用，地址不变。
-2. 没有私有默认配置、也没有环境变量时，三项均关闭。
-3. 环境变量优先于私有默认配置，显式空字符串可以关闭单项能力。
-4. 类型检查、Lint 与相关单测通过。
+验收：检查编译期常量、服务装配、Main 启动和调用入口；环境变量或私有配置不能
+改变上述禁用值。执行类型、Lint/Oxlint、格式与架构门禁，运行时场景按合并规格另行验收。

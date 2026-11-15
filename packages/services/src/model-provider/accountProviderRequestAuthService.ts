@@ -2,6 +2,7 @@ import type { RequestVerificationReason } from "@zcode/shared";
 import { createHash } from "node:crypto";
 import {
   BIGMODEL_PROVIDER_ID,
+  CODING_PLAN_DISABLED,
   type OAuthProviderId,
   type ProviderFamilyDomain,
   type ProjectAccessTokenMaterial,
@@ -56,6 +57,8 @@ interface AccountProviderRequestAuthServiceOptions {
     accountIdentity?: string;
     zcodeUserId?: string;
   } | null>;
+  /** Start 只用共享 ZCode JWT；不经过付费套餐的家族 token set。 */
+  loadStartPlanZcodeJwt(family: ProviderFamilyDomain): Promise<string | null>;
   loadIndividualPlanMaterial(
     providerId: string,
     family: ProviderFamilyDomain,
@@ -75,6 +78,7 @@ class AccountProviderRequestAuthService implements AccountRequestAuthResolver {
   }
 
   resolveAccessCurrent(access: ZCodeProviderAccountAccess): Promise<ZCodeAccountAccess | null> {
+    if (CODING_PLAN_DISABLED) return Promise.resolve(null);
     return this.#options.resolveCurrentAccountAccess(access);
   }
 
@@ -84,8 +88,10 @@ class AccountProviderRequestAuthService implements AccountRequestAuthResolver {
     if (!access) throw new AccountRequestCredentialUnavailableError(providerId);
 
     if (access.planKind === "start-plan") {
-      const tokenSet = await this.#options.loadOAuthTokenSet(resolveOAuthProviderId(access.family));
-      return { apiKey: requireApiKey(tokenSet?.zcodeJwtToken, providerId) };
+      // Bug 原因：曾从家族 token set 取 JWT，国内无关联账号没有家族材料，Start 调用拿不到凭据。
+      return {
+        apiKey: requireApiKey(await this.#options.loadStartPlanZcodeJwt(access.family), providerId),
+      };
     }
 
     const scoped = input.reason !== "usage" || input.expectedAccountScope !== undefined;
@@ -149,6 +155,8 @@ class AccountProviderRequestAuthService implements AccountRequestAuthResolver {
   #resolveAccess(
     access: ZCodeProviderAccountAccess | ZCodeAccountAccess,
   ): Promise<ZCodeAccountAccess | null> {
+    // Start JWT 与旧套餐共用拒绝入口；静态 access 也不能绕过禁用直接读取凭据。
+    if (CODING_PLAN_DISABLED) return Promise.resolve(null);
     return "mode" in access
       ? this.#options.resolveCurrentAccountAccess(access)
       : Promise.resolve(access);

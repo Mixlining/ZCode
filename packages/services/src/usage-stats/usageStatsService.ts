@@ -36,7 +36,7 @@ import type { OfficialMcpCredentialSource } from "./providers/zcodeMcpQuotaProvi
 interface UsageStatsServiceDependencies {
   apiClient: ApiClient;
   loadOAuthAccountMaterial(family: "zai" | "bigmodel"): Promise<OAuthAccountMaterial | null>;
-  accountRequestAuthService: Pick<
+  accountRequestAuthService?: Pick<
     IAccountRequestAuthService,
     "resolveAccessCurrent" | "resolveCurrent"
   >;
@@ -176,18 +176,25 @@ function createDisabledUsageStatsSnapshot(request: UsageStatsRequest): UsageStat
 export function createUsageStatsService(
   dependencies: UsageStatsServiceDependencies,
 ): IUsageStatsService {
-  const quotaProvider = new BigModelUsageQuotaProvider({
-    apiClient: dependencies.apiClient,
-    loadOAuthAccountMaterial: dependencies.loadOAuthAccountMaterial,
-    accountRequestAuthService: dependencies.accountRequestAuthService,
-    resolveApiAuthorization: dependencies.resolveApiAuthorization,
-    env: dependencies.env,
-    ...(dependencies.officialMcpCredentialSource
-      ? { officialMcpCredentialSource: dependencies.officialMcpCredentialSource }
-      : {}),
-  });
-  const regularTpsCache = new Map<string, { expiresAt: number; value: number | undefined }>();
-  const regularTpsInFlight = new Map<string, Promise<number | undefined>>();
+  // 套餐硬禁用时不构造 quota provider 与 TPS 缓存；本地 App Usage 仍复用同一服务。
+  const quotaProvider = CODING_PLAN_DISABLED
+    ? null
+    : new BigModelUsageQuotaProvider({
+        apiClient: dependencies.apiClient,
+        loadOAuthAccountMaterial: dependencies.loadOAuthAccountMaterial,
+        accountRequestAuthService: dependencies.accountRequestAuthService!,
+        resolveApiAuthorization: dependencies.resolveApiAuthorization,
+        env: dependencies.env,
+        ...(dependencies.officialMcpCredentialSource
+          ? { officialMcpCredentialSource: dependencies.officialMcpCredentialSource }
+          : {}),
+      });
+  const regularTpsCache = CODING_PLAN_DISABLED
+    ? null
+    : new Map<string, { expiresAt: number; value: number | undefined }>();
+  const regularTpsInFlight = CODING_PLAN_DISABLED
+    ? null
+    : new Map<string, Promise<number | undefined>>();
 
   function regularTpsCacheKey(request: CodingPlanRegularTpsRequest): string {
     return JSON.stringify([
@@ -220,33 +227,35 @@ export function createUsageStatsService(
         // 普通 provider id 不能进入 monitor 链路，避免误读 API Key 或环境变量。
         throw new Error("no_bigmodel_api_key");
       }
-      return quotaProvider.getCodingPlanUsageSnapshot(request);
+      return quotaProvider!.getCodingPlanUsageSnapshot(request);
     },
     async getCodingPlanRegularTps(
       request: CodingPlanRegularTpsRequest,
     ): Promise<number | undefined> {
+      // 原入口遗漏守卫，能绕过其他用量方法的禁用并创建请求/缓存。
+      if (CODING_PLAN_DISABLED) return undefined;
       if (!isCodingPlanProviderId(request.preferredProviderId)) {
         throw new Error("no_bigmodel_api_key");
       }
       const key = regularTpsCacheKey(request);
-      const cached = regularTpsCache.get(key);
+      const cached = regularTpsCache!.get(key);
       if (cached && cached.expiresAt > Date.now()) return cached.value;
-      const existing = regularTpsInFlight.get(key);
+      const existing = regularTpsInFlight!.get(key);
       if (existing) return existing;
 
-      const requestPromise = quotaProvider
+      const requestPromise = quotaProvider!
         .getCodingPlanRegularTps(request)
         .then((value) => {
-          regularTpsCache.set(key, {
+          regularTpsCache!.set(key, {
             expiresAt: Date.now() + CODING_PLAN_REGULAR_TPS_CACHE_MS,
             value,
           });
           return value;
         })
         .finally(() => {
-          regularTpsInFlight.delete(key);
+          regularTpsInFlight!.delete(key);
         });
-      regularTpsInFlight.set(key, requestPromise);
+      regularTpsInFlight!.set(key, requestPromise);
       return requestPromise;
     },
     async getCodingPlanResetStatus(
@@ -265,7 +274,7 @@ export function createUsageStatsService(
       if (!isCodingPlanProviderId(request.preferredProviderId)) {
         throw new Error("no_bigmodel_api_key");
       }
-      return quotaProvider.getCodingPlanResetStatus(request);
+      return quotaProvider!.getCodingPlanResetStatus(request);
     },
     async requestCodingPlanResetOpportunity(
       request: CodingPlanResetOpportunityRequest,
@@ -277,21 +286,21 @@ export function createUsageStatsService(
       if (!isCodingPlanProviderId(request.preferredProviderId)) {
         throw new Error("no_bigmodel_api_key");
       }
-      return quotaProvider.requestCodingPlanResetOpportunity(request);
+      return quotaProvider!.requestCodingPlanResetOpportunity(request);
     },
     async useCodingPlanReset(
       request: CodingPlanResetUseRequest,
     ): Promise<CodingPlanResetUseResult> {
       // 套餐硬禁用：`CodingPlanResetUseResult` 只能表达成功（`used: true`），没有空值可返回，
       // 返回成功等于谎报一次额度重置。UI 入口已由 CODING_PLAN_DISABLED 关闭，这里保持
-      // 显式失败，恢复套餐时无需改动。
+      // 显式失败，不能伪造成功结果。
       if (CODING_PLAN_DISABLED) {
         throw new Error("套餐功能在当前构建中已停用");
       }
       if (!isCodingPlanProviderId(request.preferredProviderId)) {
         throw new Error("no_bigmodel_api_key");
       }
-      return quotaProvider.useCodingPlanReset(request);
+      return quotaProvider!.useCodingPlanReset(request);
     },
     async markCodingPlanResetHistoryRead(request: CodingPlanResetScopeRequest): Promise<void> {
       // 套餐硬禁用：无历史可标记，也不请求厂商接口（void 返回，直接落定为已完成）。
@@ -299,7 +308,7 @@ export function createUsageStatsService(
       if (!isCodingPlanProviderId(request.preferredProviderId)) {
         throw new Error("no_bigmodel_api_key");
       }
-      await quotaProvider.markCodingPlanResetHistoryRead(request);
+      await quotaProvider!.markCodingPlanResetHistoryRead(request);
     },
     async getSnapshot(request: UsageStatsRequest): Promise<UsageStatsSnapshot> {
       // 套餐硬禁用：Coding Plan monitor 统计不再查询，下发空快照。
@@ -308,7 +317,7 @@ export function createUsageStatsService(
       }
       // App Usage 已迁移到 getAppUsageSnapshot（agent 数据库）。getSnapshot 仅服务 Coding Plan monitor 链路。
       // 任何 monitor 失败都不能回退本地数据，保持数据源隔离。
-      return quotaProvider.getUsageStatsSnapshot(request);
+      return quotaProvider!.getUsageStatsSnapshot(request);
     },
     async getEntitlementSnapshot(
       request: UsageEntitlementRequest = {},
@@ -318,7 +327,7 @@ export function createUsageStatsService(
       if (CODING_PLAN_DISABLED) {
         return createDisabledEntitlementSnapshot();
       }
-      return quotaProvider.getSnapshotForRequest(request);
+      return quotaProvider!.getSnapshotForRequest(request);
     },
   };
 }
