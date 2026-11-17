@@ -17,9 +17,9 @@ export const ZCODE_SITE_PLUGIN_NAME = "zcode-site";
 export const ZCODE_SITE_PLUGIN_ID = `${ZCODE_SITE_PLUGIN_NAME}@${ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID}`;
 
 /**
- * Claude Code 官方市场（GitHub git 源）。不进默认补种列表：用户可手动添加为个人来源，
- * 移除后不会被重新补种。它不是 ZCode 的强依赖：GitHub 不可达时刷新必然失败，
- * 该失败不应作为错误提示打扰用户，UI 侧按此 id 静默处理其刷新失败（任何原因）。
+ * Claude Code 官方市场 id。本构建把它当普通第三方个人来源：
+ * 不进默认补种列表、可从任意来源手动添加、可删除，刷新失败按普通市场显示。
+ * 常量本身保留用于兼容已安装记录与上游同步，不参与官方保留 id 判定。
  */
 export const CLAUDE_OFFICIAL_PLUGIN_MARKETPLACE_ID = "claude-plugins-official";
 

@@ -501,6 +501,10 @@ export async function getZCodePluginsOverview(
   };
 }
 
+/**
+ * 已停用：claude 市场按普通第三方处理，不再做 CDN 图标补齐。
+ * 保留实现仅用于降低上游同步成本，生产代码不得调用。
+ */
 export function enrichCachedClaudeMarketplaceIconsForOverview(
   options: ResolveZCodePluginsOptions = {},
 ): void {

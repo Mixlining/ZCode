@@ -94,35 +94,34 @@ marketplace id，例如 `claude-plugins-official`。
 
 ZCode 自己的 `zcode-plugins-official` 是唯一官方市场：随安装包 seed 的内置目录分片与
 官方 CDN source 下发的目录分片按插件名合并为同一个 marketplace manifest，冲突时
-CDN 市场条目优先。Claude 官方 `claude-plugins-official` 只内置 marketplace source，
-第一次展示、安装或校验时按需刷新 catalog；刷新失败必须返回诊断并保留插件管理页可用，
-不能因为网络不可达阻断已安装插件管理。
+CDN 市场条目优先。Claude 官方 `claude-plugins-official` 不再内置或补种；用户手动添加后
+按普通个人市场刷新 catalog，刷新失败保留旧快照并显示诊断，不能因为网络不可达阻断
+已安装插件管理。
 
-### Claude 官方市场弱依赖
+### Claude 官方市场按普通个人来源处理
 
-`claude-plugins-official` 是可选 catalog 来源（不默认补种，用户可移除、可手动重新添加），
-不得成为插件管理或其他市场操作的硬依赖：
+`claude-plugins-official` 不默认补种，用户可移除、可手动重新添加。本构建把它当作普通
+第三方个人市场，不再保留官方身份或专属行为：
 
-- 每次 Claude 市场 catalog 刷新使用独立的 30 秒总超时，并通过 `AbortSignal` 终止底层
-  HTTP/Archive 请求；超时后立即返回 `plugin_archive_fetch_failed`（或对应来源诊断）。
-- 全量刷新仍按已知市场逐个执行，但 Claude 超时/失败只记录
-  `lastRefreshFailure` 并保留最后一次成功快照；其他市场继续刷新，不能因 Claude 失败
-  提前中止。
-- 设置页首次加载、市场详情、校验等会懒加载 Claude catalog 的路径同样受 30 秒预算保护；
-  已有本地 manifest 时继续离线读取，不为概览读取强制联网。
-- 所有 marketplace catalog、Claude 图标和 GitHub Archive 的 HTTP 请求必须经过统一的
-  Web HTTP egress adapter，遵守 `ZCODE_HTTP_PROXY` / `ZCODE_NO_PROXY`，并在 Agent 封存
-  用户 shell 后回退使用捕获的系统代理；禁止这些路径直接调用未配置代理的原生 `fetch`。
-- 该预算只约束 Claude **marketplace catalog**。用户实际安装的第三方插件源仍按其自身
-  source 类型执行，不把 catalog 超时误当作插件安装超时。
+- `isOfficialMarketplaceId` 只认 `zcode-plugins-official`。`claude-plugins-official`
+  不参与保留 id 判定；用户手动新增时按 manifest name 正常落盘，不要求 `trustedId`。
+- 新增、刷新、删除、更新插件全部走普通个人市场路径。刷新失败只写
+  `lastRefreshFailure` 并保留最后一次成功快照，UI 显示错误；全量刷新逐市场继续，
+  不因某个市场失败提前中止。
+- 不再有 30 秒专属超时、刷新失败静默、CDN 图标增强、专用展示名或固定置顶排序。
+- 图标增强、常量与 `recommendedPlugins` 兼容实现可以保留为死代码，但不得再接入生产
+  调用路径；不得为“将来恢复”预留开关或分支。
+- 所有 marketplace catalog 与 GitHub Archive 请求仍必须经过统一的 Web HTTP egress
+  adapter，遵守 `ZCODE_HTTP_PROXY` / `ZCODE_NO_PROXY`，并在 Agent 封存用户 shell 后
+  回退使用捕获的系统代理；禁止这些路径直接调用未配置代理的原生 `fetch`。
 
 状态链路：
 
 ```text
 Claude catalog request
-  ├─ 30s 内完成 ──> 更新 manifest / lastUpdated
-  └─ 超时或失败 ──> abort 底层请求 -> 保留旧快照 + lastRefreshFailure
-                                      └─> 其他 marketplace 继续
+  ├─ 成功 ──> 更新 manifest / lastUpdated
+  └─ 失败 ──> 保留旧快照 + lastRefreshFailure
+              └─> 普通错误提示；其他 marketplace 继续
 ```
 
 注册 marketplace 时，源仓库/目录的 canonical manifest 位置是
@@ -132,32 +131,48 @@ Claude catalog request
 
 ### 默认市场源硬约束
 
-`claude-plugins-official` 是**可选个人来源**，不是默认市场。以下三条是长期约束，
+`claude-plugins-official` 是**普通个人来源**，不是默认市场。以下约束在
 上游同步、重构或新增市场功能时都不得回退：
 
 1. **不得列入默认市场源。** `DEFAULT_PLUGIN_MARKETPLACES` 只允许包含 ZCode 官方市场
    `zcode-plugins-official`。不得把 `claude-plugins-official` 加回该列表，也不得通过
    其它启动补种、首次运行种子、配置默认值或远端下发把它变成默认存在。
 2. **必须可删除。** 市场源管理中 `claude-plugins-official` 的移除入口必须保留。
-   只有 `zcode-plugins-official` 不可移除（它在默认补种列表内）。不得以「官方来源」
-   「弱依赖」「刷新失败静默」等理由重新隐藏该市场的删除按钮。
+   只有 `zcode-plugins-official` 不可移除（它在默认补种列表内）。
 3. **不得自动补种。** `ensureDefaultPluginMarketplaces` 及任何新增的补种、迁移、
    恢复逻辑都不得在 `claude-plugins-official` 缺失时重新写入它。用户移除后它不得
    复活；只有用户显式添加才会出现。
-
-`CLAUDE_OFFICIAL_PLUGIN_MARKETPLACE_ID` 常量、claude 市场的目录分组展示、
-图标增强、刷新失败静默与保留 id 判定（`isOfficialMarketplaceId`）都属于**保留实现**，
-与本约束不冲突：保留它们是为了兼容已安装插件与手动添加路径，不是为了默认提供该市场。
+4. **不保留同名来源。** `claude-plugins-official` 不再被
+   `isOfficialMarketplaceId` 判定为官方 id；用户可以从任意来源手动添加同名 manifest，
+   行为与其他第三方市场一致。只有 `zcode-plugins-official` 的用户侧新增继续被拒绝。
+5. **存量记录保留。** 旧版本已经种下的 claude 记录升级后原样保留；用户删除后才消失。
+6. **没有专属行为。** 不再有 30 秒超时、刷新失败静默、图标增强、专用展示名、来源
+   固定置顶；Claude Marketplace 格式（`.claude-plugin/marketplace.json`、插件
+   manifest、hooks/MCP/skills 等）仍按通用兼容路径支持。
 
 反路径（每条都必须在评审中被拒绝）：
 
 - 把 claude 条目加回 `DEFAULT_PLUGIN_MARKETPLACES`，或新增第二个补种列表包含它；
 - 让 `isRemovableMarketplace` 重新对 claude 返回 `false`，或删除源管理中的移除按钮；
-- 在 overview、启动 seed 或配置解析里对缺失的 claude 市场做「顺手补一条」；
-- 用「用户之前装过 claude 插件」推断用户需要该市场并自动恢复。
+- 让 `isOfficialMarketplaceId` 重新把 claude 当官方 id，或用户手动新增同名 manifest 被拒绝；
+- 在 overview、启动 seed 或配置解析里对缺失的 claude 市场做“顺手补一条”；
+- 用「用户之前装过 claude 插件」推断用户需要该市场并自动恢复；
+- 重新接入 30 秒专属超时、刷新失败静默、CDN 图标增强或专用展示名/置顶排序。
 
-上游同步复核：`git diff <merge-base> <merged> -- packages/shared/src/plugin-marketplaces.ts`
-不得出现向 `DEFAULT_PLUGIN_MARKETPLACES` 新增 claude 条目的改动。
+上游同步复核：`git diff <merge-base> <merged> -- packages/shared/src/plugin-marketplaces.ts apps/zcode-cli/packages/contracts/src/plugins/index.ts`
+不得出现向 `DEFAULT_PLUGIN_MARKETPLACES` 新增 claude 条目、或让
+`isOfficialMarketplaceId` 重新识别 claude 的改动。
+
+验收场景：
+
+1. 空 storage 打开插件市场，来源列表只有 `zcode-plugins-official`。
+2. 手动添加 `anthropics/claude-plugins-official`（或任意本地/Git 源）成功；summary
+   `isOfficial: false`，归入个人分段，可刷新、可删除。
+3. 删除 claude 来源后重启应用/重新打开商店页，不自动恢复；已安装插件与缓存不被自动删除。
+4. 旧版本存量 claude 记录升级后保留，并按普通个人市场处理。
+5. claude 刷新失败显示普通错误提示，保留最后成功快照；其他市场继续刷新。
+6. 用户手动添加 `zcode-plugins-official` 仍被拒绝。
+7. `.claude-plugin/marketplace.json`、Claude 插件 manifest、hooks/MCP/skills 兼容不变。
 
 ## Marketplace Source 兼容
 
@@ -177,8 +192,8 @@ V1 必须识别 Claude Marketplace source schema，并按支持级别处理：
 默认 marketplace seed 只在 `known_marketplaces.json` 缺少同名市场时写入。若用户已有
 同名 marketplace 记录，必须保留用户记录，不能覆盖 source、`addedAt` 或
 `lastUpdated`。默认补种列表（`DEFAULT_PLUGIN_MARKETPLACES`）只含 ZCode 官方市场
-`zcode-plugins-official`：Claude 官方市场是可选个人来源，被用户移除后不再自动恢复，
-可随时手动重新添加（见「默认市场源硬约束」）。
+`zcode-plugins-official`：Claude 官方市场是普通个人来源，被用户移除后不再自动恢复，
+可从任意来源手动重新添加（见「默认市场源硬约束」）。
 
 Plugin entry `source` 的 V1 支持范围：
 

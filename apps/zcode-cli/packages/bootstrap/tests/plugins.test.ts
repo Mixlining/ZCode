@@ -26,9 +26,9 @@ import {
 import { createPluginFacadeForApp } from "../src/app/plugin-facade.js";
 import type { ZCodeAppOptions } from "../src/app/types.js";
 import {
+  addZCodePluginMarketplace,
   configureZCodePlugin,
   describeZCodePlugin,
-  enrichCachedClaudeMarketplaceIconsForOverview,
   getZCodePluginsOverview,
   installZCodeMarketplacePlugin,
   listZCodePlugins,
@@ -176,59 +176,6 @@ describe("ZCode plugins", () => {
       }
     } finally {
       await rm(root, { recursive: true, force: true });
-    }
-  });
-
-  it("starts cached Claude icon migration without blocking overview callers", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-bootstrap-icon-migration-"));
-    const pluginStorageRoot = join(root, "plugins");
-    const marketplaceRoot = join(pluginStorageRoot, "marketplaces", "claude-plugins-official");
-    try {
-      await mkdir(marketplaceRoot, { recursive: true });
-      await writeFile(
-        join(marketplaceRoot, "marketplace.json"),
-        JSON.stringify({
-          name: "claude-plugins-official",
-          plugins: [{ name: "figma", source: "./figma" }],
-        }),
-      );
-      let resolveFetch!: (response: Response) => void;
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(
-          () =>
-            new Promise<Response>((resolve) => {
-              resolveFetch = resolve;
-            }),
-        ),
-      );
-
-      expect(
-        enrichCachedClaudeMarketplaceIconsForOverview({
-          env: {},
-          pluginStorageRoot,
-          skipUserConfig: true,
-          workingDirectory: root,
-        }),
-      ).toBeUndefined();
-
-      resolveFetch(
-        new Response(
-          JSON.stringify([{ name: "figma", icon: "figma/icon.png", mimeType: "image/png" }]),
-          { status: 200 },
-        ),
-      );
-      await vi.waitFor(async () => {
-        const saved = JSON.parse(
-          await readFile(join(marketplaceRoot, "marketplace.json"), "utf8"),
-        ) as { plugins: Array<{ icon?: string }> };
-        expect(saved.plugins[0]?.icon).toBe(
-          "https://cdn-zcode.z.ai/zcode/official-plugin/assets/figma/icon.png",
-        );
-      });
-    } finally {
-      vi.unstubAllGlobals();
-      await rm(root, { force: true, recursive: true });
     }
   });
 
@@ -674,7 +621,7 @@ describe("ZCode plugins", () => {
     }
   });
 
-  it("includes the merged ZCode official marketplace and Claude marketplace for empty storage", async () => {
+  it("includes only the ZCode official marketplace for empty storage", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-bootstrap-default-marketplace-"));
 
     try {
@@ -686,30 +633,19 @@ describe("ZCode plugins", () => {
         workingDirectory: root,
       });
 
-      expect(overview.marketplaces).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            id: "zcode-plugins-official",
-            isOfficial: true,
-            name: "zcode-plugins-official",
-            pluginCount: 16,
-            source: {
-              source: "url",
-              url: "https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json",
-            },
-          }),
-          expect.objectContaining({
-            id: "claude-plugins-official",
-            isOfficial: true,
-            name: "claude-plugins-official",
-            pluginCount: 0,
-            source: {
-              repo: "anthropics/claude-plugins-official",
-              source: "github",
-            },
-          }),
-        ]),
-      );
+      expect(overview.marketplaces.map((marketplace) => marketplace.id)).toEqual([
+        "zcode-plugins-official",
+      ]);
+      expect(overview.marketplaces[0]).toMatchObject({
+        id: "zcode-plugins-official",
+        isOfficial: true,
+        name: "zcode-plugins-official",
+        source: {
+          source: "url",
+          url: "https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json",
+        },
+      });
+      expect(overview.marketplaces[0]?.pluginCount).toBeGreaterThan(0);
       expect(
         JSON.parse(await readFile(join(pluginStorageRoot, "known_marketplaces.json"), "utf8")),
       ).toMatchObject({
@@ -717,15 +653,51 @@ describe("ZCode plugins", () => {
           expect.objectContaining({
             id: "zcode-plugins-official",
           }),
-          expect.objectContaining({
-            id: "claude-plugins-official",
-          }),
         ],
       });
     } finally {
       await rm(root, { force: true, recursive: true });
     }
-  });
+  }, 30_000);
+
+  it("manually adds the Claude marketplace as a normal personal source", async () => {
+    const root = await mkdtemp(join(tmpdir(), "zcode-bootstrap-claude-manual-add-"));
+    const pluginStorageRoot = join(root, "plugins");
+    const sourceDir = join(root, "claude-marketplace");
+
+    try {
+      await writeTestFile(
+        join(sourceDir, ".claude-plugin", "marketplace.json"),
+        JSON.stringify({ name: "claude-plugins-official", plugins: [] }),
+      );
+
+      const summary = await addZCodePluginMarketplace({
+        env: {},
+        pluginStorageRoot,
+        skipUserConfig: true,
+        source: sourceDir,
+        workingDirectory: root,
+      });
+      expect(summary).toMatchObject({
+        id: "claude-plugins-official",
+        name: "claude-plugins-official",
+        isOfficial: false,
+        source: { source: "directory", path: sourceDir },
+      });
+
+      const overview = await getZCodePluginsOverview({
+        env: {},
+        pluginStorageRoot,
+        skipUserConfig: true,
+        workingDirectory: root,
+      });
+      expect(
+        overview.marketplaces.find((marketplace) => marketplace.id === "claude-plugins-official"),
+      ).toMatchObject({ id: "claude-plugins-official", isOfficial: false });
+    } finally {
+      await rm(root, { force: true, recursive: true });
+    }
+  }, 30_000);
 
   it("installs from a known marketplace by lazy-loading its missing manifest", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-bootstrap-lazy-marketplace-install-"));

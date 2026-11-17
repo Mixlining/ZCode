@@ -43,7 +43,6 @@ import {
   addZCodePluginMarketplace,
   configureZCodePlugin,
   describeZCodePlugin,
-  enrichCachedClaudeMarketplaceIconsForOverview,
   getZCodePluginsOverview,
   installZCodeMarketplacePlugin,
   removeZCodePluginMarketplace,
@@ -311,10 +310,6 @@ export async function getPluginsOverview(
 ): Promise<ZCodePluginsOverviewResult> {
   const params = parseParams(zcodePluginsOverviewParamsSchema, rawParams);
   context.deps?.pluginPreparation?.signal.throwIfAborted();
-  enrichCachedClaudeMarketplaceIconsForOverview({
-    logger: context.logger,
-    workingDirectory: params.workspace.workspacePath,
-  });
   const overview = await getZCodePluginsOverview({
     pluginPreparation: context.deps?.pluginPreparation,
     pluginDiscovery: context.deps?.pluginDiscovery,

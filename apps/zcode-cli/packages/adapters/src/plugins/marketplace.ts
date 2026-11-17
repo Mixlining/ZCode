@@ -43,7 +43,6 @@ import {
   createGitUnavailableError,
   getPluginSourceDiagnosticCode,
   isCommandUnavailableError,
-  PluginSourceMaterializationError,
 } from "./source-errors.js";
 
 const execFileAsync = promisify(execFile);
@@ -66,7 +65,6 @@ const DEFAULT_VERSION = "0.0.0";
 const GIT_CLONE_MAX_ATTEMPTS = 3;
 const GIT_COMMAND_TIMEOUT_MS = 90_000;
 const GIT_CLONE_RETRY_DELAY_MS = 1_000;
-const CLAUDE_MARKETPLACE_REFRESH_TIMEOUT_MS = 30_000;
 const MARKETPLACE_NAME_PATTERN = /^[a-z0-9][a-z0-9._-]{0,127}$/;
 const PLUGIN_NAME_PATTERN = /^[a-z0-9][a-z0-9._-]{0,127}$/;
 const SOURCE_SHA256_PATTERN = /^[a-f0-9]{64}$/u;
@@ -213,60 +211,9 @@ function createPluginOperationCancelledError(): Error {
   return error;
 }
 
-interface MarketplaceOperationSignalScope {
-  cleanup: () => void;
-  signal?: AbortSignal;
-  timedOut: boolean;
-  timeoutError: Error;
-}
-
 interface KnownMarketplaceActivation {
   finalize: () => void;
   rollback: () => Promise<void>;
-}
-
-// Claude 官方市场只提供可选目录，外部网络不可达时必须中止底层请求，不能拖住其他插件市场。
-function createMarketplaceOperationSignalScope(
-  trustedId: string | undefined,
-  externalSignal?: AbortSignal,
-): MarketplaceOperationSignalScope {
-  if (trustedId !== CLAUDE_OFFICIAL_MARKETPLACE) {
-    return {
-      cleanup: () => {},
-      signal: externalSignal,
-      timedOut: false,
-      timeoutError: new Error("Marketplace operation timed out"),
-    };
-  }
-
-  const controller = new AbortController();
-  const timeoutError = new Error(
-    `Claude marketplace refresh timed out after ${CLAUDE_MARKETPLACE_REFRESH_TIMEOUT_MS / 1000} seconds`,
-  );
-  timeoutError.name = "TimeoutError";
-  const scope: MarketplaceOperationSignalScope = {
-    cleanup: () => {
-      clearTimeout(timeout);
-      externalSignal?.removeEventListener("abort", abortExternal);
-    },
-    signal: controller.signal,
-    timedOut: false,
-    timeoutError,
-  };
-  const abortExternal = (): void => {
-    controller.abort(externalSignal?.reason);
-  };
-  const timeout = setTimeout(() => {
-    scope.timedOut = true;
-    controller.abort(timeoutError);
-  }, CLAUDE_MARKETPLACE_REFRESH_TIMEOUT_MS);
-
-  if (externalSignal?.aborted) {
-    abortExternal();
-  } else {
-    externalSignal?.addEventListener("abort", abortExternal, { once: true });
-  }
-  return scope;
 }
 
 interface LoadMarketplaceResult {
@@ -413,17 +360,11 @@ export async function addMarketplace(input: {
   // 不可信 manifest.name 作为 target，先 rm 掉本地官方目录再 cp，等守卫抛错时
   // 官方 manifest 已被污染；守卫通过后才持久化。
   throwIfPluginOperationAborted(input.signal);
-  const operationScope = createMarketplaceOperationSignalScope(input.trustedId, input.signal);
-  const operationSignal = operationScope.signal;
+  const operationSignal = input.signal;
   let loaded: LoadMarketplaceResult | undefined;
   let knownMarketplaceActivation: KnownMarketplaceActivation | undefined;
   let marketplaceActivation: AtomicDirectoryActivation | undefined;
   try {
-    // Claude 官方目录与图标映射并行获取；图标只是展示增强，失败时会回退本地缓存或空映射。
-    const iconSourcesPromise =
-      input.trustedId === CLAUDE_OFFICIAL_MARKETPLACE
-        ? loadClaudePluginIconSources(input.storageRoot, operationSignal)
-        : null;
     loaded = await loadMarketplaceFromSource(input.source, input.storageRoot, {
       persist: false,
       signal: operationSignal,
@@ -447,12 +388,6 @@ export async function addMarketplace(input: {
         `Official marketplace source must provide ${ZCODE_OFFICIAL_PLUGIN_MARKETPLACE}, received ${loaded.manifest.name}`,
       );
     }
-    const iconSources = iconSourcesPromise ? await iconSourcesPromise : new Map<string, string>();
-    const enrichedRaw =
-      loaded.manifest.name === CLAUDE_OFFICIAL_MARKETPLACE
-        ? applyClaudePluginIcons(loaded.manifest.raw, iconSources)
-        : loaded.manifest.raw;
-    const enrichedManifest = parseRequiredMarketplaceManifest(enrichedRaw);
     const persistedManifest =
       loaded.manifest.name === ZCODE_OFFICIAL_PLUGIN_MARKETPLACE
         ? parseRequiredMarketplaceManifest(
@@ -461,7 +396,7 @@ export async function addMarketplace(input: {
               storageRoot: input.storageRoot,
             }),
           )
-        : enrichedManifest;
+        : parseRequiredMarketplaceManifest(loaded.manifest.raw);
     // 修复原因：旧流程先删 marketplace target 再复制 source，刷新失败会丢失最后成功快照。
     // source tree 与规范 manifest 在同一 staging 目录准备完毕后一次 rename 激活。
     if (loaded.sourceRoot) {
@@ -476,7 +411,7 @@ export async function addMarketplace(input: {
       marketplaceActivation = await stageMarketplaceManifest(
         input.storageRoot,
         loaded.manifest.name,
-        enrichedRaw,
+        loaded.manifest.raw,
         operationSignal,
       );
     }
@@ -496,9 +431,6 @@ export async function addMarketplace(input: {
     if (marketplaceActivation) {
       throwIfPluginOperationAborted(operationSignal);
     }
-    // authority state 已落盘且 deadline 检查通过后才进入不可取消的提交尾声；
-    // 先解除 timer，再清理 backup/marker，避免清理耗时把已提交事务反判成超时。
-    operationScope.cleanup();
     await marketplaceActivation?.finalize();
     knownMarketplaceActivation.finalize();
     return record;
@@ -522,21 +454,9 @@ export async function addMarketplace(input: {
           ? currentRollbackError
           : appendPluginSourceCleanupError(currentRollbackError, rollbackError);
     }
-    const operationError = operationScope.timedOut
-      ? (() => {
-          const sourceDiagnosticCode = getPluginSourceDiagnosticCode(error);
-          return sourceDiagnosticCode
-            ? new PluginSourceMaterializationError(
-                sourceDiagnosticCode,
-                operationScope.timeoutError.message,
-              )
-            : operationScope.timeoutError;
-        })()
-      : error;
-    throw appendPluginSourceCleanupError(operationError, rollbackError);
+    throw appendPluginSourceCleanupError(error, rollbackError);
   } finally {
     await cleanupPluginSourceBestEffort(loaded?.cleanup);
-    operationScope.cleanup();
   }
 }
 

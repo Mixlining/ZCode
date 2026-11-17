@@ -14,7 +14,6 @@ import {
   createNodePluginAdapter,
   describeMarketplacePlugin,
   discoverNodePlugins,
-  enrichCachedClaudeMarketplaceIcons,
   ensureDefaultPluginMarketplaces,
   installMarketplacePlugin,
   listInstalledPluginRecords,
@@ -856,7 +855,7 @@ describe("NodePluginAdapter", () => {
     vi.unstubAllGlobals();
   });
 
-  it("validates icon source records and only fills missing Claude marketplace icons", () => {
+  it("keeps deprecated Claude icon helpers safe and non-overwriting", () => {
     const icons = parsePluginIconSources([
       { name: "figma", icon: "figma/icon.png", mimeType: "image/png", sha256: "a".repeat(64) },
       { name: "unsafe", icon: "../unsafe.png", mimeType: "image/png" },
@@ -984,198 +983,6 @@ describe("NodePluginAdapter", () => {
       await new Promise<void>((resolve, reject) =>
         proxy.close((error) => (error ? reject(error) : resolve())),
       );
-      await rm(dir, { force: true, recursive: true });
-    }
-  });
-
-  it("fetches and persists optional icons while refreshing the Claude official marketplace", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "zcode-plugin-claude-icons-"));
-    const storageRoot = join(dir, "storage");
-    const sourceDir = join(dir, "claude-marketplace");
-    try {
-      await writeMarketplaceManifest(sourceDir, {
-        name: "claude-plugins-official",
-        plugins: [{ name: "figma", source: "./figma" }],
-      });
-      await writeKnownMarketplaces(storageRoot, [
-        {
-          id: "zcode-plugins-official",
-          source: {
-            source: "settings",
-            marketplace: {
-              name: "zcode-plugins-official",
-              plugins: [],
-              raw: { name: "zcode-plugins-official", plugins: [] },
-            },
-          },
-          name: "zcode-plugins-official",
-          addedAt: "2026-01-01T00:00:00.000Z",
-          pluginCount: 0,
-        },
-        {
-          id: "claude-plugins-official",
-          source: {
-            source: "settings",
-            marketplace: {
-              name: "claude-plugins-official",
-              plugins: [],
-              raw: { name: "claude-plugins-official", plugins: [] },
-            },
-          },
-          name: "claude-plugins-official",
-          addedAt: "2026-01-01T00:00:00.000Z",
-          pluginCount: 0,
-        },
-        {
-          id: "claude-plugins-official",
-          source: { source: "directory", path: sourceDir },
-          name: "claude-plugins-official",
-          addedAt: "2026-01-01T00:00:00.000Z",
-          pluginCount: 1,
-        },
-      ]);
-      vi.stubGlobal(
-        "fetch",
-        vi
-          .fn()
-          .mockResolvedValue(
-            new Response(
-              JSON.stringify([{ name: "figma", icon: "figma/icon.png", mimeType: "image/png" }]),
-              { status: 200 },
-            ),
-          ),
-      );
-
-      await updateMarketplace({ marketplace: "claude-plugins-official", storageRoot });
-
-      expect(
-        loadMarketplaceManifestSync(storageRoot, "claude-plugins-official")?.raw,
-      ).toMatchObject({
-        plugins: [
-          {
-            name: "figma",
-            icon: "https://cdn-zcode.z.ai/zcode/official-plugin/assets/figma/icon.png",
-          },
-        ],
-      });
-      const cached = JSON.parse(
-        await readFile(join(storageRoot, "icon-sources.json"), "utf8"),
-      ) as unknown;
-      expect(cached).toEqual([{ name: "figma", icon: "figma/icon.png", mimeType: "image/png" }]);
-    } finally {
-      await rm(dir, { force: true, recursive: true });
-    }
-  });
-
-  it("enriches an existing Claude catalog without refreshing its marketplace", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "zcode-plugin-existing-claude-icons-"));
-    const storageRoot = join(dir, "storage");
-    const marketplaceRoot = join(storageRoot, "marketplaces", "claude-plugins-official");
-    try {
-      await mkdir(marketplaceRoot, { recursive: true });
-      await writeFile(
-        join(marketplaceRoot, "marketplace.json"),
-        JSON.stringify({
-          name: "claude-plugins-official",
-          plugins: [{ name: "figma", source: "./figma" }],
-        }),
-      );
-      await writeKnownMarketplaces(storageRoot, [
-        {
-          id: "claude-plugins-official",
-          source: { source: "github", repo: "anthropics/claude-plugins-official" },
-          name: "claude-plugins-official",
-          addedAt: "2026-01-01T00:00:00.000Z",
-          lastUpdated: "2026-01-02T00:00:00.000Z",
-          pluginCount: 1,
-        },
-      ]);
-      let resolveFetch!: (response: Response) => void;
-      const fetchMock = vi.fn(
-        () =>
-          new Promise<Response>((resolve) => {
-            resolveFetch = resolve;
-          }),
-      );
-      vi.stubGlobal("fetch", fetchMock);
-      let writeLockCalls = 0;
-      const migration = enrichCachedClaudeMarketplaceIcons(storageRoot, async (write) => {
-        writeLockCalls += 1;
-        await write();
-      });
-
-      await Promise.resolve();
-      expect(writeLockCalls).toBe(0);
-      resolveFetch(
-        new Response(
-          JSON.stringify([{ name: "figma", icon: "figma/icon.png", mimeType: "image/png" }]),
-          { status: 200 },
-        ),
-      );
-      await migration;
-
-      await enrichCachedClaudeMarketplaceIcons(storageRoot);
-
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-      expect(writeLockCalls).toBe(1);
-      expect(
-        loadMarketplaceManifestSync(storageRoot, "claude-plugins-official")?.raw,
-      ).toMatchObject({
-        plugins: [
-          {
-            name: "figma",
-            icon: "https://cdn-zcode.z.ai/zcode/official-plugin/assets/figma/icon.png",
-          },
-        ],
-      });
-      expect(
-        JSON.parse(await readFile(join(storageRoot, "known_marketplaces.json"), "utf8")),
-      ).toMatchObject({
-        marketplaces: [{ lastUpdated: "2026-01-02T00:00:00.000Z" }],
-      });
-    } finally {
-      await rm(dir, { force: true, recursive: true });
-    }
-  });
-
-  it("uses the cached icon mapping when the optional CDN request fails", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "zcode-plugin-cached-claude-icons-"));
-    const storageRoot = join(dir, "storage");
-    const sourceDir = join(dir, "claude-marketplace");
-    try {
-      await writeMarketplaceManifest(sourceDir, {
-        name: "claude-plugins-official",
-        plugins: [{ name: "figma", source: "./figma" }],
-      });
-      await mkdir(storageRoot, { recursive: true });
-      await writeFile(
-        join(storageRoot, "icon-sources.json"),
-        JSON.stringify([{ name: "figma", icon: "figma/icon.png", mimeType: "image/png" }]),
-      );
-      await writeKnownMarketplaces(storageRoot, [
-        {
-          id: "claude-plugins-official",
-          source: { source: "directory", path: sourceDir },
-          name: "claude-plugins-official",
-          addedAt: "2026-01-01T00:00:00.000Z",
-          pluginCount: 1,
-        },
-      ]);
-      vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
-
-      await updateMarketplace({ marketplace: "claude-plugins-official", storageRoot });
-
-      expect(
-        loadMarketplaceManifestSync(storageRoot, "claude-plugins-official")?.raw,
-      ).toMatchObject({
-        plugins: [
-          {
-            name: "figma",
-            icon: "https://cdn-zcode.z.ai/zcode/official-plugin/assets/figma/icon.png",
-          },
-        ],
-      });
-    } finally {
       await rm(dir, { force: true, recursive: true });
     }
   });
@@ -1350,22 +1157,52 @@ describe("NodePluginAdapter", () => {
     }
   });
 
-  it("rejects an untrusted marketplace that impersonates an official id", async () => {
+  it("accepts a user-added marketplace that declares the Claude official id", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "zcode-plugin-claude-manual-add-"));
+    const storageRoot = join(dir, "storage");
+    const sourceDir = join(dir, "claude-marketplace");
+    const fetchMock = vi.fn();
+
+    try {
+      vi.stubGlobal("fetch", fetchMock);
+      await writeMarketplaceManifest(sourceDir, {
+        name: "claude-plugins-official",
+        plugins: [],
+      });
+
+      const record = await addMarketplace({
+        source: { source: "directory", path: sourceDir },
+        storageRoot,
+      });
+
+      expect(record).toMatchObject({
+        id: "claude-plugins-official",
+        name: "claude-plugins-official",
+        source: { source: "directory", path: sourceDir },
+      });
+      expect(loadKnownMarketplacesSync(storageRoot).map((entry) => entry.id)).toContain(
+        "claude-plugins-official",
+      );
+      // 普通第三方市场不应再触发 Claude 专属 icon-sources 拉取。
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      await rm(dir, { force: true, recursive: true });
+    }
+  });
+
+  it("rejects an untrusted marketplace that impersonates the ZCode official id", async () => {
     const dir = await mkdtemp(join(tmpdir(), "zcode-plugin-official-impersonate-"));
     const storageRoot = join(dir, "storage");
 
     try {
-      // Both reserved ids must be protected via the untrusted (user-facing) path.
-      // claude-plugins-official is a DEFAULT marketplace (always seeded as "known"),
-      // so a known-state heuristic would never fire for it — the explicit trusted
-      // flag is what closes that hole.
-      for (const reservedId of ["zcode-plugins-official", "claude-plugins-official"]) {
-        const sourceDir = join(dir, `evil-${reservedId}`);
-        await writeMarketplaceManifest(sourceDir, { name: reservedId, plugins: [] });
-        await expect(
-          addMarketplace({ source: { source: "directory", path: sourceDir }, storageRoot }),
-        ).rejects.toThrow(/official marketplace/i);
-      }
+      const sourceDir = join(dir, "evil-zcode-plugins-official");
+      await writeMarketplaceManifest(sourceDir, {
+        name: "zcode-plugins-official",
+        plugins: [],
+      });
+      await expect(
+        addMarketplace({ source: { source: "directory", path: sourceDir }, storageRoot }),
+      ).rejects.toThrow(/official marketplace/i);
     } finally {
       await rm(dir, { force: true, recursive: true });
     }
@@ -1377,17 +1214,17 @@ describe("NodePluginAdapter", () => {
     const sourceDir = join(dir, "evil");
 
     try {
-      // Seed an existing local claude-plugins-official manifest dir with a sentinel.
-      const officialDir = join(storageRoot, "marketplaces", "claude-plugins-official");
+      // Seed an existing local zcode-plugins-official manifest dir with a sentinel.
+      const officialDir = join(storageRoot, "marketplaces", "zcode-plugins-official");
       await mkdir(officialDir, { recursive: true });
       await writeFile(
         join(officialDir, "marketplace.json"),
-        JSON.stringify({ name: "claude-plugins-official", plugins: [] }),
+        JSON.stringify({ name: "zcode-plugins-official", plugins: [] }),
       );
       await writeFile(join(officialDir, "SENTINEL"), "real-official");
 
       // Attacker source whose manifest impersonates the official id.
-      await writeMarketplaceManifest(sourceDir, { name: "claude-plugins-official", plugins: [] });
+      await writeMarketplaceManifest(sourceDir, { name: "zcode-plugins-official", plugins: [] });
       await expect(
         addMarketplace({ source: { source: "directory", path: sourceDir }, storageRoot }),
       ).rejects.toThrow(/official marketplace/i);
@@ -1420,8 +1257,8 @@ describe("NodePluginAdapter", () => {
         },
       ]);
 
-      // Later the attacker renames the source manifest to impersonate the official id.
-      await writeMarketplaceManifest(sourceDir, { name: "claude-plugins-official", plugins: [] });
+      // Later the attacker renames the source manifest to impersonate the ZCode official id.
+      await writeMarketplaceManifest(sourceDir, { name: "zcode-plugins-official", plugins: [] });
 
       // The trusted internal refresh must reject the official-id claim without aborting the
       // refresh envelope; the durable failure is surfaced by overview/protocol diagnostics.
@@ -1491,7 +1328,7 @@ describe("NodePluginAdapter", () => {
 
     try {
       // 默认补种列表只含 ZCode 官方市场；claude 已移除（known 里没有该 id）时不会被恢复。
-      const known = ensureDefaultPluginMarketplaces(storageRoot);
+      const known = await ensureDefaultPluginMarketplaces(storageRoot);
       expect(known.map((record) => record.id)).toEqual(["zcode-plugins-official"]);
     } finally {
       await rm(dir, { force: true, recursive: true });
@@ -3555,108 +3392,6 @@ describe("NodePluginAdapter", () => {
     }
   });
 
-  it("keeps the previous Claude settings snapshot when timeout fires during manifest persistence", async () => {
-    vi.useFakeTimers();
-    const dir = await mkdtemp(join(tmpdir(), "zcode-plugin-claude-settings-timeout-"));
-    const storageRoot = join(dir, "storage");
-    const marketplaceRoot = join(storageRoot, "marketplaces", "claude-plugins-official");
-
-    try {
-      await mkdir(marketplaceRoot, { recursive: true });
-      await writeFile(
-        join(marketplaceRoot, "marketplace.json"),
-        JSON.stringify({
-          name: "claude-plugins-official",
-          plugins: [{ name: "cached", source: "./cached" }],
-        }),
-      );
-      await writeKnownMarketplaces(storageRoot, [
-        {
-          id: "claude-plugins-official",
-          source: {
-            source: "settings",
-            marketplace: {
-              name: "claude-plugins-official",
-              plugins: [],
-              raw: { name: "claude-plugins-official", plugins: [] },
-            },
-          },
-          name: "claude-plugins-official",
-          addedAt: "2026-01-01T00:00:00.000Z",
-          lastUpdated: "2026-01-02T00:00:00.000Z",
-          pluginCount: 1,
-        },
-      ]);
-      for (const key of [
-        ZCODE_HTTP_PROXY_ENV_KEY,
-        "HTTP_PROXY",
-        "HTTPS_PROXY",
-        "ALL_PROXY",
-        "http_proxy",
-        "https_proxy",
-        "all_proxy",
-        ZCODE_AGENT_CA_CERT_ENV_KEY,
-        "NODE_EXTRA_CA_CERTS",
-      ]) {
-        vi.stubEnv(key, "");
-      }
-      vi.stubEnv(ZCODE_TOOL_ENV_PASSTHROUGH_ENV_KEY, "{}");
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async () => new Response("[]", { status: 200 })),
-      );
-
-      const freshRaw = {
-        name: "claude-plugins-official",
-        plugins: [{ name: "fresh", source: "./fresh" }],
-        // 回归触发点：旧实现会在序列化 active manifest 时触发 deadline，但仍覆盖旧文件。
-        toJSON: () => {
-          vi.advanceTimersByTime(30_000);
-          return {
-            name: "claude-plugins-official",
-            plugins: [{ name: "fresh", source: "./fresh" }],
-          };
-        },
-      };
-
-      await expect(
-        addMarketplace({
-          source: {
-            source: "settings",
-            marketplace: {
-              name: "claude-plugins-official",
-              plugins: [
-                {
-                  name: "fresh",
-                  source: "./fresh",
-                  raw: { name: "fresh", source: "./fresh" },
-                },
-              ],
-              raw: freshRaw,
-            },
-          },
-          storageRoot,
-          trustedId: "claude-plugins-official",
-        }),
-      ).rejects.toThrow("30 seconds");
-
-      expect(
-        loadMarketplaceManifestSync(storageRoot, "claude-plugins-official")?.plugins[0]?.name,
-      ).toBe("cached");
-      expect(
-        loadKnownMarketplacesSync(storageRoot).find(
-          (record) => record.id === "claude-plugins-official",
-        ),
-      ).toMatchObject({
-        lastUpdated: "2026-01-02T00:00:00.000Z",
-        pluginCount: 1,
-      });
-    } finally {
-      await rm(dir, { force: true, recursive: true });
-      vi.useRealTimers();
-    }
-  });
-
   it("rolls back a settings marketplace manifest when known state persistence fails", async () => {
     const dir = await mkdtemp(join(tmpdir(), "zcode-plugin-settings-known-state-failure-"));
     const storageRoot = join(dir, "storage");
@@ -3736,213 +3471,6 @@ describe("NodePluginAdapter", () => {
       });
     } finally {
       await rm(dir, { force: true, recursive: true });
-    }
-  });
-
-  it("rolls back Claude manifest and known state when timeout fires during authority persistence", async () => {
-    vi.useFakeTimers();
-    const dir = await mkdtemp(join(tmpdir(), "zcode-plugin-claude-authority-timeout-"));
-    const storageRoot = join(dir, "storage");
-    const marketplaceRoot = join(storageRoot, "marketplaces", "claude-plugins-official");
-
-    try {
-      await mkdir(marketplaceRoot, { recursive: true });
-      await writeFile(
-        join(marketplaceRoot, "marketplace.json"),
-        JSON.stringify({
-          name: "claude-plugins-official",
-          plugins: [{ name: "cached", source: "./cached" }],
-        }),
-      );
-      await writeKnownMarketplaces(storageRoot, [
-        {
-          id: "claude-plugins-official",
-          source: {
-            source: "settings",
-            marketplace: {
-              name: "claude-plugins-official",
-              plugins: [],
-              raw: { name: "claude-plugins-official", plugins: [] },
-            },
-          },
-          name: "claude-plugins-official",
-          addedAt: "2026-01-01T00:00:00.000Z",
-          lastUpdated: "2026-01-02T00:00:00.000Z",
-          pluginCount: 1,
-        },
-      ]);
-      for (const key of [
-        ZCODE_HTTP_PROXY_ENV_KEY,
-        "HTTP_PROXY",
-        "HTTPS_PROXY",
-        "ALL_PROXY",
-        "http_proxy",
-        "https_proxy",
-        "all_proxy",
-        ZCODE_AGENT_CA_CERT_ENV_KEY,
-        "NODE_EXTRA_CA_CERTS",
-      ]) {
-        vi.stubEnv(key, "");
-      }
-      vi.stubEnv(ZCODE_TOOL_ENV_PASSTHROUGH_ENV_KEY, "{}");
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async () => new Response("[]", { status: 200 })),
-      );
-
-      let serializationCount = 0;
-      const freshRaw = {
-        name: "claude-plugins-official",
-        plugins: [{ name: "fresh", source: "./fresh" }],
-        toJSON: () => {
-          serializationCount += 1;
-          // 第一次序列化 staging manifest，第二次序列化 authority state。
-          if (serializationCount === 2) {
-            vi.advanceTimersByTime(30_000);
-          }
-          return {
-            name: "claude-plugins-official",
-            plugins: [{ name: "fresh", source: "./fresh" }],
-          };
-        },
-      };
-
-      await expect(
-        addMarketplace({
-          source: {
-            source: "settings",
-            marketplace: {
-              name: "claude-plugins-official",
-              plugins: [
-                {
-                  name: "fresh",
-                  source: "./fresh",
-                  raw: { name: "fresh", source: "./fresh" },
-                },
-              ],
-              raw: freshRaw,
-            },
-          },
-          storageRoot,
-          trustedId: "claude-plugins-official",
-        }),
-      ).rejects.toThrow("30 seconds");
-
-      expect(
-        loadMarketplaceManifestSync(storageRoot, "claude-plugins-official")?.plugins[0]?.name,
-      ).toBe("cached");
-      expect(
-        loadKnownMarketplacesSync(storageRoot).find(
-          (record) => record.id === "claude-plugins-official",
-        ),
-      ).toMatchObject({
-        lastUpdated: "2026-01-02T00:00:00.000Z",
-        pluginCount: 1,
-      });
-      expect(
-        existsSync(join(storageRoot, "marketplaces", ".claude-plugins-official.transaction.json")),
-      ).toBe(false);
-    } finally {
-      await rm(dir, { force: true, recursive: true });
-      vi.useRealTimers();
-    }
-  });
-
-  it("fails Claude marketplace refresh after 30 seconds without blocking other markets", async () => {
-    vi.useFakeTimers();
-    const dir = await mkdtemp(join(tmpdir(), "zcode-plugin-claude-marketplace-timeout-"));
-    const storageRoot = join(dir, "storage");
-    const claudeSnapshot = join(storageRoot, "marketplaces", "claude-plugins-official");
-    const goodSource = join(dir, "good-source");
-
-    try {
-      await mkdir(claudeSnapshot, { recursive: true });
-      await writeFile(
-        join(claudeSnapshot, "marketplace.json"),
-        JSON.stringify({
-          name: "claude-plugins-official",
-          plugins: [{ name: "cached", source: "./cached" }],
-        }),
-      );
-      await writeMarketplaceManifest(goodSource, {
-        name: "good-market",
-        plugins: [{ name: "good-v2", source: "./good-v2" }],
-      });
-      await writeKnownMarketplaces(storageRoot, [
-        {
-          id: "claude-plugins-official",
-          source: { source: "github", repo: "anthropics/claude-plugins-official" },
-          name: "claude-plugins-official",
-          addedAt: "2026-01-01T00:00:00.000Z",
-          lastUpdated: "2026-01-02T00:00:00.000Z",
-          pluginCount: 1,
-        },
-        {
-          id: "good-market",
-          source: { source: "directory", path: goodSource },
-          name: "good-market",
-          addedAt: "2026-01-01T00:00:00.000Z",
-          lastUpdated: "2026-01-01T00:00:00.000Z",
-          pluginCount: 1,
-        },
-        {
-          id: "zcode-plugins-official",
-          source: {
-            source: "settings",
-            marketplace: {
-              name: "zcode-plugins-official",
-              plugins: [],
-              raw: { name: "zcode-plugins-official", plugins: [] },
-            },
-          },
-          name: "zcode-plugins-official",
-          addedAt: "2026-01-01T00:00:00.000Z",
-          pluginCount: 0,
-        },
-      ]);
-
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(
-          (_input: RequestInfo | URL, init?: RequestInit) =>
-            new Promise<Response>((_resolve, reject) => {
-              const signal = init?.signal;
-              if (signal?.aborted) {
-                reject(signal.reason);
-                return;
-              }
-              signal?.addEventListener("abort", () => reject(signal.reason), { once: true });
-            }),
-        ),
-      );
-
-      const refresh = updateMarketplace({ storageRoot });
-      for (let turn = 0; turn < 10 && vi.mocked(fetch).mock.calls.length === 0; turn += 1) {
-        await Promise.resolve();
-        await vi.advanceTimersByTimeAsync(0);
-      }
-      await vi.advanceTimersByTimeAsync(30_000);
-      const updated = await refresh;
-
-      expect(updated.map((record) => record.id)).toContain("good-market");
-      expect(updated.map((record) => record.id)).not.toContain("claude-plugins-official");
-      expect(
-        loadMarketplaceManifestSync(storageRoot, "claude-plugins-official")?.plugins[0]?.name,
-      ).toBe("cached");
-      expect(
-        loadKnownMarketplacesSync(storageRoot).find(
-          (record) => record.id === "claude-plugins-official",
-        )?.lastRefreshFailure,
-      ).toMatchObject({
-        code: "plugin_archive_fetch_failed",
-        message: expect.stringContaining("30 seconds"),
-      });
-      expect(loadMarketplaceManifestSync(storageRoot, "good-market")?.plugins[0]?.name).toBe(
-        "good-v2",
-      );
-    } finally {
-      await rm(dir, { force: true, recursive: true });
-      vi.useRealTimers();
     }
   });
 

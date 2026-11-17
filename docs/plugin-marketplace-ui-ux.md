@@ -40,7 +40,8 @@ CLI 市场目录 ─────────────────────
 公开与社区分段共同使用官方市场 `zcode-plugins-official`（内置插件 + CDN zip 插件，目录源
 `https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json`），按发布条目 `publisherType` 区分维护归属；个人分段承载其余一切
 个人来源（claude-plugins-official、用户自加市场、inline）。`claude-plugins-official` 不在默认
-补种列表内：它只作为可手动添加的个人来源，用户移除后不会被重新补种。
+补种列表内，并按普通第三方个人来源处理：可从任意来源手动添加，移除后不会被重新补种，
+没有专用展示名、置顶、图标增强、30 秒超时或刷新失败静默。
 
 ### 官方市场单一身份与合并合同
 
@@ -159,13 +160,13 @@ flowchart TD
     桌面与 Web 共用此 UI 和服务，不改变 user inventory、workspaceIdentity 或请求路由。
   - **齿轮**：进入**市场源管理**——现有 marketplace source 管理能力换位置（列出已有源：
     更新/校验/删除/诊断）。「添加」不放这里。
-    市场源行按以下规则排序：`zcode-plugins-official`、`claude-plugins-official` 固定置顶
-    （claude 未添加时自然不出现）；其余自定义源按 `lastUpdated` 倒序排列；缺少 `lastUpdated`
-    的自定义源沉底；同一时间按本地化展示名称稳定排序。
+    市场源行按以下规则排序：`zcode-plugins-official` 固定置顶；其余个人来源（含
+    `claude-plugins-official`）按 `lastUpdated` 倒序排列；缺少 `lastUpdated` 的市场沉底；
+    同一时间按本地化展示名称稳定排序。
     只有 `zcode-plugins-official` 不可移除（它在默认补种列表内，移除后会被重新补种）；
     `claude-plugins-official` 与其它个人来源一样可移除，移除后不会复活。
-    **这是长期约束**：不得以「官方来源」「刷新失败静默」「弱依赖」等理由重新隐藏 claude
-    的移除按钮；该市场的展示分组、图标增强与刷新失败静默属于保留实现，与可移除不冲突。
+    `claude-plugins-official` 不再有专用展示名、固定置顶、图标增强或刷新失败静默；
+    它和普通第三方市场使用同一套新增、刷新、错误提示与删除行为。
     规则原文见
     [默认市场源硬约束](./claude-code-marketplace-plugin-compat.md#默认市场源硬约束)。
   - **添加**：下拉菜单，包含创建插件和添加市场源，收编现有 AddMarketplacePopover 的
@@ -295,46 +296,16 @@ flowchart TD
 
 ## 数据模型与 schema 扩展
 
-### Claude 官方市场图标补齐
+### Claude 官方市场图标补齐（已停用）
 
-`claude-plugins-official` 的上游目录不保证为每个插件提供 `icon`。刷新该市场时，Agent
-可以从 ZCode CDN 的
-`https://cdn-zcode.z.ai/zcode/official-plugin/assets/icon-sources.json` 获取可选图标映射，
-并按插件 `name` 为缺失 `icon` 的目录条目补齐：
+`claude-plugins-official` 已按普通个人市场处理，不再享受 CDN 图标补齐：
 
-- 仅作用于 `claude-plugins-official`；用户自加市场、inline 插件及孤立安装不按名称套用，
-  避免跨市场同名插件误用图标。
-- marketplace 条目自带的 `icon` 优先，映射不得覆盖。
-- 映射只消费 `name`、`icon`、`mimeType`、`sha256`；素材溯源字段不得进入协议、日志或 UI。
-- `icon` 必须是安全的相对 PNG 路径，最终 URL 固定落在
-  `https://cdn-zcode.z.ai/zcode/official-plugin/assets/` 下。
-- 市场 manifest 是主数据，图标映射是可选增强。映射下载或解析失败不得导致市场刷新失败；
-  有旧缓存时继续使用旧缓存，无缓存或未命中时按统一的 Blocks 图标降级。
-- 映射在 marketplace 更新阶段获取并缓存；`plugins/overview` 不为每个条目单独发起图标网络请求。
-- 存量迁移：Agent 进程首次处理某个 plugin storage 的 `plugins/overview` 时，对已有
-  `claude-plugins-official` catalog 启动一次后台 best-effort icon-only enrich。overview 立即返回
-  现有 catalog；迁移不重拉 Git marketplace、不修改 `lastUpdated`，网络获取期间不占用 plugin
-  storage 锁，只在写回前短暂加锁并重新读取 manifest。失败不影响 overview，并在下次 Agent
-  进程启动后重试；补齐结果从后续 overview 开始可见。
-
-```text
-update claude-plugins-official
-  ├─ fetch marketplace manifest
-  └─ fetch icon-sources.json（失败可降级）
-            ↓
-     校验并缓存 name → icon
-            ↓
-     仅补齐缺失 listing.icon
-            ↓
-     plugins/overview → PluginStoreAvatar
-
-existing catalog after upgrade
-  → first plugins/overview returns current catalog immediately
-  → background fetch/cache icon-sources.json（网络阶段不持锁）
-  → acquire plugin storage lock
-  → re-read + enrich cached claude-plugins-official/marketplace.json
-  → later plugins/overview → PluginStoreAvatar
-```
+- 生产路径不再拉取 `icon-sources.json`，不再为缺失 `icon` 的条目回填，也不再在
+  `plugins/overview` 时做后台 icon-only enrich。
+- marketplace 条目自带的 `icon` 仍按通用 listing 规则展示；缺失时使用统一降级图标。
+- 旧实现（`applyClaudePluginIcons`、`loadClaudePluginIconSources`、
+  `enrichCachedClaudeMarketplaceIcons` 等）保留为死代码，仅用于降低上游同步成本；
+  不得从生产入口重新调用，也不得为“将来恢复”预留开关。
 
 ### CDN / 市场目录条目新增字段（全部可选）
 
@@ -480,6 +451,8 @@ sequenceDiagram
 - [ ] 全部更新：有可更新插件时「已安装」标题右侧出现「全部更新（N）」，点击后串行更新全部可更新插件；失败不中断并汇总提示；无可更新插件时按钮不出现。
 - [ ] 顶栏：刷新触发全市场 update；齿轮打开市场源管理（更新/校验/删除）；「添加」菜单包含创建插件和添加市场，github/git/URL/本地路径与拖放沿用原能力。
 - [ ] 目录自动刷新：进入商店页自动刷新官方市场且只刷官方市场；10 分钟内重进不再刷新；刷新失败或在飞时重进不重复发起；手动刷新不受节流影响（PLM-LC-018/019）。
+- [ ] 空 storage 只出现 `zcode-plugins-official`；手动添加 `claude-plugins-official`（任意来源）成功并进入个人分段；删除后重启不复活；存量记录保留。
+- [ ] claude 市场与普通第三方一致：不固定置顶、不使用专用展示名/图标增强、刷新失败显示错误；手动添加 `zcode-plugins-official` 仍被拒绝。
 - [ ] 已卸载内置插件出现在公开分段并可恢复安装。
 - [ ] 目录自动刷新：只刷新过期的 ZCode 官方目录；十分钟内重进、失败后重进不重复发起；手动刷新绕过节流（PLM-LC-018/019）。
 

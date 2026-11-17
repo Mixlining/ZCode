@@ -1,4 +1,4 @@
 {
-  "$comment": "默认个人市场 id（客户端精选推荐区已下线，pluginNames 策展名单随之下线）。",
+  "$comment": "历史兼容死配置：claude-plugins-official 已按普通个人市场处理，生产代码不得再依赖此默认市场 id。",
   "marketplace": "claude-plugins-official"
 }

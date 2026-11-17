@@ -5,6 +5,7 @@ import type { SkillRoot } from "../skills/index.js";
 import type { ExecutionContext, TraceContext } from "../tracing/tracer.js";
 
 export const ZCODE_OFFICIAL_PLUGIN_MARKETPLACE = "zcode-plugins-official";
+/** Claude 官方市场 id；本构建按普通第三方个人来源处理，仅保留常量兼容上游与旧记录。 */
 export const CLAUDE_OFFICIAL_PLUGIN_MARKETPLACE = "claude-plugins-official";
 export const ZCODE_INLINE_PLUGIN_MARKETPLACE = "inline";
 export const ZCODE_PLUGIN_HOST_COMMAND = "__zcode-plugin-host";
@@ -20,8 +21,12 @@ export const ZCODE_PLUGIN_HOST_COMMAND = "__zcode-plugin-host";
  */
 export const ZCODE_DWF_CHILD_COMMAND = "__zcode-dwf-child";
 
+/**
+ * 产品层面的官方市场只有 ZCode 自己的 `zcode-plugins-official`。
+ * Claude 官方市场按普通第三方个人来源处理：可手动新增、可删除，不参与保留 id 判定。
+ */
 export function isOfficialMarketplaceId(id: string): boolean {
-  return id === ZCODE_OFFICIAL_PLUGIN_MARKETPLACE || id === CLAUDE_OFFICIAL_PLUGIN_MARKETPLACE;
+  return id === ZCODE_OFFICIAL_PLUGIN_MARKETPLACE;
 }
 
 export type PluginSource = "official" | "inline" | "cache";
